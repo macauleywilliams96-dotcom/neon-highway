@@ -31,10 +31,18 @@ highlight the correct play on your turn.
 There is no game server — the table runs peer-to-peer over Firebase Realtime
 Database:
 
-- **Host election.** One client holds a short lease on `/host` and runs the
-  dealer engine, writing authoritative table state. It renews the lease on a
-  timer; if it goes stale (tab closed), another client takes over within
-  seconds and the game continues.
+- **Host election.** One *seated* client holds a short lease on `/host` and runs
+  the dealer engine, writing authoritative table state. If the lease goes stale
+  (tab closed) another player takes over within seconds — verified live: closing
+  the host's tab mid-game handed off in under 8s with rounds uninterrupted. A
+  host that still renews its lease but has stopped advancing the game (throttled
+  or zombie tab) is forcibly replaced.
+- **The engine runs on a timer, not `requestAnimationFrame`.** Browsers pause rAF
+  in hidden tabs, which would freeze the table for everyone the moment the host
+  switched away.
+- **Seats are held by heartbeat**, written outside the state object the host
+  rewrites, and pruned after 30s of silence. Using `onDisconnect` alone dropped
+  players whose socket merely idled.
 - **Shoe as (seed, index).** The shoe is a seeded Fisher–Yates shuffle, so state
   carries only a seed and a deal index — a few bytes instead of 312 cards, and
   any new host rebuilds the identical shoe.
@@ -46,7 +54,8 @@ Database:
 
 ## Solo mode
 
-Without Firebase credentials the game runs **solo against the bot dealer**, with
+Multiplayer is live on this deployment. Without Firebase credentials the game
+falls back to **solo against the bot dealer**, with
 optional basic-strategy bot players filling empty seats. Everything works —
 there is simply nowhere for other humans to connect.
 
