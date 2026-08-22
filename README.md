@@ -1,83 +1,80 @@
-# VELVET ACE
+# SCRAPYARD
 
-A single-file, real-time **multiplayer blackjack** table. A bot dealer runs the
-shoe; anyone who opens the URL can sit down and play at the same table, seeing
-each other's cards, bets and busts live.
+Two robots are built from scratch, fight to the death with random power-up
+drops, and everyone watching bets on the outcome. Single self-contained
+`index.html`, hosted on GitHub Pages.
 
-**Play:** https://macauleywilliams96-dotcom.github.io/neon-highway/
+**Watch:** https://macauleywilliams96-dotcom.github.io/neon-highway/
 
 ---
 
-## Table rules
+## How the fight is shared
 
-6-deck shoe · dealer stands on all 17s · blackjack pays **3:2** · double on any
-two cards · split once · reshuffle at the cut card.
+The interesting part. Combat is **never streamed**. The fight is a pure
+function of `(botSeed, fightSeed, tick)`, so every viewer runs the identical
+simulation locally and sees the identical fight, punch for punch — the network
+carries only a phase, a deadline and two 32-bit seeds.
 
-## Controls
+**Two seeds, not one, and that separation is the anti-cheat:**
 
-| Key | Action |
-|-----|--------|
-| `H` | Hit |
-| `S` | Stand |
-| `D` | Double |
-| `P` | Split |
-| `Enter` | Lock in your bet |
+| Seed | Published | Determines |
+|---|---|---|
+| `botSeed` | when betting opens | the robots, their stats, and therefore the odds |
+| `fightSeed` | when the bell rings | every combat roll |
 
-Chips are click-to-stack with undo and re-bet. Optional basic-strategy hints
-highlight the correct play on your turn.
+Because the combat seed does not exist while bets are open, nobody can
+fast-forward the simulation to see who wins and then bet on a certainty.
 
-## How the multiplayer works
+A viewer who arrives mid-fight rebuilds the sim and fast-forwards it to the
+correct tick, landing exactly in step with everyone else. Same mechanism
+recovers a tab that was hidden and fell thousands of ticks behind.
 
-There is no game server — the table runs peer-to-peer over Firebase Realtime
-Database:
+An elected host only advances the phase machine — it never arbitrates combat,
+because it doesn't need to: everyone already agrees on the outcome.
 
-- **Host election.** One *seated* client holds a short lease on `/host` and runs
-  the dealer engine, writing authoritative table state. If the lease goes stale
-  (tab closed) another player takes over within seconds — verified live: closing
-  the host's tab mid-game handed off in under 8s with rounds uninterrupted. A
-  host that still renews its lease but has stopped advancing the game (throttled
-  or zombie tab) is forcibly replaced.
-- **The engine runs on a timer, not `requestAnimationFrame`.** Browsers pause rAF
-  in hidden tabs, which would freeze the table for everyone the moment the host
-  switched away.
-- **Seats are held by heartbeat**, written outside the state object the host
-  rewrites, and pruned after 30s of silence. Using `onDisconnect` alone dropped
-  players whose socket merely idled.
-- **Shoe as (seed, index).** The shoe is a seeded Fisher–Yates shuffle, so state
-  carries only a seed and a deal index — a few bytes instead of 312 cards, and
-  any new host rebuilds the identical shoe.
-- **Actions, not state.** Non-host players write only to an action queue; the
-  host consumes and applies them. Clients never mutate shared game state
-  directly, which keeps the rules authoritative.
-- **Presence.** `onDisconnect()` clears the heartbeat when a tab closes, so the
-  host reaps the seat shortly after — without evicting a player whose socket
-  merely went quiet.
+## The odds are honest
 
-## Solo mode
+Published odds are fitted against the simulation, not guessed. An early build
+gave both robots an identical stat budget, which made every fight a 50/50 coin
+flip and the odds meaningless. Robots now roll their own build budget, and the
+score-to-probability mapping is a logistic fitted to 1,500 simulated fights.
 
-Multiplayer is live on this deployment. Without Firebase credentials the game
-falls back to **solo against the bot dealer**, with
-optional basic-strategy bot players filling empty seats. Everything works —
-there is simply nowhere for other humans to connect.
+Measured calibration over 1,500 fights:
 
-## Enabling multiplayer
+| Implied | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |
+|---|---|---|---|---|---|---|---|---|---|
+| **Actual** | 0.07 | 0.17 | 0.26 | 0.39 | 0.51 | 0.64 | 0.71 | 0.82 | 0.96 |
 
-1. Create a project at <https://console.firebase.google.com>.
-2. **Build → Realtime Database → Create Database** (test mode to start).
-3. **Project settings → Your apps → Web `</>`** to generate a config.
-4. Paste the values into `firebaseConfig` at the top of the `<script>` block in
-   `index.html`, including `databaseURL`.
-5. Commit and push — Pages redeploys automatically.
+Longshots pay up to **9.4x**. House margin is 6%; backing favourites runs at
+about −1% expected value, so reading the stat lines genuinely pays.
 
-Players sharing a **table name** (Options → Table Name) play together, so you
-can run private tables on the same deployment.
+## Power-ups
 
-> Test-mode rules leave the database world-writable. Before sharing widely,
-> restrict writes to `/tables/$room` and cap payload sizes.
+Dropped into the arena mid-fight; either robot can grab them.
 
-## Notes
+`NANO REPAIR` +28% hull · `OVERCLOCK` speed and damage · `ION SHIELD` absorbs
+· `BERSERK` heavy damage boost · `EMP BLAST` stuns the opponent · `ROCKET POD`
+five high-damage shots.
 
-- Bankroll and session stats persist in `localStorage`; rebuy from Options.
-- Sound is synthesised with the Web Audio API — no asset files.
-- The previous project at this URL, a synthwave rhythm game, is preserved at the
-  git tag [`rhythm-game-v1`](../../tree/rhythm-game-v1).
+## Fight facts
+
+100% of fights end in a knockout, median length ~14
+seconds, and neither corner has a side bias (measured 145/155 over 300 fights).
+
+## Database
+
+Uses the same Firebase Realtime Database as the previous build. Only
+`databaseURL` is required. Without it the arena runs solo — you still watch and
+bet, but nobody shares your clock.
+
+Paths: `arena/$room/{state,bets,chat,viewers,host}` and `richlist`.
+
+> The database is world-writable under public rules, and the chat is
+> unmoderated. Worth tightening before sharing widely.
+
+## Previous builds
+
+Both preserved and restorable:
+
+- [`blackjack-v1`](../../tree/blackjack-v1) — VELVET ACE, real-time multiplayer blackjack
+- [`rhythm-game-v1`](../../tree/rhythm-game-v1) — NEON HIGHWAY, synthwave rhythm game

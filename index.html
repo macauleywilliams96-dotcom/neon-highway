@@ -3,255 +3,250 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>VELVET ACE // Multiplayer Blackjack</title>
+<title>SCRAPYARD // Robot Fight Betting</title>
 <style>
   :root{
-    --gold:#e8c66a; --gold-b:#8d6b25;
-    --felt:#0d5c46; --felt-d:#063325;
-    --bg:#0a0d10; --panel:rgba(10,16,20,.9);
-    --line:rgba(232,198,106,.28);
-    --txt:#f0e9dc; --dim:#9aa3a8;
-    --win:#4ade80; --lose:#f87171; --push:#7dd3fc;
+    --bg:#05060a; --panel:rgba(10,13,22,.92); --line:rgba(120,140,220,.25);
+    --txt:#e8ecff; --dim:#8791b5;
+    --red:#ff3b5c; --blue:#2ee6ff; --gold:#ffd447; --green:#3ddc84;
   }
   *{box-sizing:border-box}
   html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
-    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
-    -webkit-font-smoothing:antialiased}
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
   #app{position:fixed;inset:0}
-  canvas#table{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
+  canvas#arena{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
 
-  /* ---------------- top bar ---------------- */
-  #bar{position:absolute;z-index:10;top:0;left:0;right:0;height:54px;display:flex;align-items:center;
-    gap:10px;padding:0 14px;background:linear-gradient(180deg,rgba(6,10,12,.96),rgba(6,10,12,.55));
+  #bar{position:absolute;z-index:10;top:0;left:0;right:0;height:52px;display:flex;align-items:center;
+    gap:9px;padding:0 13px;background:linear-gradient(180deg,rgba(4,6,12,.96),rgba(4,6,12,.5));
     border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
-  .brand{font-weight:900;letter-spacing:4px;font-size:15px;color:var(--gold);
-    text-shadow:0 0 24px rgba(232,198,106,.4);white-space:nowrap}
-  .brand small{display:block;font-size:8.5px;letter-spacing:3px;color:var(--dim);font-weight:600}
+  .brand{font-weight:900;letter-spacing:4px;font-size:14px;
+    background:linear-gradient(90deg,var(--blue),var(--red));-webkit-background-clip:text;background-clip:text;
+    color:transparent;white-space:nowrap}
+  .brand small{display:block;font-size:8px;letter-spacing:2.5px;color:var(--dim);font-weight:600;
+    -webkit-text-fill-color:var(--dim)}
   .spacer{flex:1}
-  .pill{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:22px;
+  .pill{display:flex;align-items:center;gap:7px;padding:7px 12px;border-radius:20px;
     background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12.5px;white-space:nowrap}
   .pill b{color:var(--gold);font-weight:800;font-variant-numeric:tabular-nums}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
-  .dot.live{background:var(--win);box-shadow:0 0 10px var(--win);animation:pulse 1.8s infinite}
+  .dot.live{background:var(--green);box-shadow:0 0 10px var(--green);animation:pulse 1.8s infinite}
   .dot.solo{background:var(--gold);box-shadow:0 0 10px var(--gold)}
   @keyframes pulse{50%{opacity:.35}}
-  button{cursor:pointer;font-family:inherit;border:1px solid var(--line);color:var(--txt);
-    border-radius:9px;padding:9px 15px;font-weight:700;font-size:12px;letter-spacing:.8px;
+  button{cursor:pointer;font-family:inherit;border:1px solid var(--line);color:var(--txt);border-radius:9px;
+    padding:9px 14px;font-weight:700;font-size:12px;letter-spacing:.7px;
     background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));transition:.15s}
-  button:hover:not(:disabled){border-color:var(--gold);color:#fff;transform:translateY(-1px);
-    box-shadow:0 4px 18px rgba(232,198,106,.22)}
+  button:hover:not(:disabled){border-color:var(--blue);transform:translateY(-1px);
+    box-shadow:0 4px 18px rgba(46,230,255,.22)}
   button:disabled{opacity:.32;cursor:not-allowed}
-  button.gold{background:linear-gradient(180deg,#e8c66a,#b08c30);color:#241a05;border-color:transparent;
-    font-weight:900;text-shadow:none}
-  button.gold:hover:not(:disabled){box-shadow:0 6px 24px rgba(232,198,106,.5)}
-  button.danger{background:linear-gradient(180deg,rgba(248,113,113,.3),rgba(120,30,30,.4))}
 
-  /* ---------------- action bar ---------------- */
-  #actions{position:absolute;z-index:10;left:50%;transform:translateX(-50%);bottom:16px;
-    display:flex;gap:9px;padding:11px;border-radius:16px;background:var(--panel);
-    border:1px solid var(--line);backdrop-filter:blur(10px);
-    box-shadow:0 10px 44px rgba(0,0,0,.65);opacity:0;pointer-events:none;transition:.22s}
-  #actions.on{opacity:1;pointer-events:auto}
-  #actions button{min-width:96px;padding:13px 17px;font-size:13px}
-  .hint{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:9px;
-    font-size:10.5px;letter-spacing:2px;color:var(--dim);white-space:nowrap}
+  #dock{position:absolute;z-index:10;left:50%;transform:translateX(-50%);bottom:14px;
+    width:min(820px,94vw);padding:13px;border-radius:16px;background:var(--panel);
+    border:1px solid var(--line);backdrop-filter:blur(10px);box-shadow:0 12px 46px rgba(0,0,0,.7);
+    transition:.25s;opacity:0;pointer-events:none}
+  #dock.on{opacity:1;pointer-events:auto}
+  .dockhd{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .dockhd .t{font-size:10.5px;letter-spacing:2.5px;color:var(--dim);font-weight:800}
+  .timer{font-variant-numeric:tabular-nums;font-weight:900;color:var(--gold);font-size:15px}
+  .sides{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .side{padding:12px;border-radius:12px;border:2px solid transparent;cursor:pointer;transition:.15s;
+    background:rgba(255,255,255,.04)}
+  .side:hover{background:rgba(255,255,255,.08)}
+  .side.A{border-color:rgba(46,230,255,.35)} .side.B{border-color:rgba(255,59,92,.35)}
+  .side.A.sel{border-color:var(--blue);box-shadow:0 0 24px rgba(46,230,255,.35);background:rgba(46,230,255,.12)}
+  .side.B.sel{border-color:var(--red);box-shadow:0 0 24px rgba(255,59,92,.35);background:rgba(255,59,92,.12)}
+  .side .nm{font-weight:900;font-size:15px;letter-spacing:1px;margin-bottom:3px}
+  .side.A .nm{color:var(--blue)} .side.B .nm{color:var(--red)}
+  .side .od{font-size:11px;color:var(--dim)}
+  .side .od b{color:var(--gold);font-size:13px}
+  .side .pool{font-size:10.5px;color:var(--dim);margin-top:5px}
+  .chips{display:flex;gap:7px;margin-top:11px;align-items:center;flex-wrap:wrap}
+  .chip{padding:8px 13px;border-radius:9px;background:rgba(255,255,255,.06);border:1px solid var(--line);
+    cursor:pointer;font-weight:800;font-size:12px;transition:.13s}
+  .chip:hover{background:rgba(255,255,255,.13);transform:translateY(-2px)}
+  #betAmt{font-weight:900;color:var(--gold);font-size:16px;min-width:78px;text-align:right;
+    font-variant-numeric:tabular-nums}
+  #placeBtn{flex:1;min-width:130px;background:linear-gradient(90deg,#2ee6ff,#8b5cf6);border-color:transparent;
+    color:#04121a;font-weight:900;padding:11px}
+  #placeBtn:disabled{background:rgba(255,255,255,.06);color:var(--dim)}
 
-  /* ---------------- chip tray ---------------- */
-  #tray{position:absolute;z-index:10;left:50%;transform:translateX(-50%);bottom:16px;
-    display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:16px;
-    background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px);
-    box-shadow:0 10px 44px rgba(0,0,0,.65);opacity:0;pointer-events:none;transition:.22s}
-  #tray.on{opacity:1;pointer-events:auto}
-  .chip{width:56px;height:56px;border-radius:50%;cursor:pointer;position:relative;flex:none;
-    border:3px dashed rgba(255,255,255,.75);display:grid;place-items:center;
-    font-weight:900;font-size:13px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);
-    transition:.14s;box-shadow:0 5px 14px rgba(0,0,0,.5), inset 0 0 0 4px rgba(0,0,0,.18)}
-  .chip:hover{transform:translateY(-7px) scale(1.06)}
-  .chip:active{transform:translateY(-2px) scale(.98)}
-  .chip.c1{background:radial-gradient(circle,#f8fafc 40%,#cbd5e1)} .chip.c1{color:#1e293b;text-shadow:none}
-  .chip.c5{background:radial-gradient(circle,#ef4444 40%,#991b1b)}
-  .chip.c25{background:radial-gradient(circle,#22c55e 40%,#15803d)}
-  .chip.c100{background:radial-gradient(circle,#1e293b 40%,#020617)}
-  .chip.c500{background:radial-gradient(circle,#a855f7 40%,#6b21a8)}
-  .vr{width:1px;height:44px;background:var(--line);flex:none}
+  #ticket{position:absolute;z-index:10;left:14px;top:64px;padding:11px 14px;border-radius:12px;
+    background:var(--panel);border:1px solid var(--line);font-size:12px;display:none;
+    box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  #ticket .h{font-size:9.5px;letter-spacing:2px;color:var(--dim);font-weight:800;margin-bottom:5px}
+  #ticket .w{font-weight:900;font-size:14px}
 
-  /* ---------------- chat ---------------- */
-  #chat{position:absolute;z-index:10;left:14px;bottom:16px;width:290px;
-    background:var(--panel);border:1px solid var(--line);border-radius:14px;
-    backdrop-filter:blur(10px);overflow:hidden;transition:.25s}
+  #bettors{position:absolute;z-index:10;right:14px;top:64px;width:200px;max-height:40vh;overflow:auto;
+    padding:10px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);
+    font-size:11.5px;display:none}
+  #bettors .h{font-size:9.5px;letter-spacing:2px;color:var(--dim);font-weight:800;margin-bottom:6px}
+  #bettors .r{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+  #bettors .r .n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #bettors::-webkit-scrollbar{width:5px} #bettors::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+
+  #chat{position:absolute;z-index:10;left:14px;bottom:14px;width:268px;background:var(--panel);
+    border:1px solid var(--line);border-radius:13px;overflow:hidden;transition:.2s}
   #chat.min #chatBody{display:none}
-  #chatHd{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;
-    font-size:10.5px;letter-spacing:2px;color:var(--dim);font-weight:800;
-    border-bottom:1px solid rgba(232,198,106,.14)}
+  #chatHd{display:flex;gap:8px;padding:8px 11px;cursor:pointer;font-size:9.5px;letter-spacing:2px;
+    color:var(--dim);font-weight:800;border-bottom:1px solid rgba(120,140,220,.14)}
   #chat.min #chatHd{border-bottom:none}
-  #chatLog{height:168px;overflow-y:auto;padding:9px 12px;font-size:12px;line-height:1.5}
-  #chatLog .m{margin-bottom:5px;word-break:break-word}
-  #chatLog .m .who{color:var(--gold);font-weight:800}
-  #chatLog .m.sys{color:var(--dim);font-style:italic;font-size:11px}
-  #chatIn{width:100%;padding:10px 12px;border:none;border-top:1px solid rgba(232,198,106,.14);
-    background:rgba(0,0,0,.35);color:var(--txt);font-size:12px;outline:none;font-family:inherit}
+  #chatLog{height:150px;overflow-y:auto;padding:8px 11px;font-size:11.5px;line-height:1.5}
+  #chatLog .m{margin-bottom:4px;word-break:break-word}
+  #chatLog .m .who{font-weight:800}
+  #chatLog .m.sys{color:var(--dim);font-style:italic;font-size:10.5px}
+  #chatIn{width:100%;padding:9px 11px;border:none;border-top:1px solid rgba(120,140,220,.14);
+    background:rgba(0,0,0,.4);color:var(--txt);font-size:11.5px;outline:none;font-family:inherit}
   #chatLog::-webkit-scrollbar{width:5px} #chatLog::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 
-  /* ---------------- modals ---------------- */
   .ov{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
-    background:rgba(4,7,9,.82);backdrop-filter:blur(10px);animation:fade .25s}
+    background:rgba(3,5,10,.85);backdrop-filter:blur(10px);animation:fade .25s}
   .ov.hidden{display:none}
   @keyframes fade{from{opacity:0}to{opacity:1}}
-  .card-ui{width:min(540px,92vw);max-height:88vh;overflow:auto;padding:30px;border-radius:20px;
-    background:linear-gradient(160deg,rgba(16,26,24,.97),rgba(8,14,16,.98));
-    border:1px solid var(--line);box-shadow:0 24px 80px rgba(0,0,0,.8), inset 0 1px 0 rgba(232,198,106,.18);
-    animation:rise .32s cubic-bezier(.2,1.3,.4,1)}
-  @keyframes rise{from{transform:translateY(22px) scale(.96);opacity:0}to{transform:none;opacity:1}}
-  .card-ui h1{margin:0 0 4px;font-size:29px;letter-spacing:3px;color:var(--gold);font-weight:900}
-  .card-ui h2{margin:0 0 20px;font-size:11px;letter-spacing:3px;color:var(--dim);font-weight:600}
-  .card-ui p{font-size:13.5px;line-height:1.65;color:#cfd8d4}
-  label.f{display:block;margin:14px 0 6px;font-size:10.5px;letter-spacing:2px;color:var(--dim);font-weight:800}
-  input.t{width:100%;padding:13px 15px;border-radius:10px;background:rgba(255,255,255,.06);
+  .card{width:min(520px,92vw);max-height:88vh;overflow:auto;padding:28px;border-radius:18px;
+    background:linear-gradient(160deg,rgba(14,18,32,.98),rgba(6,8,16,.99));
+    border:1px solid var(--line);box-shadow:0 24px 80px rgba(0,0,0,.85);
+    animation:rise .3s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes rise{from{transform:translateY(20px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+  .card h1{margin:0 0 4px;font-size:27px;letter-spacing:3px;font-weight:900;
+    background:linear-gradient(90deg,var(--blue),var(--red));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .card h2{margin:0 0 18px;font-size:10.5px;letter-spacing:3px;color:var(--dim);font-weight:600}
+  .card p{font-size:13.5px;line-height:1.65;color:#c3cbe8}
+  label.f{display:block;margin:14px 0 6px;font-size:10px;letter-spacing:2px;color:var(--dim);font-weight:800}
+  input.t{width:100%;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.06);
     border:1px solid var(--line);color:#fff;font-size:14px;outline:none;font-family:inherit}
-  input.t:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,198,106,.14)}
-  .row{display:flex;gap:9px;margin-top:20px;flex-wrap:wrap}
-  .note{font-size:11.5px;color:var(--dim);line-height:1.6;margin-top:14px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
-  .kv{padding:13px;border-radius:11px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
-  .kv b{display:block;font-size:20px;color:#fff;font-variant-numeric:tabular-nums}
-  .kv span{font-size:10px;color:var(--dim);letter-spacing:1.5px}
-  .avatars{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-  .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;
-    cursor:pointer;border:2px solid transparent;background:rgba(255,255,255,.06);transition:.15s}
-  .av:hover{background:rgba(255,255,255,.12)}
-  .av.on{border-color:var(--gold);background:rgba(232,198,106,.18);box-shadow:0 0 16px rgba(232,198,106,.35)}
+  input.t:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(46,230,255,.14)}
+  .row{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
+  .note{font-size:11px;color:var(--dim);line-height:1.6;margin-top:13px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:15px 0}
+  .kv{padding:12px;border-radius:10px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+  .kv b{display:block;font-size:19px;color:#fff;font-variant-numeric:tabular-nums}
+  .kv span{font-size:9.5px;color:var(--dim);letter-spacing:1.5px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  th,td{padding:8px 5px;text-align:left;border-bottom:1px solid rgba(120,140,220,.16)}
+  th{font-size:9.5px;letter-spacing:1.5px;color:var(--dim)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .g{color:var(--green)} .r2{color:var(--red)}
+  .opt{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(120,140,220,.13)}
+  .opt:last-of-type{border-bottom:none}
+  .opt .lbl{flex:1}.opt .lbl b{display:block;font-size:13px;color:#fff}
+  .opt .lbl span{font-size:11px;color:var(--dim)}
   .tog{width:50px;height:27px;border-radius:15px;border:1px solid var(--line);padding:0;
     background:rgba(255,255,255,.06);position:relative;cursor:pointer;flex:none;transition:.2s}
   .tog::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;
     background:var(--dim);transition:.2s}
-  .tog.on{background:linear-gradient(90deg,#b08c30,#e8c66a);border-color:transparent}
+  .tog.on{background:linear-gradient(90deg,#2ee6ff,#8b5cf6);border-color:transparent}
   .tog.on::after{left:26px;background:#fff}
-  .opt{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(232,198,106,.12)}
-  .opt:last-of-type{border-bottom:none}
-  .opt .lbl{flex:1}.opt .lbl b{display:block;font-size:13px;color:#fff}
-  .opt .lbl span{font-size:11px;color:var(--dim)}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{padding:9px 6px;text-align:left;border-bottom:1px solid rgba(232,198,106,.14)}
-  th{font-size:10px;letter-spacing:1.5px;color:var(--dim)}
-  td.num{text-align:right;font-variant-numeric:tabular-nums}
-  .g{color:var(--win)}.r{color:var(--lose)}
 
-  #toast{position:absolute;z-index:30;left:50%;top:70px;transform:translateX(-50%);
-    padding:11px 20px;border-radius:11px;background:rgba(10,16,20,.96);border:1px solid var(--line);
-    font-size:13px;display:none;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:80vw;text-align:center}
-  #err{position:absolute;z-index:30;left:50%;bottom:96px;transform:translateX(-50%);
-    padding:10px 16px;border-radius:10px;background:rgba(70,12,12,.95);border:1px solid rgba(248,113,113,.5);
-    font-size:12px;display:none;color:#ffd7d7;max-width:70vw}
-  @media (max-width:780px){
-    #chat{display:none} .brand small{display:none}
-    #tray{gap:7px;padding:9px} .chip{width:46px;height:46px;font-size:11.5px}
-    #actions button{min-width:74px;padding:11px 12px;font-size:12px}
+  #toast{position:absolute;z-index:30;left:50%;top:64px;transform:translateX(-50%);padding:10px 18px;
+    border-radius:10px;background:rgba(10,13,22,.97);border:1px solid var(--line);font-size:12.5px;
+    display:none;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:80vw;text-align:center}
+  @media (max-width:760px){
+    #chat,#bettors{display:none!important} .brand small{display:none}
+    #dock{bottom:8px;padding:10px} .side{padding:9px}
   }
 </style>
 </head>
 <body>
 <div id="app">
-  <canvas id="table"></canvas>
+  <canvas id="arena"></canvas>
 
   <div id="bar">
-    <div class="brand">VELVET ACE<small>MULTIPLAYER BLACKJACK</small></div>
+    <div class="brand">SCRAPYARD<small>ROBOT COMBAT BETTING</small></div>
     <div class="spacer"></div>
-    <div class="pill" id="netPill"><span class="dot" id="netDot"></span><span id="netTxt">Connecting</span></div>
+    <div class="pill"><span class="dot" id="netDot"></span><span id="netTxt">Connecting</span></div>
+    <div class="pill">FIGHT <b id="fightNo">#0</b></div>
     <div class="pill">BANK <b id="bankTxt">$1,000</b></div>
-    <div class="pill" id="betPill" style="display:none">BET <b id="betTxt">$0</b></div>
     <button id="statsBtn">STATS</button>
     <button id="optBtn">OPTIONS</button>
-    <button id="leaveBtn" style="display:none">STAND UP</button>
   </div>
 
-  <div id="tray">
-    <div class="chip c1"    data-v="1">$1</div>
-    <div class="chip c5"    data-v="5">$5</div>
-    <div class="chip c25"   data-v="25">$25</div>
-    <div class="chip c100"  data-v="100">$100</div>
-    <div class="chip c500"  data-v="500">$500</div>
-    <div class="vr"></div>
-    <button id="undoBtn">UNDO</button>
-    <button id="rebetBtn">RE-BET</button>
-    <button class="gold" id="dealBtn">DEAL</button>
-  </div>
+  <div id="ticket"></div>
+  <div id="bettors"><div class="h">ON THE BOOKS</div><div id="bettorsList"></div></div>
 
-  <div id="actions">
-    <div class="hint" id="actHint">YOUR TURN</div>
-    <button id="hitBtn">HIT</button>
-    <button id="standBtn">STAND</button>
-    <button id="dblBtn">DOUBLE</button>
-    <button id="splitBtn">SPLIT</button>
-  </div>
-
-  <div id="chat">
-    <div id="chatHd"><span>TABLE CHAT</span><span class="spacer"></span><span id="chatToggle">▼</span></div>
-    <div id="chatBody">
-      <div id="chatLog"></div>
-      <input id="chatIn" placeholder="Say something..." maxlength="140" />
+  <div id="dock">
+    <div class="dockhd">
+      <div class="t" id="dockTitle">PLACE YOUR BETS</div>
+      <div class="spacer"></div>
+      <div class="timer" id="dockTimer">--</div>
+    </div>
+    <div class="sides">
+      <div class="side A" id="sideA">
+        <div class="nm" id="nameA">&mdash;</div>
+        <div class="od" id="statsA"></div>
+        <div class="od">PAYS <b id="oddsA">&mdash;</b></div>
+        <div class="pool" id="poolA"></div>
+      </div>
+      <div class="side B" id="sideB">
+        <div class="nm" id="nameB">&mdash;</div>
+        <div class="od" id="statsB"></div>
+        <div class="od">PAYS <b id="oddsB">&mdash;</b></div>
+        <div class="pool" id="poolB"></div>
+      </div>
+    </div>
+    <div class="chips">
+      <div class="chip" data-v="10">+10</div>
+      <div class="chip" data-v="50">+50</div>
+      <div class="chip" data-v="250">+250</div>
+      <div class="chip" data-v="1000">+1K</div>
+      <div class="chip" data-v="-1">ALL IN</div>
+      <div class="chip" data-v="0">CLEAR</div>
+      <div id="betAmt">$0</div>
+      <button id="placeBtn" disabled>PLACE BET</button>
     </div>
   </div>
 
-  <!-- join -->
-  <div class="ov" id="joinOv"><div class="card-ui">
-    <h1>VELVET ACE</h1>
-    <h2>REAL-TIME MULTIPLAYER BLACKJACK &middot; 6 DECKS &middot; PAYS 3:2</h2>
-    <p>Take a seat. A bot dealer runs the shoe, and anyone else on this URL sits at the
-       same table in real time &mdash; you see their cards, bets and busts as they happen.</p>
+  <div id="chat" class="min">
+    <div id="chatHd"><span>ARENA CHAT</span><span class="spacer"></span><span id="chatToggle">&#9650;</span></div>
+    <div id="chatBody"><div id="chatLog"></div>
+      <input id="chatIn" placeholder="Talk trash..." maxlength="140" /></div>
+  </div>
+
+  <div class="ov" id="joinOv"><div class="card">
+    <h1>SCRAPYARD</h1>
+    <h2>TWO ROBOTS ENTER &middot; YOU BET ON THE WRECKAGE</h2>
+    <p>Two machines are built fresh for every fight, with their own stats and weapons.
+       Random power-ups drop into the arena mid-brawl and either bot can grab them.
+       You can't help your robot &mdash; you can only back it.</p>
+    <p style="color:var(--dim);font-size:12.5px">Everyone on this URL watches the <b>same fight</b>,
+       frame for frame, and bets against the same clock.</p>
     <label class="f">YOUR NAME</label>
-    <input class="t" id="nameIn" maxlength="12" placeholder="High Roller" />
-    <label class="f">PICK AN AVATAR</label>
-    <div class="avatars" id="avatars"></div>
-    <div class="row">
-      <button class="gold" id="joinBtn" style="flex:1">TAKE A SEAT</button>
-    </div>
+    <input class="t" id="nameIn" maxlength="12" placeholder="Punter" />
+    <div class="row"><button id="joinBtn" style="flex:1;background:linear-gradient(90deg,#2ee6ff,#8b5cf6);border-color:transparent;color:#04121a;font-weight:900;padding:12px">ENTER THE SCRAPYARD</button></div>
     <div class="note" id="joinNote"></div>
   </div></div>
 
-  <!-- options -->
-  <div class="ov hidden" id="optOv"><div class="card-ui">
-    <h1>OPTIONS</h1>
-    <h2>SAVED TO THIS BROWSER</h2>
-    <div class="opt"><div class="lbl"><b>Sound Effects</b><span>Card flips, chip clinks, payout chimes.</span></div>
+  <div class="ov hidden" id="optOv"><div class="card">
+    <h1>OPTIONS</h1><h2>SAVED TO THIS BROWSER</h2>
+    <div class="opt"><div class="lbl"><b>Sound</b><span>Impacts, lasers, explosions.</span></div>
       <button class="tog" id="sfxTog"></button></div>
-    <div class="opt"><div class="lbl"><b>Bot Players</b><span>Fill empty seats with basic-strategy bots when the table is quiet.</span></div>
-      <button class="tog" id="botsTog"></button></div>
-    <div class="opt"><div class="lbl"><b>Table Banter</b><span>Let the regulars and the dealer run their mouths in chat.</span></div>
-      <button class="tog" id="chatTog"></button></div>
-    <div class="opt"><div class="lbl"><b>Strategy Hints</b><span>Highlight the basic-strategy play on your turn.</span></div>
-      <button class="tog" id="hintTog"></button></div>
-    <div class="opt"><div class="lbl"><b>Fast Deal</b><span>Speed up dealing and dealer animations.</span></div>
-      <button class="tog" id="fastTog"></button></div>
-    <div class="opt"><div class="lbl"><b>Table Name</b><span>Players sharing a table name play together.</span></div>
-      <input class="t" id="roomIn" style="width:150px;flex:none;padding:9px 11px;font-size:13px" maxlength="16" /></div>
-    <div class="row">
-      <button class="gold" id="optClose">DONE</button>
-      <button class="danger" id="rebuyBtn">REBUY $1,000</button>
-    </div>
+    <div class="opt"><div class="lbl"><b>Commentary</b><span>Ringside announcer calling the fight.</span></div>
+      <button class="tog" id="comTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Screen Shake</b><span>Camera kick on heavy hits.</span></div>
+      <button class="tog" id="shakeTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Arena Name</b><span>Viewers sharing an arena see the same fights.</span></div>
+      <input class="t" id="roomIn" style="width:140px;flex:none;padding:8px 10px;font-size:13px" maxlength="16" /></div>
+    <div class="row"><button id="optClose" style="background:linear-gradient(90deg,#2ee6ff,#8b5cf6);border-color:transparent;color:#04121a;font-weight:900">DONE</button>
+      <button id="rebuyBtn">CLAIM $500 BAILOUT</button></div>
     <div class="note" id="optNote"></div>
   </div></div>
 
-  <!-- stats -->
-  <div class="ov hidden" id="statsOv"><div class="card-ui">
-    <h1>YOUR SESSION</h1>
-    <h2 id="statsSub">HANDS PLAYED AT THIS TABLE</h2>
+  <div class="ov hidden" id="statsOv"><div class="card">
+    <h1>YOUR BOOK</h1><h2 id="statsSub">BETTING RECORD</h2>
     <div class="grid2">
-      <div class="kv"><b id="sHands">0</b><span>HANDS</span></div>
+      <div class="kv"><b id="sBets">0</b><span>BETS PLACED</span></div>
       <div class="kv"><b id="sNet">$0</b><span>NET</span></div>
-      <div class="kv"><b id="sWin">0%</b><span>WIN RATE</span></div>
-      <div class="kv"><b id="sBj">0</b><span>BLACKJACKS</span></div>
-      <div class="kv"><b id="sBest">$0</b><span>BIGGEST WIN</span></div>
+      <div class="kv"><b id="sWin">0%</b><span>HIT RATE</span></div>
+      <div class="kv"><b id="sStreak">0</b><span>BEST STREAK</span></div>
+      <div class="kv"><b id="sBig">$0</b><span>BIGGEST WIN</span></div>
       <div class="kv"><b id="sPeak">$0</b><span>PEAK BANK</span></div>
     </div>
-    <h2 style="margin:22px 0 8px">TABLE HIGH ROLLERS</h2>
-    <table><thead><tr><th>#</th><th>PLAYER</th><th class="num">BIGGEST WIN</th></tr></thead>
-      <tbody id="hrBody"></tbody></table>
-    <div class="row"><button class="gold" id="statsClose">CLOSE</button></div>
+    <h2 style="margin:20px 0 8px">SCRAPYARD RICH LIST</h2>
+    <table><thead><tr><th>#</th><th>PUNTER</th><th class="num">BANK</th></tr></thead>
+      <tbody id="rlBody"></tbody></table>
+    <div class="row"><button id="statsClose" style="background:linear-gradient(90deg,#2ee6ff,#8b5cf6);border-color:transparent;color:#04121a;font-weight:900">CLOSE</button></div>
     <div class="note" id="statsNote"></div>
   </div></div>
 
   <div id="toast"></div>
-  <div id="err"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -259,30 +254,16 @@
 <script>
 "use strict";
 /* =====================================================================
-   FIREBASE CONFIG -- REQUIRED FOR MULTIPLAYER
-   ---------------------------------------------------------------------
-   Without these keys the game runs SOLO: you versus the bot dealer, with
-   optional bot players. Everything works, but nobody else can sit down.
-
-   To open the table to the world (free, ~2 minutes):
-     1. https://console.firebase.google.com  ->  "Add project"
-     2. Build > Realtime Database > Create Database > start in TEST MODE
-     3. Project settings (gear) > Your apps > Web  </>
-     4. Paste the values below, including "databaseURL"
-     5. Commit + push. GitHub Pages redeploys automatically.
-
-   Test mode leaves the DB world-writable. Before sharing widely, restrict
-   writes to /tables/$room and cap payload sizes.
+   FIREBASE -- shared arena clock + rich list.
+   Only databaseURL is required; the RTDB needs nothing else under public
+   rules. Without it the arena runs locally: you still watch and bet, but
+   nobody shares your clock.
    ===================================================================== */
 const firebaseConfig = {
-  // databaseURL is the ONLY required field -- the Realtime Database needs
-  // nothing else when its rules are public. apiKey/appId matter only for Auth,
-  // Storage and Analytics, none of which this game uses.
   databaseURL: "https://blackj-ebdf6-default-rtdb.europe-west1.firebasedatabase.app",
   projectId:   "blackj-ebdf6",
   authDomain:  "blackj-ebdf6.firebaseapp.com"
 };
-
 let db = null, ONLINE = false;
 (function(){
   const url = firebaseConfig.databaseURL;
@@ -292,1189 +273,347 @@ let db = null, ONLINE = false;
 })();
 
 /* =====================================================================
-   CONSTANTS + SETTINGS
+   SETTINGS
    ===================================================================== */
-const SEATS = 5, DECKS = 6, START_BANK = 1000;
-const MIN_BET = 5, MAX_BET = 2500;
-const T_BET = 14000, T_TURN = 22000, T_PAYOUT = 4200;
-const AVATARS = ["🎩","🦊","🐺","🦁","🐯","🐸","🤠","👑","💎","🃏","🎭","🐲"];
-const SUITS = ["♠","♥","♦","♣"];
-const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const START_BANK = 1000, MIN_BET = 10;
+const T_BET = 22000, T_RESULT = 9500, MAX_TICKS = 60 * 75;
+const TICK_MS = 1000 / 60;
 
-const DEF = { name:"", avatar:0, sfx:true, bots:true, botChat:true, hints:true, fast:false, room:"main",
-              bank:START_BANK, lastBet:0,
-              stats:{hands:0,net:0,wins:0,pushes:0,bj:0,best:0,peak:START_BANK} };
+const DEF = { name:"", sfx:true, com:true, shake:true, room:"arena", bank:START_BANK,
+              stats:{bets:0,net:0,wins:0,streak:0,best:0,big:0,peak:START_BANK} };
 let S = JSON.parse(JSON.stringify(DEF));
-try { const raw = JSON.parse(localStorage.getItem("va_save") || "{}");
+try { const raw = JSON.parse(localStorage.getItem("sy_save") || "{}");
       S = Object.assign(S, raw); S.stats = Object.assign(DEF.stats, raw.stats || {}); } catch(e){}
-const save = () => { try { localStorage.setItem("va_save", JSON.stringify(S)); } catch(e){} };
+const save = () => { try { localStorage.setItem("sy_save", JSON.stringify(S)); } catch(e){} };
 
 const $ = id => document.getElementById(id);
 const fmt = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString();
 const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
 const now = () => Date.now();
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-
 let toastT = null;
-function toast(msg, ms){
-  const el = $("toast"); el.textContent = msg; el.style.display = "block";
-  clearTimeout(toastT); toastT = setTimeout(() => el.style.display = "none", ms || 2600);
-}
-function showErr(msg){
-  const el = $("err");
-  if (!msg){ el.style.display = "none"; return; }
-  el.textContent = msg; el.style.display = "block";
-}
+function toast(msg, ms){ const el=$("toast"); el.textContent=msg; el.style.display="block";
+  clearTimeout(toastT); toastT=setTimeout(()=>el.style.display="none", ms||2600); }
 
 /* =====================================================================
    AUDIO -- synthesised, no asset files
    ===================================================================== */
 let actx = null;
-function ac(){ if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} } return actx; }
-function blip(freq, dur, type, vol, slideTo){
-  if (!S.sfx) return; const a = ac(); if (!a) return;
-  const o = a.createOscillator(), g = a.createGain();
-  o.type = type || "sine"; o.frequency.setValueAtTime(freq, a.currentTime);
-  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, a.currentTime + dur);
-  g.gain.setValueAtTime(0, a.currentTime);
-  g.gain.linearRampToValueAtTime(vol == null ? .18 : vol, a.currentTime + .012);
-  g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + dur);
-  o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + dur + .02);
-}
-function noise(dur, vol, filt){
-  if (!S.sfx) return; const a = ac(); if (!a) return;
-  const n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2);
-  const src = a.createBufferSource(); src.buffer = buf;
-  const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = filt || 2400; bp.Q.value = .8;
-  const g = a.createGain(); g.gain.value = vol == null ? .28 : vol;
-  src.connect(bp); bp.connect(g); g.connect(a.destination); src.start();
-}
+function ac(){ if(!actx){ try{ actx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } return actx; }
+function blip(f,d,type,v,to){ if(!S.sfx) return; const a=ac(); if(!a) return;
+  const o=a.createOscillator(), g=a.createGain();
+  o.type=type||"sine"; o.frequency.setValueAtTime(f,a.currentTime);
+  if(to) o.frequency.exponentialRampToValueAtTime(to,a.currentTime+d);
+  g.gain.setValueAtTime(0,a.currentTime); g.gain.linearRampToValueAtTime(v==null?.16:v,a.currentTime+.01);
+  g.gain.exponentialRampToValueAtTime(.0001,a.currentTime+d);
+  o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime+d+.02); }
+function noise(d,v,f){ if(!S.sfx) return; const a=ac(); if(!a) return;
+  const n=Math.floor(a.sampleRate*d), b=a.createBuffer(1,n,a.sampleRate), c=b.getChannelData(0);
+  for(let i=0;i<n;i++) c[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);
+  const s=a.createBufferSource(); s.buffer=b;
+  const bp=a.createBiquadFilter(); bp.type="lowpass"; bp.frequency.value=f||1400;
+  const g=a.createGain(); g.gain.value=v==null?.25:v;
+  s.connect(bp); bp.connect(g); g.connect(a.destination); s.start(); }
 const SFX = {
-  flip:  () => noise(.10, .22, 3200),
-  slide: () => noise(.16, .16, 1500),
-  chip:  () => { noise(.05,.30,5200); blip(1250,.05,"square",.05); },
-  click: () => blip(520,.05,"square",.06),
-  win:   () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,.34,"triangle",.16),i*72)); },
-  bj:    () => { [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>blip(f,.5,"triangle",.2),i*84)); },
-  bust:  () => { blip(180,.42,"sawtooth",.16,60); noise(.28,.14,700); },
-  push:  () => blip(400,.2,"sine",.12),
-  turn:  () => blip(880,.09,"sine",.10)
+  hit:  () => { noise(.12,.28,900); blip(140,.10,"square",.09,60); },
+  big:  () => { noise(.30,.42,600); blip(90,.28,"sawtooth",.15,40); },
+  laser:() => blip(1500,.16,"sawtooth",.09,320),
+  pick: () => { blip(880,.08,"triangle",.11); setTimeout(()=>blip(1320,.12,"triangle",.11),70); },
+  ko:   () => { noise(.9,.5,420); blip(70,.8,"sawtooth",.2,28);
+                [523,392,330].forEach((f,i)=>setTimeout(()=>blip(f,.5,"square",.11),i*130)); },
+  bell: () => { [880,1174].forEach((f,i)=>setTimeout(()=>blip(f,.35,"triangle",.15),i*160)); },
+  cash: () => { [659,880,1174].forEach((f,i)=>setTimeout(()=>blip(f,.3,"triangle",.13),i*80)); },
+  shield:()=> blip(440,.3,"sine",.10,880)
 };
-
 /* =====================================================================
-   CARDS + RULES
-   Cards are integers 0..51: rank = i%13 (0=A), suit = (i/13)|0.
+   DETERMINISTIC SIMULATION
+
+   The whole design rests on this: the fight is a PURE FUNCTION of
+   (botSeed, fightSeed, tick). Nobody streams combat state -- every viewer
+   runs the identical simulation from the identical seeds and therefore
+   sees the identical fight, punch for punch, with only a few bytes of
+   network traffic per fight.
+
+   Two seeds, not one, and that separation is the anti-cheat:
+     botSeed   is published during betting -> robots and their stats are
+               known, so odds can be shown.
+     fightSeed is published only when the bell rings -> the combat rolls
+               are unknowable while bets are open, so nobody can
+               fast-forward the sim to see who wins and bet on a
+               certainty.
    ===================================================================== */
-const rankOf = c => c % 13;
-const suitOf = c => (c / 13) | 0;
-const rankTxt = c => RANKS[rankOf(c)];
-const suitTxt = c => SUITS[suitOf(c)];
-const isRed = c => suitOf(c) === 1 || suitOf(c) === 2;
-const cardVal = c => { const r = rankOf(c); return r === 0 ? 11 : Math.min(10, r + 1); };
-
-// Best value <= 21 if possible, plus whether an ace is still counted as 11.
-function handValue(cards){
-  let total = 0, aces = 0;
-  for (const c of cards){ const v = cardVal(c); total += v; if (v === 11) aces++; }
-  while (total > 21 && aces > 0){ total -= 10; aces--; }
-  return { total, soft: aces > 0, bust: total > 21 };
-}
-const isBlackjack = h => h.cards.length === 2 && !h.split && handValue(h.cards).total === 21;
-const canSplit = h => h.cards.length === 2 && !h.split &&
-                      Math.min(10, rankOf(h.cards[0]) + 1) === Math.min(10, rankOf(h.cards[1]) + 1);
-
-// Deterministic shuffle so any client can rebuild the shoe from (seed, index).
 function mulberry32(a){
   return function(){ a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-function buildShoe(seed){
-  const rnd = mulberry32(seed), shoe = [];
-  for (let d = 0; d < DECKS; d++) for (let c = 0; c < 52; c++) shoe.push(c);
-  for (let i = shoe.length - 1; i > 0; i--){         // Fisher-Yates
-    const j = Math.floor(rnd() * (i + 1));
-    [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
-  }
-  return shoe;
+function hash32(str){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h >>> 0;
 }
 
-// Basic strategy (6 deck, dealer stands soft 17) -> "H","S","D","P"
-function basicStrategy(hand, upVal){
-  const cards = hand.cards, v = handValue(cards), t = v.total;
-  const up = upVal === 11 ? 11 : upVal;
-  if (canSplit(hand)){
-    // aces are rank 0, so they must be mapped to 11 before the pair rules run
-    const pr = rankOf(cards[0]) === 0 ? 11 : Math.min(10, rankOf(cards[0]) + 1);
-    if (pr === 11 || pr === 8) return "P";
-    if (pr === 10 || pr === 5) { /* never split */ }
-    else if (pr === 9) return (up === 7 || up >= 10) ? "S" : "P";
-    else if (pr === 7) return up <= 7 ? "P" : "H";
-    else if (pr === 6) return up <= 6 ? "P" : "H";
-    else if (pr === 4) return (up === 5 || up === 6) ? "P" : "H";
-    else if (pr === 3 || pr === 2) return up <= 7 ? "P" : "H";
-  }
-  if (v.soft){
-    if (t >= 19) return "S";
-    if (t === 18) return up <= 6 ? (cards.length === 2 ? "D" : "S") : (up <= 8 ? "S" : "H");
-    if (t === 17) return (up >= 3 && up <= 6 && cards.length === 2) ? "D" : "H";
-    if (t >= 15) return (up >= 4 && up <= 6 && cards.length === 2) ? "D" : "H";
-    return (up >= 5 && up <= 6 && cards.length === 2) ? "D" : "H";
-  }
-  if (t >= 17) return "S";
-  if (t >= 13) return up <= 6 ? "S" : "H";
-  if (t === 12) return (up >= 4 && up <= 6) ? "S" : "H";
-  if (t === 11) return cards.length === 2 ? "D" : "H";
-  if (t === 10) return (up <= 9 && cards.length === 2) ? "D" : "H";
-  if (t === 9)  return (up >= 3 && up <= 6 && cards.length === 2) ? "D" : "H";
-  return "H";
-}
-/* =====================================================================
-   PERSONALITIES
-   Each bot is a fixed character, not a random name. Persona id travels in
-   table state so every client shows the same face; mood is tracked host-side
-   because only the host speaks for them.
-   {p} = another player's name, {n} = an amount, {d} = the dealer's total.
-   ===================================================================== */
-const PERSONAS = [
-  {
-    id: "party", name: "REX", av: "🦁", col: "#fbbf24", chatty: .95,
-    join:  ["RIGHT WHO'S READY TO LOSE MONEY", "REX IS IN THE FUCKING BUILDING",
-            "lads. LADS. im on one tonight", "borrowed this off me mum so lets go"],
-    win:   ["GET INNNN YOU BEAUTY", "EASY. FUCKING. GAME.", "money money money 🤑",
-            "im built different i swear", "SHOTS FOR THE TABLE", "pay me you bald prick"],
-    lose:  ["thats fucking rigged that is", "nah im fine. im fine. IM FINE.",
-            "one more hand then im off (im not)", "double it next hand watch this shit"],
-    bust:  ["WHY THE FUCK DID I HIT THAT", "im such a clown 🤡", "bin me. bin me now.",
-            "lads i have absolutely cooked myself", "thats on me thats 100% on me"],
-    bj:    ["BLACKJACK YOU MUGS 🎉🎉", "NATURAL BABY GET INNN", "im him. im actually fucking him."],
-    dbust: ["GET IN YOU SMUG BASTARD", "DEALER DOWN LADS 😂😂", "suffer. absolutely suffer."],
-    other: ["yesss {p} my g 🔥", "{p} carrying this shit table", "someone get {p} a drink"],
-    obust: ["ohhhh {p} 💀💀", "unlucky {p} you absolute donut", "{p} what in the fuck was that"],
-    broke: ["im tapped out lads. skint.", "thats the rent gone. worth it.",
-            "right im off before i sell a kidney"],
-    idle:  ["anyone else buzzing or is it just me", "im due. im so fucking due.",
-            "one big hand and im gone i swear on me nan", "this table is dead lively it up"]
-  },
-  {
-    id: "doom", name: "MOPEY", av: "🐸", col: "#94a3b8", chatty: .8,
-    join:  ["hi", "back again. obviously.", "nothing better to do with my evening"],
-    win:   ["oh. i won. weird.", "doesnt fix anything though does it",
-            "i'll give it all back within the hour", "small mercies i suppose"],
-    lose:  ["yeah that tracks", "of course. course i did.", "why am i even fucking surprised",
-            "i knew before the cards came out", "this is just what happens to me"],
-    bust:  ["obviously.", "why do i do this to myself", "22. its always fucking 22.",
-            "im going to bed after this. (im not.)"],
-    bj:    ["oh. something good happened.", "im deeply suspicious of this",
-            "dont get used to it. i certainly wont."],
-    dbust: ["even a broken clock", "i'll take it. i suppose."],
-    other: ["nice one {p}. genuinely.", "at least someone's having a nice time",
-            "{p} deserves it more than i do"],
-    obust: ["welcome to my world {p}", "we're the same, {p}. we're the same."],
-    broke: ["well thats the rent. brilliant.", "and thats me. cheers everyone. sorry."],
-    idle:  ["does anyone actually win at this", "i should be asleep",
-            "my therapist would have a fucking field day with this",
-            "im fine by the way. nobody asked. but im fine."]
-  },
-  {
-    id: "rage", name: "DUKE", av: "🐺", col: "#f87171", chatty: .85,
-    join:  ["right. lets fucking have it then.", "this shoe better behave itself"],
-    win:   ["FINALLY", "about fucking time", "thats all i wanted. thats ALL i wanted.",
-            "took you long enough you prick"],
-    lose:  ["ARE YOU HAVING A LAUGH", "this dealer is bent. hes bent i tell you.",
-            "every. single. fucking. time.", "how does he keep doing that", "absolute joke this"],
-    bust:  ["OH COME ON", "ONE CARD. ONE FUCKING CARD.", "unbelievable this is",
-            "im gonna put my fist through this screen"],
-    bj:    ["THERE it is", "finally some fucking respect around here"],
-    dbust: ["HA. suffer you prick.", "good. GOOD. bleed a bit.", "not so smug now are you"],
-    other: ["{p} getting all my fucking cards", "fine. good for {p}. FINE."],
-    obust: ["{p} welcome to the fucking club", "see?? SEE?? its not just me!"],
-    broke: ["im done. this tables a scam.", "never again. see you tomorrow."],
-    idle:  ["shuffle it properly you muppet", "this shoe is stone cold",
-            "im watching you dealer. im watching."]
-  },
-  {
-    id: "smug", name: "KIRA", av: "💎", col: "#38bdf8", chatty: .7,
-    join:  ["evening.", "lets see who can actually count", "i do hope someone here has read a book"],
-    win:   ["as calculated.", "basic strategy. try it sometime.", "correct play, correct result.",
-            "thats not luck thats maths, sweetheart"],
-    lose:  ["variance. nothing more.", "the play was still correct.", "long run, darling. long run."],
-    bust:  ["marginal spot. i stand by it.", "correct hit, wrong outcome. it happens."],
-    bj:    ["naturally.", "the shoe was rich. obviously."],
-    dbust: ["entirely predictable on a 6 up", "textbook."],
-    other: ["{p} got lucky and we both know it", "sure, {p}. sure."],
-    obust: ["{p} that was a stand. it is ALWAYS a stand.",
-            "{p} please, for the love of god, look at a chart",
-            "and thats precisely why we dont hit 16 vs 6, {p}",
-            "{p} you are single-handedly funding this establishment"],
-    broke: ["i shall return with a proper bankroll."],
-    idle:  ["counts positive, if anyone cares. nobody cares.",
-            "not one of you is counting are you",
-            "the house edge is half a percent and you lot turn it into eight"]
-  },
-  {
-    id: "lucky", name: "MIMI", av: "🐯", col: "#f472b6", chatty: .75,
-    join:  ["ooh this seat feels lucky ✨", "hi everyone!! 🍀", "i brought my lucky socks"],
-    win:   ["THE SOCKS WORK", "i KNEW it 🍀", "the universe provides ✨",
-            "i felt that one in my bones"],
-    lose:  ["the energy shifted i literally felt it", "someone jinxed it 😤",
-            "i shouldnt have moved seats", "ok the universe can get fucked actually"],
-    bust:  ["that card was cursed", "the shoe is angry today",
-            "mercury is in retrograde dont @ me"],
-    bj:    ["MANIFESTED ✨✨", "told you. TOLD YOU."],
-    dbust: ["karma is real 💅", "the universe heard me screaming"],
-    other: ["yayyy {p} 🎉", "{p} has such good energy honestly"],
-    obust: ["oh no {p} 😢", "{p} rub the felt it genuinely helps"],
-    broke: ["the universe says go outside", "back when the moon changes 🌙"],
-    idle:  ["everyone touch the table for luck", "i can feel a big one coming",
-            "who wants to swap seats with me"]
-  },
-  {
-    id: "quiet", name: "ZED", av: "🎭", col: "#a78bfa", chatty: .35,
-    join:  ["...", "hm."],
-    win:   ["mm.", "as expected.", "good."],
-    lose:  ["...", "noted.", "the cards remember."],
-    bust:  ["hm.", "too greedy."],
-    bj:    ["ah.", "the shoe is kind today."],
-    dbust: ["the house bleeds too."],
-    other: ["{p}.", "i am watching you, {p}."],
-    obust: ["{p} learns.", "...."],
-    broke: ["i take my leave."],
-    idle:  ["the deck thins.", "patience.", "....",
-            "none of you will remember this hand. i will."]
-  }
+const ARENA_W = 1200, GROUND = 0, BOT_W = 54, BOT_H = 86;
+const PREFIX = ["IRON","RUST","MEGA","NULL","VOID","OMEGA","TITAN","SCRAP","HAVOC","NOVA",
+                "GRIM","BOLT","CRUSH","VIPER","ATLAS","HEX","DOOM","BRAWL","SIGMA","JUNK"];
+const SUFFIX = ["CLAW","BREAKER","FIST","REAPER","JAW","SPIKE","HAMMER","WRECKER","FANG","CORE",
+                "SMASH","DRILL","BLADE","GRINDER","STOMP","RIPPER","BOLT","MAULER"];
+const CHASSIS = ["BRUISER","SKIRMISHER","JUGGERNAUT","STRIKER","TANK","DUELIST"];
+
+const POWERUPS = [
+  { id:"repair",    name:"NANO REPAIR", col:"#3ddc84", icon:"+" },
+  { id:"overclock", name:"OVERCLOCK",   col:"#ffd447", icon:"⚡" },
+  { id:"shield",    name:"ION SHIELD",  col:"#2ee6ff", icon:"○" },
+  { id:"berserk",   name:"BERSERK",     col:"#ff3b5c", icon:"✖" },
+  { id:"emp",       name:"EMP BLAST",   col:"#a78bfa", icon:"✹" },
+  { id:"rocket",    name:"ROCKET POD",  col:"#ff8a2b", icon:"▲" }
 ];
-const DEALER_LINES = {
-  bust:   ["Twenty-two. Bad luck.", "That'll do it.", "Over. Next.", "The house thanks you, {p}.",
-           "You knew that card was coming, {p}.", "One too many. Always one too many.",
-           "Bold. Wrong, but bold.", "{p}, that was genuinely difficult to watch.",
-           "And it's gone. Marvellous."],
-  win:    ["Dealer takes it.", "House wins. Again.", "Dealer stands on {d}. Collect.",
-           "Thank you all. Genuinely.", "I do love a shoe like this one.",
-           "Better luck next hand. You'll need it.",
-           "Keep going. These lights don't pay for themselves.",
-           "Another one for the house. Astonishing."],
-  lose:   ["Dealer busts. It happens.", "Enjoy it. It's rare.", "Paying the table. Reluctantly.",
-           "Well played. Don't get comfortable.", "Savour that one. Truly."],
-  bj:     ["Blackjack. Three to two, {p}.", "Natural. Lovely.", "Beginner's luck, {p}.",
-           "Enjoy it, {p}. I'll have it back by round six."],
-  dbj:    ["Dealer blackjack. Terribly sorry.", "Ace showing. You should have insured.",
-           "Natural twenty-one. My condolences.", "That's the job, I'm afraid."],
-  shuffle:["Fresh shoe. New luck, allegedly.", "Shuffling. Reset your superstitions."],
-  idle:   ["Bets, please.", "Take your time. The house is patient.", "Money on the felt.",
-           "The odds haven't changed since last hand, in case anyone was hoping.",
-           "Chips down. Dignity optional."]
-};
 
-// Host-only mood tracking. Bots tilt, spiral or get insufferable over time.
-const mood = {};           // uid -> { streak, spoke, lines }
-let lastBotChat = 0, lastDealerChat = 0;
-function personaOf(seat){ return PERSONAS[(seat && seat.persona) || 0] || PERSONAS[0]; }
-
-function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
-// Pick a line, avoiding whatever this speaker said last -- hearing the same
-// quip twice in a row instantly breaks the illusion of a person.
-const lastLine = {};
-function pickFresh(pool, who){
-  if (pool.length < 2) return pool[0];
-  let line, guard = 0;
-  do { line = pick(pool); } while (line === lastLine[who] && ++guard < 6);
-  lastLine[who] = line;
-  return line;
-}
-function fill(line, ctx){
-  return line.replace("{p}", (ctx && ctx.p) || "someone")
-             .replace("{n}", fmt((ctx && ctx.n) || 0))
-             .replace("{d}", (ctx && ctx.d) != null ? ctx.d : "");
-}
-// Drunk/tilted bots start fat-fingering.
-function garble(text, level){
-  if (level < 2) return text;
-  return text.split("").map(c => (Math.random() < .05 * (level - 1) && /[a-z]/i.test(c))
-    ? (Math.random() < .5 ? c + c : "") : c).join("");
-}
-
-function botSay(seatIdx, event, ctx){
-  if (!isHost || !S.botChat) return;
-  const s = T.seats[seatIdx];
-  if (!s || !s.bot) return;
-  const p = personaOf(s);
-  const m = mood[s.uid] || (mood[s.uid] = { streak: 0, spoke: 0, tilt: 0 });
-  const t = now();
-  if (t - lastBotChat < 1300) return;                    // keep the feed readable
-  if (t - m.spoke < 5500) return;                        // per-bot cooldown
-  let chance = p.chatty * (event === "idle" ? .22 : .8);
-  if (m.tilt > 2) chance = Math.min(1, chance + .2);     // tilted bots can't shut up
-  if (Math.random() > chance) return;
-  const pool = p[event];
-  if (!pool || !pool.length) return;
-  m.spoke = t; lastBotChat = t;
-  const line = garble(fill(pickFresh(pool, p.id + ":" + event), ctx), m.tilt);
-  pushChat(p.name, line, { av: p.av, col: p.col });
-}
-function dealerSay(event, ctx){
-  if (!isHost || !S.botChat) return;
-  const t = now();
-  // The dealer is punctuation, not the main voice -- he was drowning the bots
-  // out at a 4s cooldown, which made the table feel like a one-man show.
-  if (t - lastDealerChat < 11000) return;
-  if (Math.random() > (event === "idle" ? .15 : .4)) return;
-  lastDealerChat = t;
-  pushChat("DEALER", fill(pickFresh(DEALER_LINES[event] || DEALER_LINES.idle, "dealer:" + event), ctx),
-           { av: "🤖", col: "#e8c66a", dealer: true });
-}
-
-/* =====================================================================
-   TABLE STATE
-   One shared object. In online mode the elected HOST mutates it and
-   writes to Firebase; everyone else renders what they receive.
-   ===================================================================== */
-const PHASE = { IDLE:"idle", BETTING:"betting", DEALING:"dealing", INSURANCE:"insurance",
-                PLAYING:"playing", DEALER:"dealer", PAYOUT:"payout" };
-
-function blankSeat(){
-  return { uid:null, name:"", avatar:0, persona:0, bank:0, bet:0, hands:[], active:0,
-           result:null, bot:false, sitOutRounds:0, joined:0 };
-}
-function newTable(){
-  return {
-    phase: PHASE.IDLE, phaseEnd: 0, round: 0,
-    shoeSeed: (Math.random() * 4294967296) >>> 0, shoeIdx: 0,
-    dealer: { cards: [], hole: true },
-    seats: Array.from({ length: SEATS }, blankSeat),
-    turnSeat: -1, turnHand: 0,
-    host: null, hostTs: 0, msg: ""
+// ---- robot generation: from botSeed alone, so it is safe to publish early
+function makeBots(botSeed){
+  const rnd = mulberry32(botSeed);
+  const mk = (side) => {
+    const name = PREFIX[Math.floor(rnd() * PREFIX.length)] + "-" +
+                 SUFFIX[Math.floor(rnd() * SUFFIX.length)];
+    // stats sum to a fixed budget so neither bot can be strictly superior
+    let pwr = .8 + rnd() * .9, spd = .8 + rnd() * .9, arm = .8 + rnd() * .9, tec = .8 + rnd() * .9;
+    // Each machine gets its own build budget, so real mismatches occur. With a
+    // shared budget every fight came out an even-money coin flip, which made
+    // the odds meaningless and the betting pointless.
+    const budget = 3.7 + rnd() * 1.9, sum = pwr + spd + arm + tec, k = budget / sum;
+    pwr *= k; spd *= k; arm *= k; tec *= k;
+    return {
+      side, name,
+      chassis: CHASSIS[Math.floor(rnd() * CHASSIS.length)],
+      pwr, spd, arm, tec,
+      aggr: .35 + rnd() * .5,
+      maxHp: Math.round(900 + arm * 260),
+      col: side === 0 ? "#2ee6ff" : "#ff3b5c"
+    };
   };
-}
-let T = newTable();
-let shoe = buildShoe(T.shoeSeed);
-
-let myUid = null, mySeat = -1, isHost = true;
-let pendingBet = 0, betStack = [];      // chips placed this betting round
-let betSentRound = -1;                  // round whose bet we have already sent
-let lastSync = 0, netRef = null;
-
-/* ---- dealing helpers (host only) ---- */
-function draw(){
-  if (T.shoeIdx >= shoe.length - 20){        // reshuffle near the cut card
-    T.shoeSeed = (Math.random() * 4294967296) >>> 0;
-    shoe = buildShoe(T.shoeSeed); T.shoeIdx = 0;
-    say("Shuffling a fresh shoe.");
-    dealerSay("shuffle");
-  }
-  return shoe[T.shoeIdx++];
-}
-function newHand(bet){ return { cards: [], bet, done: false, split: false, doubled: false, result: null }; }
-function occupied(s){ return !!s.uid; }
-function activeSeats(){ return T.seats.filter(s => occupied(s) && s.hands.length); }
-
-function say(msg){ T.msg = msg; }
-
-/* =====================================================================
-   HOST ENGINE -- drives every phase transition
-   ===================================================================== */
-function hostTick(){
-  if (!isHost) return;
-  const t = now();
-
-  switch (T.phase){
-    case PHASE.IDLE: {
-      // wait for at least one seated player, then open betting
-      if (T.seats.some(occupied)){
-        T.phase = PHASE.BETTING; T.phaseEnd = t + T_BET; T.round++;
-        recorded = {};
-        T.dealer = { cards: [], hole: true };
-        T.seats.forEach(s => { s.hands = []; s.bet = 0; s.result = null; s.active = 0; });
-        maybeBotBets();
-        say("Place your bets.");
-        dealerSay("idle");
-        // one bot might muse into the gap while people are betting
-        const idlers = T.seats.map((s, i) => ({ s, i })).filter(o => o.s.bot);
-        if (idlers.length) setTimeout(() => { const o = pick(idlers); if (T.seats[o.i] && T.seats[o.i].bot) botSay(o.i, "idle"); }, 2200);
-        push();
-      }
-      break;
-    }
-    case PHASE.BETTING: {
-      const ready = T.seats.filter(s => occupied(s) && s.bet > 0);
-      if (t >= T.phaseEnd || (ready.length > 0 && allBettorsLocked())){
-        if (!ready.length){
-          T.phase = PHASE.IDLE; say("No bets. Waiting for players.");
-          push(); break;
-        }
-        startDeal();
-      }
-      break;
-    }
-    case PHASE.DEALING: {
-      if (t >= T.phaseEnd) finishDeal();
-      break;
-    }
-    case PHASE.PLAYING: {
-      const s = T.seats[T.turnSeat];
-      if (!s || !occupied(s) || !s.hands[T.turnHand]){ advanceTurn(); break; }
-      if (s.bot){
-        if (t >= T.phaseEnd - (T_TURN - (S.fast ? 500 : 1000))) botAct(T.turnSeat);
-      } else if (t >= T.phaseEnd){
-        say((s.name || "Player") + " timed out.");
-        act(T.turnSeat, T.turnHand, "stand");
-      }
-      break;
-    }
-    case PHASE.DEALER: {
-      if (t >= T.phaseEnd) dealerStep();
-      break;
-    }
-    case PHASE.PAYOUT: {
-      if (t >= T.phaseEnd){
-        T.phase = PHASE.IDLE; T.turnSeat = -1;
-        // A broke bot says its goodbye and leaves the table rather than being
-        // silently topped up. Someone new drifts in later.
-        T.seats.forEach((s, i) => {
-          if (s.bot && s.bank < MIN_BET){
-            botSay(i, "broke");
-            const uid = s.uid;
-            setTimeout(() => {
-              const seat = T.seats[i];
-              if (seat && seat.uid === uid){ Object.assign(seat, blankSeat()); delete mood[uid]; push(); }
-            }, 2600);
-          }
-        });
-        push();
-      }
-      break;
-    }
-  }
-}
-function allBettorsLocked(){
-  // everyone occupied has either bet or is flagged done; bots always bet instantly
-  return T.seats.filter(occupied).every(s => s.bet > 0 || s.sitOutRounds > 0);
+  return [mk(0), mk(1)];
 }
 
-function startDeal(){
-  T.phase = PHASE.DEALING;
-  T.seats.forEach(s => { if (occupied(s) && s.bet > 0) s.hands = [newHand(s.bet)]; });
-  dealQueue = [];
-  const live = T.seats.map((s, i) => ({ s, i })).filter(o => occupied(o.s) && o.s.hands.length);
-  // two passes, player-first, dealer hole card last -- exactly like a real shoe
-  for (let pass = 0; pass < 2; pass++){
-    for (const o of live) dealQueue.push({ seat: o.i, hand: 0 });
-    dealQueue.push({ seat: -1 });
-  }
-  T.phaseEnd = now() + dealQueue.length * dealStep() + 260;
-  say("Dealing.");
-  push();
-  runDealQueue();
-}
-let dealQueue = [], dealTimer = null;
-function dealStep(){ return S.fast ? 150 : 260; }
-function runDealQueue(){
-  clearTimeout(dealTimer);
-  if (!dealQueue.length) return;
-  const step = dealQueue.shift();
-  const card = draw();
-  if (step.seat === -1) T.dealer.cards.push(card);
-  else T.seats[step.seat].hands[step.hand].cards.push(card);
-  const isHole = step.seat === -1 && T.dealer.cards.length === 2;
-  fxDeal(step.seat, step.hand, card, isHole);
-  SFX.slide();
-  push();
-  dealTimer = setTimeout(runDealQueue, dealStep());
-}
-function finishDeal(){
-  const upAce = T.dealer.cards.length && rankOf(T.dealer.cards[0]) === 0;
-  const upTen = T.dealer.cards.length && cardVal(T.dealer.cards[0]) === 10;
-  // Dealer peeks for blackjack on a ten or ace up -- no point playing it out.
-  if (upAce || upTen){
-    const dv = handValue(T.dealer.cards);
-    if (dv.total === 21){
-      T.dealer.hole = false;
-      say("Dealer has blackjack.");
-      return settle();
-    }
-  }
-  // naturals pay immediately, everyone else plays
-  T.phase = PHASE.PLAYING;
-  T.turnSeat = -1;
-  advanceTurn();
+/* Published odds must reflect what the simulation ACTUALLY does, otherwise
+   the market is a lie. The mapping below is fitted against 1500 simulated
+   fights: a score ratio of .55 wins ~83% of the time and .45 wins ~15%, a
+   steep response that a naive linear guess got badly wrong. Logistic fit,
+   k ~= 32, then clamped so a longshot still pays big without going silly. */
+const ODDS_K = 32, HOUSE = 0.06;
+function strength(b){ return b.pwr * 1.15 + b.spd * .95 + b.arm * 1.05 + b.tec * .85 + b.maxHp / 1200; }
+function oddsFor(bots){
+  const sa = strength(bots[0]), sb = strength(bots[1]);
+  const ratio = sa / (sa + sb);
+  let pa = 1 / (1 + Math.exp(-ODDS_K * (ratio - .5)));
+  pa = clamp(pa, .10, .90);
+  return [ +(1 / pa * (1 - HOUSE)).toFixed(2), +(1 / (1 - pa) * (1 - HOUSE)).toFixed(2), pa ];
 }
 
-function advanceTurn(){
-  // find the next unfinished hand, left to right
-  let seat = T.turnSeat, hand = T.turnHand + 1;
-  if (seat < 0){ seat = 0; hand = 0; }
-  while (seat < SEATS){
-    const s = T.seats[seat];
-    if (occupied(s) && s.hands.length){
-      for (; hand < s.hands.length; hand++){
-        const h = s.hands[hand];
-        if (!h.done && !handValue(h.cards).bust && !isBlackjack(h)){
-          T.turnSeat = seat; T.turnHand = hand;
-          T.phase = PHASE.PLAYING;
-          T.phaseEnd = now() + (s.bot ? (S.fast ? 900 : 1600) : T_TURN);
-          s.active = hand;
-          say((s.name || "Player") + " to act.");
-          if (seat === mySeat) SFX.turn();
-          push();
-          return;
-        }
-      }
-    }
-    seat++; hand = 0;
-  }
-  startDealerPlay();
-}
-
-function act(seatIdx, handIdx, action){
-  const s = T.seats[seatIdx]; if (!s) return;
-  const h = s.hands[handIdx]; if (!h || h.done) return;
-
-  if (action === "hit"){
-    h.cards.push(draw());
-    fxDeal(seatIdx, handIdx, h.cards[h.cards.length - 1], false);
-    SFX.slide();
-    const v = handValue(h.cards);
-    if (v.bust){ h.done = true; h.result = "bust"; fxBust(seatIdx, handIdx); SFX.bust(); say("Bust!"); push(); setTimeout(() => isHost && advanceTurn(), 620); return; }
-    if (v.total === 21){ h.done = true; push(); setTimeout(() => isHost && advanceTurn(), 380); return; }
-    T.phaseEnd = now() + (s.bot ? (S.fast ? 700 : 1200) : T_TURN);
-    push(); return;
-  }
-  if (action === "stand"){ h.done = true; push(); setTimeout(() => isHost && advanceTurn(), 240); return; }
-
-  if (action === "double"){
-    if (h.cards.length !== 2 || s.bank < h.bet) return;
-    s.bank -= h.bet; h.bet *= 2; h.doubled = true;
-    if (seatIdx === mySeat){ S.bank = s.bank; save(); }
-    SFX.chip(); fxChips(seatIdx, 6);
-    h.cards.push(draw());
-    fxDeal(seatIdx, handIdx, h.cards[h.cards.length - 1], false);
-    h.done = true;
-    const v = handValue(h.cards);
-    if (v.bust){ h.result = "bust"; fxBust(seatIdx, handIdx); SFX.bust(); }
-    push(); setTimeout(() => isHost && advanceTurn(), 700); return;
-  }
-  if (action === "split"){
-    if (!canSplit(h) || s.hands.length >= 2 || s.bank < h.bet) return;
-    s.bank -= h.bet;
-    if (seatIdx === mySeat){ S.bank = s.bank; save(); }
-    const moved = h.cards.pop();
-    const nh = newHand(h.bet); nh.cards = [moved]; nh.split = true; h.split = true;
-    s.hands.splice(handIdx + 1, 0, nh);
-    h.cards.push(draw()); nh.cards.push(draw());
-    fxDeal(seatIdx, handIdx, h.cards[1], false);
-    fxDeal(seatIdx, handIdx + 1, nh.cards[1], false);
-    SFX.chip(); say("Split!");
-    push(); return;
-  }
-}
-
-function startDealerPlay(){
-  T.phase = PHASE.DEALER;
-  T.dealer.hole = false;
-  T.turnSeat = -1;
-  SFX.flip();
-  // if every hand busted or is a natural, no need to draw
-  const needsPlay = activeSeats().some(s => s.hands.some(h => !handValue(h.cards).bust && !isBlackjack(h)));
-  T.phaseEnd = now() + (S.fast ? 420 : 800);
-  if (!needsPlay) T.phaseEnd = now() + 260;
-  say("Dealer plays.");
-  push();
-}
-function dealerStep(){
-  const v = handValue(T.dealer.cards);
-  const needsPlay = activeSeats().some(s => s.hands.some(h => !handValue(h.cards).bust && !isBlackjack(h)));
-  if (needsPlay && v.total < 17){          // dealer stands on all 17s, hits soft 16
-    T.dealer.cards.push(draw());
-    fxDeal(-1, 0, T.dealer.cards[T.dealer.cards.length - 1], false);
-    SFX.slide();
-    T.phaseEnd = now() + (S.fast ? 380 : 700);
-    push();
-    return;
-  }
-  if (needsPlay && v.bust){ say("Dealer busts!"); fxDealerBust(); }
-  settle();
-}
-
-function settle(){
-  const dv = handValue(T.dealer.cards);
-  const dBj = T.dealer.cards.length === 2 && dv.total === 21;
-  T.dealer.hole = false;
-
-  T.seats.forEach((s, i) => {
-    if (!occupied(s) || !s.hands.length) return;
-    let net = 0, anyBj = false, anyWin = false;
-    s.hands.forEach((h, hi) => {
-      const hv = handValue(h.cards);
-      const bj = isBlackjack(h);
-      let res, pay = 0;
-      if (hv.bust){ res = "bust"; pay = 0; }
-      else if (bj && !dBj){ res = "blackjack"; pay = h.bet * 2.5; anyBj = true; }
-      else if (dBj && !bj){ res = "lose"; pay = 0; }
-      else if (dBj && bj){ res = "push"; pay = h.bet; }
-      else if (dv.bust){ res = "win"; pay = h.bet * 2; }
-      else if (hv.total > dv.total){ res = "win"; pay = h.bet * 2; }
-      else if (hv.total < dv.total){ res = "lose"; pay = 0; }
-      else { res = "push"; pay = h.bet; }
-
-      h.result = res;
-      s.bank += pay;
-      net += pay - h.bet;
-      if (res === "win" || res === "blackjack") anyWin = true;
-      if (i === mySeat) recordHand(res, pay - h.bet, hi);
-      fxResult(i, hi, res);
-    });
-    s.result = net > 0 ? "win" : net < 0 ? "lose" : "push";
-    if (i === mySeat){
-      S.bank = s.bank; save();
-      if (anyBj){ SFX.bj(); fxBlackjack(i); }
-      else if (anyWin){ SFX.win(); }
-      else if (net < 0){ /* already thudded on bust */ }
-      else SFX.push();
-    } else if (anyBj) fxBlackjack(i);
-    if (net > 0) fxPayout(i, net);
-  });
-
-  // ---- table reacts ----
-  reactToResults(dv, dBj);
-
-  T.phase = PHASE.PAYOUT;
-  T.phaseEnd = now() + (S.fast ? 2600 : T_PAYOUT);
-  if (!T.msg || T.msg === "Dealer plays.") say(dv.bust ? "Dealer busts!" : "Dealer has " + dv.total + ".");
-  push();
-}
-
-/* The table's reaction to a settled round. Bots comment on their own result
-   first, then on whoever had the loudest hand -- a human blackjack or a human
-   bust gets a rise out of them, which is the point. */
-function reactToResults(dv, dBj){
-  if (!isHost || !S.botChat) return;
-  const loud = [];                       // notable hands worth commenting on
-  T.seats.forEach((s, i) => {
-    if (!occupied(s) || !s.hands.length) return;
-    const bj = s.hands.some(h => h.result === "blackjack");
-    const bust = s.hands.every(h => h.result === "bust");
-    if (bj)   loud.push({ i, name: s.name, kind: "bj", human: !s.bot });
-    if (bust) loud.push({ i, name: s.name, kind: "bust", human: !s.bot });
-  });
-
-  // dealer gets the opening word
-  const busted = loud.filter(l => l.kind === "bust");
-  const someoneBj = loud.find(l => l.kind === "bj");
-  if (dBj) dealerSay("dbj");
-  else if (dv.bust) dealerSay("lose");
-  else if (someoneBj) dealerSay("bj", { p: someoneBj.name });
-  else if (busted.length) dealerSay("bust", { p: pick(busted).name });
-  else dealerSay("win", { d: dv.total });
-
-  T.seats.forEach((s, i) => {
-    if (!occupied(s) || !s.bot || !s.hands.length) return;
-    const m = mood[s.uid] || (mood[s.uid] = { streak: 0, spoke: 0, tilt: 0 });
-    const bj = s.hands.some(h => h.result === "blackjack");
-    const won = s.hands.some(h => h.result === "win" || h.result === "blackjack");
-    const allBust = s.hands.every(h => h.result === "bust");
-
-    // mood drifts: losses stack into tilt, a win takes the edge off
-    if (won){ m.streak = Math.max(0, m.streak) + 1; m.tilt = Math.max(0, m.tilt - 1); }
-    else { m.streak = Math.min(0, m.streak) - 1; m.tilt = Math.min(4, m.tilt + 1); }
-
-    if (bj) botSay(i, "bj");
-    else if (allBust) botSay(i, "bust");
-    else if (won) botSay(i, dv.bust ? "dbust" : "win");
-    else botSay(i, "lose");
-  });
-
-  // then someone pipes up about a HUMAN's hand
-  const human = loud.filter(l => l.human);
-  if (human.length){
-    const target = pick(human);
-    const talkers = T.seats.map((s, i) => ({ s, i })).filter(o => o.s.bot && o.i !== target.i);
-    if (talkers.length){
-      const t = pick(talkers);
-      botSay(t.i, target.kind === "bj" ? "other" : "obust", { p: target.name });
-    }
-  }
-}
-
-/* ---- stats ----
-   Guarded per (round, hand): the host path settles through settle() and pure
-   clients settle through onPhaseChange(), and a client promoted to host
-   mid-round could otherwise count the same hand twice. */
-let recorded = {};
-function recordHand(res, net, handIdx){
-  const key = T.round + ":" + handIdx;
-  if (recorded[key]) return;
-  recorded[key] = true;
-  const st = S.stats;
-  st.hands++; st.net += net;
-  if (res === "win" || res === "blackjack") st.wins++;
-  if (res === "push") st.pushes++;
-  if (res === "blackjack") st.bj++;
-  if (net > st.best) st.best = net;
-  if (S.bank > st.peak) st.peak = S.bank;
-  save();
-  if (net > 0 && ONLINE && net >= 100) postHighRoller(net);
-}
-
-/* ---- bots ---- */
-function maybeBotBets(){
-  T.seats.forEach((s, i) => {
-    if (!occupied(s)) return;
-    if (s.bot){
-      const bet = clamp(Math.round((25 + Math.floor(Math.random() * 4) * 25)), MIN_BET, Math.max(MIN_BET, s.bank));
-      s.bet = Math.min(bet, s.bank); s.bank -= s.bet;
-    }
-  });
-}
-function botAct(seatIdx){
-  const s = T.seats[seatIdx], h = s.hands[T.turnHand];
-  if (!h || h.done) return;
-  const up = cardVal(T.dealer.cards[0]);
-  let mv = basicStrategy(h, up);
-  if (mv === "D" && (h.cards.length !== 2 || s.bank < h.bet)) mv = "H";
-  if (mv === "P" && (s.hands.length >= 2 || s.bank < h.bet)) mv = "H";
-  act(seatIdx, T.turnHand, mv === "H" ? "hit" : mv === "S" ? "stand" : mv === "D" ? "double" : "split");
-}
-const KEEP_OPEN = 2;         // always leave room for real people to sit down
-function fillBots(){
-  if (!S.bots || !isHost) return;
-  const humans = T.seats.filter(s => occupied(s) && !s.bot).length;
-  if (!humans) return;
-  // A persona sits in at most one seat, and keeps that identity for as long as
-  // it stays at the table -- these are regulars, not extras.
-  const taken = new Set(T.seats.filter(s => s.bot).map(s => s.persona));
-  T.seats.forEach((s, i) => {
-    if (occupied(s)) return;
-    const free = T.seats.filter(x => !occupied(x)).length;
-    if (free <= KEEP_OPEN) return;
-    if (Math.random() > 0.45) return;
-    const avail = PERSONAS.map((p, idx) => idx).filter(idx => !taken.has(idx));
-    if (!avail.length) return;
-    const pi = pick(avail);
-    taken.add(pi);
-    const p = PERSONAS[pi];
-    s.uid = "bot_" + pi; s.bot = true; s.persona = pi;
-    s.name = p.name;
-    s.avatar = AVATARS.indexOf(p.av) >= 0 ? AVATARS.indexOf(p.av) : 0;
-    s.bank = 400 + Math.floor(Math.random() * 1600);
-    s.joined = now();
-    mood[s.uid] = { streak: 0, spoke: 0, tilt: 0 };
-    botSay(i, "join");
-  });
-}
-function clearBots(){ T.seats.forEach(s => { if (s.bot) Object.assign(s, blankSeat()); }); }
-/* =====================================================================
-   NETWORK LAYER
-   Model: one elected HOST runs the engine and writes table state. Everyone
-   writes only their own seat + an action queue. The host claims a lease and
-   renews it; if the lease goes stale (host closed the tab), the lowest
-   remaining uid takes over. Shoe state travels as (seed, index) so a new
-   host can rebuild the exact same shoe.
-   ===================================================================== */
-const ROOM = () => (S.room || "main").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "main";
-const HOST_LEASE = 6000;
-let tableRef = null, actionsRef = null, chatRef = null, presRef = null, hrRef = null;
-let netReady = false, lastPush = 0, pushPending = false;
-
-/* A host is "wedged" when its own phase deadline is well past and no state
-   update has landed since. That is the observable symptom of a host whose
-   timers are throttled or whose page is a zombie, and it is the only signal
-   other clients have -- the lease itself keeps renewing regardless. */
-let lastStateAt = 0;
-const STALL_MS = 9000;
-function stateStalled(){
-  if (isHost || !lastStateAt) return false;
-  const t = now();
-  if (t - lastStateAt < STALL_MS) return false;
-  if (!T.phaseEnd) return false;
-  return t - T.phaseEnd > STALL_MS;
-}
-
-function setNet(mode, txt){
-  $("netDot").className = "dot " + mode;
-  $("netTxt").textContent = txt;
-}
-
-function connect(){
-  if (!ONLINE){
-    isHost = true; netReady = true;
-    setNet("solo", "Solo vs Dealer");
-    $("joinNote").innerHTML = "<b style='color:#e8c66a'>Solo mode.</b> Firebase keys are not set, so this table is private to you. " +
-      "Add credentials in the script header to let other players sit down.";
-    fillBots();
-    return;
-  }
-  myUid = "u" + Math.random().toString(36).slice(2, 10);
-  const base = "tables/" + ROOM();
-  tableRef   = db.ref(base + "/state");
-  actionsRef = db.ref(base + "/actions");
-  chatRef    = db.ref(base + "/chat");
-  presRef    = db.ref(base + "/presence/" + myUid);
-  hrRef      = db.ref("highrollers");
-
-  db.ref(".info/connected").on("value", snap => {
-    if (!snap.val()){ setNet("", "Reconnecting"); return; }
-    setNet("live", "Live table: " + ROOM());
-    presRef.onDisconnect().remove();
-    presRef.set({ name: S.name || "Player", ts: firebase.database.ServerValue.TIMESTAMP });
-    // free my seat automatically if the tab dies
-  });
-
-  tableRef.on("value", snap => {
-    const v = snap.val();
-    netReady = true;
-    lastStateAt = now();
-    if (!v){ if (isHost) push(true); return; }
-    applyRemote(v);
-  });
-
-  actionsRef.on("child_added", snap => {
-    const a = snap.val();
-    snap.ref.remove();
-    if (!isHost || !a) return;
-    if (a.type === "act" && T.phase === PHASE.PLAYING && T.turnSeat === a.seat && T.seats[a.seat].uid === a.uid)
-      act(a.seat, T.turnHand, a.action);
-    if (a.type === "bet" && T.seats[a.seat] && T.seats[a.seat].uid === a.uid){
-      if (T.phase === PHASE.BETTING && !T.seats[a.seat].bet){
-        T.seats[a.seat].bet = clamp(a.bet, 0, MAX_BET);
-        T.seats[a.seat].bank = a.bank;
-      } else {
-        // arrived too late for this round -- refund rather than pocket the stake
-        T.seats[a.seat].bank = a.bank + clamp(a.bet, 0, MAX_BET);
-      }
-      push();
-    }
-  });
-
-  db.ref(base + "/beats").on("value", s => { beats = s.val() || {}; });
-  db.ref(base + "/beats/" + myUid).onDisconnect().remove();
-
-  chatRef.limitToLast(30).on("child_added", snap => {
-    const m = snap.val(); if (!m) return;
-    addChat(m.name, m.text, m.sys, { av: m.av, col: m.col, dealer: m.dealer });
-  });
-
-  // Host lease. Only a SEATED player may host -- a spectator or zombie page
-  // holding the lease would stall the table for everyone. A host that stops
-  // advancing the game (throttled tab, dead page) is forcibly replaced.
-  setInterval(() => {
-    if (!ONLINE || !netReady) return;
-    if (mySeat < 0 && !isHost) return;
-    const stalled = stateStalled();
-    db.ref(base + "/host").transaction(cur => {
-      const t = now();
-      if (!cur || !cur.uid || t - (cur.ts || 0) > HOST_LEASE || cur.uid === myUid)
-        return { uid: myUid, ts: t };
-      if (stalled) return { uid: myUid, ts: t };   // take over from a wedged host
-      return;                                  // someone else holds a fresh lease
-    }, (err, committed, snap) => {
-      const v = snap && snap.val();
-      const wasHost = isHost;
-      isHost = !!(v && v.uid === myUid);
-      if (isHost && !wasHost){ log("Took over as table host."); fillBots(); }
-    });
-  }, 2000);
-}
-
-// Merge remote state. The host ignores inbound state (it is the source of truth)
-// except for seat claims, which any client may write.
-function applyRemote(v){
-  if (isHost){
-    syncUI();
-    if (Array.isArray(v.seats)){
-      v.seats.forEach((rs, i) => {
-        const ls = T.seats[i];
-        if (rs && rs.uid && !ls.uid && !rs.bot){        // someone sat down
-          Object.assign(ls, rs);
-          say((rs.name || "A player") + " sits down.");
-          push();
-        } else if ((!rs || !rs.uid) && ls.uid && !ls.bot && ls.uid !== myUid){
-          Object.assign(ls, blankSeat());               // someone left
-          push();
-        }
-      });
-    }
-    return;
-  }
-  // pure client: adopt everything, and rebuild the shoe view for animations
-  const prevPhase = T.phase, prevRound = T.round;
-  const prevCards = countCards();
-  T = Object.assign(newTable(), v);
-  T.seats = (v.seats || []).map(s => Object.assign(blankSeat(), s || {}));
-  T.seats.forEach(s => s.hands = (s.hands || []).map(h => Object.assign(newHand(0), h)));
-  T.dealer = Object.assign({ cards: [], hole: true }, v.dealer || {});
-  T.dealer.cards = T.dealer.cards || [];
-  if (countCards() > prevCards) SFX.slide();
-  reconcileBank();
-  if (prevPhase !== T.phase) onPhaseChange(prevPhase, T.phase);
-  // A non-host's controls are driven entirely by state arriving from the host.
-  // Without this, the action bar and chip tray never appeared for them: syncUI
-  // only ran inside push(), which a client reaches only when IT does something.
-  syncUI();
-  if (T.round !== prevRound){ /* new round */ }
-}
-/* The host's seat record is the authority on my bank. A bet that reached the
-   host after the betting window closed used to be dropped there while the
-   client had already deducted it -- the stake simply evaporated. Re-syncing
-   between rounds (never mid-bet, where a deducted-but-unapplied bet is a
-   legitimate transient) makes any such divergence self-healing. */
-function reconcileBank(){
-  if (mySeat < 0 || pendingBet) return;
-  const s = T.seats[mySeat];
-  if (!s || s.uid !== myUid) return;
-  if (T.phase !== PHASE.PAYOUT && T.phase !== PHASE.IDLE) return;
-  if (typeof s.bank === "number" && s.bank !== S.bank){
-    S.bank = s.bank; save(); syncUI();
-  }
-}
-function countCards(){
-  let n = (T.dealer.cards || []).length;
-  T.seats.forEach(s => (s.hands || []).forEach(h => n += (h.cards || []).length));
-  return n;
-}
-function onPhaseChange(from, to){
-  if (to === PHASE.PAYOUT){
-    const s = T.seats[mySeat];
-    if (s && s.hands.length){
-      const bj = s.hands.some(h => h.result === "blackjack");
-      if (bj){ SFX.bj(); fxBlackjack(mySeat); }
-      else if (s.result === "win") SFX.win();
-      else if (s.result === "push") SFX.push();
-      const net = s.hands.reduce((a, h) => a + ((h.result === "win" ? h.bet : h.result === "blackjack" ? h.bet * 1.5 : h.result === "push" ? 0 : -h.bet)), 0);
-      S.bank = s.bank; save();
-      s.hands.forEach((h, hi) => { recordHand(h.result, h.result === "win" ? h.bet : h.result === "blackjack" ? h.bet * 1.5 : h.result === "push" ? 0 : -h.bet, hi); fxResult(mySeat, hi, h.result); });
-      if (net > 0) fxPayout(mySeat, net);
-    }
-  }
-  if (to === PHASE.BETTING) recorded = {};
-  if (to === PHASE.PLAYING && T.turnSeat === mySeat) SFX.turn();
-}
-
-// Throttled write of the whole table (host only).
-function push(force){
-  syncUI();
-  if (!ONLINE || !isHost || !netReady) return;
-  const t = now();
-  if (!force && t - lastPush < 90){
-    if (!pushPending){ pushPending = true; setTimeout(() => { pushPending = false; push(true); }, 100); }
-    return;
-  }
-  lastPush = t;
-  const payload = JSON.parse(JSON.stringify({
-    phase: T.phase, phaseEnd: T.phaseEnd, round: T.round,
-    shoeSeed: T.shoeSeed, shoeIdx: T.shoeIdx,
-    dealer: T.dealer, seats: T.seats, turnSeat: T.turnSeat, turnHand: T.turnHand,
-    msg: T.msg, hostTs: t
-  }));
-  tableRef.set(payload).catch(e => showErr("Sync failed: " + e.message));
-}
-function sendAction(action){
-  if (mySeat < 0) return;
-  if (isHost){ act(mySeat, T.turnHand, action); return; }
-  actionsRef.push({ type: "act", uid: myUid, seat: mySeat, action, ts: now() });
-}
-function sendBet(bet){
-  if (mySeat < 0) return;
-  if (isHost){ T.seats[mySeat].bet = bet; T.seats[mySeat].bank = S.bank; push(); return; }
-  actionsRef.push({ type: "bet", uid: myUid, seat: mySeat, bet, bank: S.bank, ts: now() });
-}
-
-/* ---- chat ---- */
-function addChat(name, text, sys, meta){
-  const log = $("chatLog");
-  const d = document.createElement("div");
-  d.className = "m" + (sys ? " sys" : "");
-  if (sys) d.innerHTML = esc(text);
-  else {
-    const av = meta && meta.av ? meta.av + " " : "";
-    const col = meta && meta.col ? meta.col : "";
-    d.innerHTML = `<span class="who"${col ? ` style="color:${esc(col)}"` : ""}>${esc(av + name)}</span> ${esc(text)}`;
-    if (meta && meta.dealer) d.style.fontStyle = "italic";
-  }
-  log.appendChild(d);
-  while (log.children.length > 60) log.removeChild(log.firstChild);
-  log.scrollTop = log.scrollHeight;
-  // nudge the panel open when someone actually says something
-  const c = $("chat");
-  if (c.classList.contains("min") && !sys){
-    $("chatHd").style.color = "#e8c66a";
-    setTimeout(() => $("chatHd").style.color = "", 1400);
-  }
-}
-// Broadcast a line (bots + dealer go through here so every client sees them once).
-function pushChat(name, text, meta){
-  const payload = { name, text: String(text).slice(0, 160), ts: now() };
-  if (meta){ if (meta.av) payload.av = meta.av; if (meta.col) payload.col = meta.col;
-             if (meta.dealer) payload.dealer = true; }
-  if (ONLINE && chatRef) chatRef.push(payload);
-  else addChat(name, payload.text, false, meta);
-}
-function sendChat(text){
-  if (!text.trim()) return;
-  pushChat(S.name || "Player", text.slice(0, 140), { av: AVATARS[S.avatar % AVATARS.length] });
-}
-function log(msg){ addChat("", msg, true); }
-
-/* ---- high rollers ---- */
-function postHighRoller(net){
-  if (!ONLINE || !hrRef) return;
-  hrRef.push({ name: S.name || "Player", win: Math.round(net), ts: now() }).catch(()=>{});
-}
-function loadHighRollers(){
-  const body = $("hrBody");
-  const local = () => {
-    const best = S.stats.best;
-    body.innerHTML = best > 0
-      ? `<tr><td>1</td><td>${esc(S.name || "You")}</td><td class="num g">${fmt(best)}</td></tr>`
-      : `<tr><td colspan="3" style="color:#9aa3a8">No big wins yet.</td></tr>`;
+function initFight(botSeed, fightSeed){
+  const bots = makeBots(botSeed);
+  const F = {
+    tick: 0, over: false, winner: -1, endTick: -1,
+    rnd: mulberry32((fightSeed ^ 0x9e3779b9) >>> 0),
+    bots: bots.map((b, i) => ({
+      def: b, hp: b.maxHp, x: i === 0 ? 240 : ARENA_W - 240, y: 0, vx: 0, vy: 0,
+      face: i === 0 ? 1 : -1, stun: 0, atkCd: 30 + i * 12, dashCd: 0, decideIn: 6,
+      state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0,
+      combo: 0, hitFlash: 0, wantX: 0, lastDmg: 0
+    })),
+    pickups: [], shots: [], nextDrop: 60 * 6, drops: 0
   };
-  if (!ONLINE){ local(); $("statsNote").textContent = "Solo mode - only your own results are tracked."; return; }
-  $("statsNote").textContent = "Live global board via Firebase.";
-  hrRef.orderByChild("win").limitToLast(10).once("value", snap => {
-    const rows = []; snap.forEach(c => rows.push(c.val()));
-    rows.sort((a, b) => b.win - a.win);
-    body.innerHTML = rows.length ? rows.map((r, i) =>
-      `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td class="num g">${fmt(r.win)}</td></tr>`).join("")
-      : `<tr><td colspan="3" style="color:#9aa3a8">No big wins yet.</td></tr>`;
-  }, () => local());
+  return F;
 }
 
-/* ---- seating ---- */
-function mySeatData(){
-  return Object.assign(blankSeat(), {
-    uid: myUid || "local", name: S.name || "Player", avatar: S.avatar,
-    bank: S.bank, joined: now()
-  });
-}
-// Claiming a seat MUST be atomic: two players hitting "take a seat" at the same
-// moment would otherwise both read the same empty slot and both write to it,
-// and a local read can also be stale relative to bots the host just seated.
-// A transaction per seat aborts if anyone (human or bot) already holds it.
-// Clear any seat still carrying my uid other than the one I just took. Without
-// this, a claim that commits but is misjudged as failed leaves a ghost seat
-// holding my name -- and a ghost keeps beating, so pruning never reaps it.
-async function releaseOtherSeats(keepIdx){
-  if (!ONLINE) return;
-  for (let j = 0; j < SEATS; j++){
-    if (j === keepIdx) continue;
-    const r = db.ref("tables/" + ROOM() + "/state/seats/" + j);
-    try {
-      await r.transaction(cur => (cur && cur.uid === myUid) ? blankSeat() : undefined);
-    } catch(e){}
+const dist = (a, b) => Math.abs(a.x - b.x);
+
+/* One simulation step. Returns events for the renderer -- events are
+   discarded during fast-forward so a late joiner does not get a firework
+   show for combat that already happened. */
+function stepFight(F){
+  const ev = [];
+  if (F.over) { F.tick++; return ev; }
+  const R = F.rnd;
+
+  // ---- power-up drops
+  if (F.tick >= F.nextDrop && F.pickups.length < 2 && F.drops < 14){
+    const p = POWERUPS[Math.floor(R() * POWERUPS.length)];
+    F.pickups.push({ id: p.id, x: 160 + R() * (ARENA_W - 320), y: 260, vy: 0, life: 60 * 16 });
+    F.nextDrop = F.tick + Math.floor(60 * (5 + R() * 5));
+    F.drops++;
+    ev.push({ t: "drop", id: p.id });
   }
-}
-async function takeSeat(){
-  if (mySeat >= 0 && T.seats[mySeat] && T.seats[mySeat].uid === (myUid || "local")) return true;
-  if (!ONLINE){
-    const i = T.seats.findIndex(s => !occupied(s));
-    if (i < 0){ toast("Table is full."); return false; }
-    Object.assign(T.seats[i], mySeatData());
-    mySeat = i; log((S.name || "You") + " joined the table."); push();
-    return true;
+  for (let i = F.pickups.length - 1; i >= 0; i--){
+    const p = F.pickups[i];
+    if (p.y > 0){ p.vy -= 0.55; p.y = Math.max(0, p.y + p.vy); }
+    p.life--;
+    if (p.life <= 0) F.pickups.splice(i, 1);
   }
-  for (let i = 0; i < SEATS; i++){
-    const ref = db.ref("tables/" + ROOM() + "/state/seats/" + i);
-    let claimed = false;
-    try {
-      const res = await ref.transaction(cur => {
-        if (cur && cur.uid) return;          // taken -- abort, try the next seat
-        return mySeatData();
-      });
-      claimed = res.committed && res.snapshot.val() && res.snapshot.val().uid === (myUid || "local");
-    } catch(e){ console.warn("seat claim failed", e); }
-    if (claimed){
-      mySeat = i;
-      Object.assign(T.seats[i], mySeatData());
-      // Deliberately NOT onDisconnect().set(blank): a backgrounded tab can idle
-      // its socket, and yanking the seat mid-round would strand the player's
-      // money. The host prunes seats that stop heartbeating instead.
-      startHeartbeat();
-      await releaseOtherSeats(i);
-      log((S.name || "You") + " joined the table.");
-      if (chatRef) chatRef.push({ name: "", text: (S.name || "A player") + " sits down.", sys: true, ts: now() });
-      push();
-      return true;
+
+  // ---- bots
+  for (let i = 0; i < 2; i++){
+    const me = F.bots[i], foe = F.bots[1 - i];
+    if (me.stun > 0){ me.stun--; me.vx *= .8; }
+    if (me.over > 0) me.over--;
+    if (me.bers > 0) me.bers--;
+    if (me.shield > 0) me.shield--;
+    if (me.atkCd > 0) me.atkCd--;
+    if (me.dashCd > 0) me.dashCd--;
+    if (me.hitFlash > 0) me.hitFlash--;
+    if (me.stateT > 0) me.stateT--; else if (me.state !== "idle") me.state = "idle";
+
+    me.face = foe.x > me.x ? 1 : -1;
+    const spd = me.def.spd * (me.over > 0 ? 1.55 : 1) * (me.bers > 0 ? 1.2 : 1);
+    const d = dist(me, foe);
+
+    // -- decide
+    if (me.stun <= 0 && me.decideIn-- <= 0){
+      me.decideIn = 5 + Math.floor(R() * 6);
+      const hurt = me.hp / me.def.maxHp;
+      // go for a pickup if one is grounded and we are not about to be hit
+      let target = null, bestD = 1e9;
+      for (const p of F.pickups){
+        if (p.y > 12) continue;
+        const dd = Math.abs(p.x - me.x);
+        if (dd < bestD){ bestD = dd; target = p; }
+      }
+      const wantPickup = target && (bestD < Math.abs(target.x - foe.x) + 60 || hurt < .4);
+      if (wantPickup){ me.wantX = target.x; me.state = "chase"; }
+      else if (hurt < .25 && R() < .3){ me.wantX = me.x - me.face * 220; me.state = "retreat"; }
+      else me.wantX = foe.x - me.face * (60 + R() * 40);
+
+      // -- attacks
+      if (me.stun <= 0 && me.atkCd <= 0){
+        if (d < 92 && R() < .8){
+          // melee
+          me.state = "melee"; me.stateT = 18;
+          me.atkCd = Math.round(38 / (me.over > 0 ? 1.6 : 1) - me.def.spd * 6);
+          const crit = R() < .12 + me.def.tec * .05;
+          let dmg = (30 + me.def.pwr * 34) * (crit ? 1.9 : 1) * (me.bers > 0 ? 1.55 : 1) * (me.over > 0 ? 1.2 : 1);
+          dmg *= .85 + R() * .3;
+          applyDamage(F, 1 - i, dmg, ev, crit ? "crit" : "melee", me.x + me.face * 50);
+          ev.push({ t: "swing", i, x: me.x, face: me.face });
+        } else if (d > 110 && (R() < .45 + me.def.tec * .2)){
+          // ranged
+          const isRocket = me.rocket > 0;
+          if (isRocket) me.rocket--;
+          me.state = "shoot"; me.stateT = 14;
+          me.atkCd = Math.round((isRocket ? 26 : 44) - me.def.spd * 8);
+          F.shots.push({ owner: i, x: me.x + me.face * 34, y: 44, vx: me.face * (isRocket ? 7.5 : 12),
+                         dmg: (isRocket ? 62 : 26) + me.def.pwr * (isRocket ? 30 : 16), rocket: isRocket, life: 200 });
+          ev.push({ t: "shoot", i, x: me.x + me.face * 34, rocket: isRocket });
+        } else if (d > 220 && me.dashCd <= 0 && R() < .35){
+          me.state = "dash"; me.stateT = 14; me.dashCd = 90;
+          me.vx = me.face * 9 * spd;
+          ev.push({ t: "dash", i });
+        }
+      }
+    }
+
+    // -- movement
+    if (me.stun <= 0 && me.state !== "melee" && me.state !== "shoot"){
+      const dir = Math.sign(me.wantX - me.x);
+      if (Math.abs(me.wantX - me.x) > 14) me.vx += dir * .55 * spd;
+    }
+    me.vx *= .86;
+    me.x = clamp(me.x + me.vx, 90, ARENA_W - 90);
+    if (me.y > 0 || me.vy > 0){ me.vy -= .6; me.y = Math.max(0, me.y + me.vy); }
+
+    // -- pickups
+    for (let k = F.pickups.length - 1; k >= 0; k--){
+      const p = F.pickups[k];
+      if (p.y <= 14 && Math.abs(p.x - me.x) < 44){
+        F.pickups.splice(k, 1);
+        grantPower(F, i, p.id, ev);
+      }
     }
   }
-  toast("Table is full - try again in a moment.");
-  return false;
-}
-/* Seat lifecycle.
-   A seat is held by a heartbeat, not by socket liveness. If my seat is taken
-   from under me (host pruned it, or a race), reclaim it rather than silently
-   betting into a seat that no longer exists. */
-/* Seat TTL is deliberately generous. A closed tab is detected instantly via
-   onDisconnect removing its beat, so the timeout only has to cover a player
-   whose tab is merely hidden -- and browsers throttle timers in background
-   tabs to roughly once a minute. At 30s, anyone who alt-tabbed for half a
-   minute was thrown out of their seat mid-game. */
-const SEAT_TTL = 180000;
-const GONE_GRACE = 12000;    // once the beat disappears, they really have left
-let hbTimer = null, beats = {}, hadBeat = {};
-function startHeartbeat(){
-  clearInterval(hbTimer);
-  if (!ONLINE) return;
-  hbTimer = setInterval(async () => {
-    if (mySeat < 0) return;
-    const ref = db.ref("tables/" + ROOM() + "/state/seats/" + mySeat);
-    const snap = await ref.child("uid").get().catch(() => null);
-    const holder = snap && snap.val();
-    if (holder === myUid){
-      // Heartbeats live OUTSIDE /state: the host rewrites the whole state
-      // object on every push, which would clobber anything written in there.
-      db.ref("tables/" + ROOM() + "/beats/" + myUid).set(now()).catch(()=>{});
-      return;
+
+  // ---- projectiles
+  for (let s = F.shots.length - 1; s >= 0; s--){
+    const sh = F.shots[s];
+    sh.x += sh.vx; sh.life--;
+    const foe = F.bots[1 - sh.owner];
+    if (Math.abs(sh.x - foe.x) < 34 && foe.y < 60){
+      applyDamage(F, 1 - sh.owner, sh.dmg * (.9 + F.rnd() * .2), ev, sh.rocket ? "rocket" : "laser", sh.x);
+      F.shots.splice(s, 1); continue;
     }
-    // lost the seat -- try to get it back, refunding anything staked but undealt
-    if (pendingBet){ S.bank += pendingBet; pendingBet = 0; betStack = []; save(); }
-    const mine = T.seats[mySeat];
-    if (mine && mine.bet && !(mine.hands || []).length){ S.bank += mine.bet; save(); }
-    mySeat = -1;
-    const ok = await takeSeat();
-    if (!ok){
-      toast("Lost your seat - the table filled up.");
-      $("joinOv").classList.remove("hidden");
-    } else toast("Reconnected to your seat.");
-    syncUI();
-  }, 6000);
-}
-// Host side: reclaim seats whose player stopped heartbeating.
-let seatSeen = {};
-function pruneSeats(){
-  if (!isHost || !ONLINE) return;
-  let changed = false;
-  const t = now();
-  T.seats.forEach(s => {
-    if (!occupied(s) || s.bot || s.uid === myUid) return;
-    const beat = beats[s.uid];
-    if (beat){ seatSeen[s.uid] = Math.max(seatSeen[s.uid] || 0, beat); hadBeat[s.uid] = true; }
-    // give a newly seated player a full TTL before the first beat is required
-    if (!seatSeen[s.uid]){ seatSeen[s.uid] = s.joined || t; }
-    // beat vanished after we had one => onDisconnect fired => they closed the tab
-    const gone = !beat && hadBeat[s.uid] && t - seatSeen[s.uid] > GONE_GRACE;
-    if (gone || t - seatSeen[s.uid] > SEAT_TTL){
-      log((s.name || "A player") + " left the table.");
-      delete seatSeen[s.uid]; delete hadBeat[s.uid];
-      Object.assign(s, blankSeat()); changed = true;
+    if (sh.life <= 0 || sh.x < 60 || sh.x > ARENA_W - 60) F.shots.splice(s, 1);
+  }
+
+  F.tick++;
+  // ---- end conditions
+  if (!F.over){
+    for (let i = 0; i < 2; i++){
+      if (F.bots[i].hp <= 0){
+        F.over = true; F.winner = 1 - i; F.endTick = F.tick;
+        ev.push({ t: "ko", loser: i, x: F.bots[i].x });
+      }
     }
-  });
-  if (changed) push();
+    if (!F.over && F.tick >= MAX_TICKS){
+      F.over = true;
+      const a = F.bots[0].hp, b = F.bots[1].hp;
+      F.winner = a === b ? -1 : (a > b ? 0 : 1);
+      F.endTick = F.tick;
+      ev.push({ t: "timeout" });
+    }
+  }
+  return ev;
 }
 
-function leaveSeat(){
-  clearInterval(hbTimer);
-  if (mySeat < 0) return;
-  const i = mySeat;
-  if (ONLINE) db.ref("tables/" + ROOM() + "/state/seats/" + i).set(blankSeat());
-  Object.assign(T.seats[i], blankSeat());
-  mySeat = -1;
-  push();
+function applyDamage(F, idx, dmg, ev, kind, atX){
+  const b = F.bots[idx];
+  if (b.hp <= 0) return;
+  if (b.shield > 0){
+    ev.push({ t: "block", i: idx, x: b.x });
+    b.shield = Math.max(0, b.shield - 30);
+    dmg *= .25;
+  }
+  dmg = Math.max(4, dmg * (1 - b.def.arm * .18));
+  b.hp = Math.max(0, b.hp - dmg);
+  b.hitFlash = 8;
+  b.lastDmg = dmg;
+  b.vx += (atX != null && atX < b.x ? 1 : -1) * (kind === "rocket" ? 5.5 : 2.2);
+  if (kind === "crit" || kind === "rocket") b.stun = Math.max(b.stun, 16);
+  ev.push({ t: "hit", i: idx, x: atX == null ? b.x : atX, dmg, kind });
+}
+
+function grantPower(F, idx, id, ev){
+  const b = F.bots[idx];
+  switch (id){
+    case "repair":    b.hp = Math.min(b.def.maxHp, b.hp + b.def.maxHp * .28); break;
+    case "overclock": b.over = 60 * 8; break;
+    case "shield":    b.shield = 60 * 9; break;
+    case "berserk":   b.bers = 60 * 8; break;
+    case "rocket":    b.rocket = 5; break;
+    case "emp": {
+      const foe = F.bots[1 - idx];
+      foe.stun = Math.max(foe.stun, 78); foe.over = 0;
+      break;
+    }
+  }
+  ev.push({ t: "power", i: idx, id, x: b.x });
+}
+
+// Fast-forward a fresh sim to a given tick (used by late joiners). Events
+// are dropped -- we only want the state.
+function simulateTo(F, targetTick){
+  let guard = 0;
+  while (F.tick < targetTick && !F.over && guard++ < MAX_TICKS + 10) stepFight(F);
+  return F;
+}
+// Resolve the winner of a whole fight without rendering (used to settle).
+function resolveWinner(botSeed, fightSeed){
+  const F = initFight(botSeed, fightSeed);
+  let guard = 0;
+  while (!F.over && guard++ < MAX_TICKS + 10) stepFight(F);
+  return F.winner;
 }
 /* =====================================================================
    RENDERING
    ===================================================================== */
-const cvs = $("table"), ctx = cvs.getContext("2d");
+const cvs = $("arena"), ctx = cvs.getContext("2d");
 let W = 0, H = 0, DPR = 1;
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -1484,669 +623,970 @@ function resize(){
 }
 window.addEventListener("resize", resize);
 
-const CW = 62, CH = 88;                     // card size
-function seatPos(i){
-  // five seats along an arc across the lower half of the felt
-  const spread = Math.min(W * 0.86, 1180);
-  const x = W / 2 + (i - (SEATS - 1) / 2) * (spread / SEATS);
-  const dx = (i - (SEATS - 1) / 2) / ((SEATS - 1) / 2);
-  const y = H * 0.605 + Math.abs(dx) * H * 0.055;
-  return { x, y };
-}
-const dealerPos = () => ({ x: W / 2, y: H * 0.235 });
-const shoePos   = () => ({ x: W / 2 + Math.min(W * 0.36, 470), y: H * 0.155 });
+let cam = { x: ARENA_W / 2, z: 1, shake: 0, flash: 0, slow: 0 };
+let fx = [], floaters = [], sparks = [], rings = [];
 
-/* ---- animation pools ---- */
-let flyers = [], chips = [], bursts = [], floats = [], shake = 0, glowRing = [];
-function fxDeal(seat, hand, card, hole){
-  const from = shoePos();
-  const to = seat === -1 ? cardSlot(-1, 0, (T.dealer.cards.length - 1)) : null;
-  flyers.push({ seat, hand, card, hole, t: 0, dur: S.fast ? 0.20 : 0.34, from,
-                idx: seat === -1 ? T.dealer.cards.length - 1 : (T.seats[seat].hands[hand].cards.length - 1) });
+function worldToScreen(x, y){
+  const gy = H * 0.80;
+  return { x: (x - cam.x) * cam.z + W / 2, y: gy - y * cam.z };
 }
-function fxChips(seat, n){
-  const p = seatPos(seat);
-  for (let i = 0; i < n; i++)
-    chips.push({ x: p.x + (Math.random() - .5) * 30, y: H + 40, tx: p.x + (Math.random() - .5) * 26,
-                 ty: p.y + 66 + (Math.random() - .5) * 8, t: 0, dur: .45 + Math.random() * .2,
-                 c: ["#ef4444","#22c55e","#e8c66a","#a855f7"][Math.floor(Math.random() * 4)] });
-}
-function fxPayout(seat, amount){
-  const p = seatPos(seat);
-  floats.push({ x: p.x, y: p.y + 30, txt: "+" + fmt(amount), col: "#4ade80", t: 0, dur: 1.9, vy: -46 });
-  for (let i = 0; i < 14; i++)
-    chips.push({ x: W / 2 + (Math.random() - .5) * 60, y: H * 0.42, tx: p.x + (Math.random() - .5) * 40,
-                 ty: p.y + 66, t: 0, dur: .5 + Math.random() * .35,
-                 c: ["#ef4444","#22c55e","#e8c66a"][Math.floor(Math.random() * 3)] });
-  SFX.chip();
-}
-function fxBust(seat, hand){
-  const p = seat === -1 ? dealerPos() : seatPos(seat);
-  shake = Math.max(shake, .6);
-  floats.push({ x: p.x, y: p.y - 10, txt: "BUST", col: "#f87171", t: 0, dur: 1.5, vy: -30, big: true });
-  for (let i = 0; i < 26; i++)
-    bursts.push({ x: p.x, y: p.y, vx: (Math.random() - .5) * 340, vy: -Math.random() * 260 - 40,
-                  r: 2 + Math.random() * 4, life: .7 + Math.random() * .5, max: 1.2, c: "248,113,113" });
-}
-function fxDealerBust(){ fxBust(-1, 0); }
-function fxBlackjack(seat){
-  const p = seat === -1 ? dealerPos() : seatPos(seat);
-  shake = Math.max(shake, .8);
-  floats.push({ x: p.x, y: p.y - 24, txt: "BLACKJACK", col: "#e8c66a", t: 0, dur: 2.4, vy: -34, big: true, glow: true });
-  glowRing.push({ x: p.x, y: p.y, t: 0, dur: 1.1, col: "232,198,106" });
-  for (let i = 0; i < 70; i++){
-    const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 430;
-    bursts.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90,
-                  r: 2 + Math.random() * 5, life: .9 + Math.random() * .9, max: 1.8,
-                  c: Math.random() < .55 ? "232,198,106" : "255,255,255", spin: true });
+function addSpark(x, y, n, col, spread, speed){
+  for (let i = 0; i < n; i++){
+    const a = Math.random() * Math.PI * 2;
+    sparks.push({ x, y, vx: Math.cos(a) * (speed || 200) * (.4 + Math.random()),
+                  vy: Math.sin(a) * (speed || 200) * (.4 + Math.random()) + 60,
+                  life: .3 + Math.random() * .5, max: .8, col, r: 1 + Math.random() * 2.6 });
   }
 }
-function fxResult(seat, hand, res){
-  if (res === "bust") return;                     // already handled at bust time
-  const p = seatPos(seat);
-  const map = { win:["WIN","#4ade80"], blackjack:["BLACKJACK","#e8c66a"],
-                push:["PUSH","#7dd3fc"], lose:["LOSE","#f87171"] };
-  const m = map[res]; if (!m) return;
-  if (res === "blackjack") return;
-  floats.push({ x: p.x + (hand ? 60 : 0), y: p.y - 6, txt: m[0], col: m[1], t: 0, dur: 1.6, vy: -28 });
-  if (res === "win") glowRing.push({ x: p.x, y: p.y, t: 0, dur: .9, col: "74,222,128" });
+function floater(x, y, txt, col, big){
+  floaters.push({ x, y, txt, col, big, t: 0, dur: big ? 1.6 : 1.0 });
 }
 
-function cardSlot(seat, hand, idx){
-  if (seat === -1){ const d = dealerPos(); return { x: d.x - 34 + idx * 28, y: d.y }; }
-  const p = seatPos(seat);
-  const s = T.seats[seat];
-  const nHands = s && s.hands.length > 1 ? 2 : 1;
-  const hx = nHands > 1 ? (hand === 0 ? -46 : 46) : 0;
-  return { x: p.x + hx - 18 + idx * 20, y: p.y - idx * 5 };
-}
+function drawBackdrop(t){
+  const g = ctx.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, "#0a0f1e"); g.addColorStop(.55, "#0b1020"); g.addColorStop(1, "#04060c");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 
-/* ---- drawing primitives ---- */
-function rr(x, y, w, h, r){
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);         ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-}
-function drawCard(x, y, card, faceDown, scale, rot){
-  const sc = scale == null ? 1 : scale;
+  // distant city
   ctx.save();
-  ctx.translate(x, y);
-  if (rot) ctx.rotate(rot);
-  ctx.scale(sc, 1);
-  const w = CW, h = CH;
-  ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 5;
-  if (faceDown){
-    const g = ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
-    g.addColorStop(0, "#7f1d1d"); g.addColorStop(.5, "#450a0a"); g.addColorStop(1, "#7f1d1d");
-    ctx.fillStyle = g; rr(-w/2, -h/2, w, h, 7); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(232,198,106,.55)"; ctx.lineWidth = 1.6;
-    rr(-w/2 + 5, -h/2 + 5, w - 10, h - 10, 4); ctx.stroke();
-    ctx.fillStyle = "rgba(232,198,106,.30)";
-    ctx.font = "700 20px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("♠", 0, 0);
-  } else {
-    ctx.fillStyle = "#fbfaf7"; rr(-w/2, -h/2, w, h, 7); ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 1; rr(-w/2, -h/2, w, h, 7); ctx.stroke();
-    const col = isRed(card) ? "#c81e3a" : "#12181f";
-    ctx.fillStyle = col;
-    ctx.textAlign = "left"; ctx.textBaseline = "top";
-    ctx.font = "800 15px Georgia, serif";
-    ctx.fillText(rankTxt(card), -w/2 + 6, -h/2 + 5);
-    ctx.font = "700 13px Georgia, serif";
-    ctx.fillText(suitTxt(card), -w/2 + 6, -h/2 + 21);
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "700 30px Georgia, serif";
-    ctx.fillText(suitTxt(card), 0, 2);
-    ctx.save(); ctx.rotate(Math.PI);
-    ctx.textAlign = "left"; ctx.textBaseline = "top";
-    ctx.font = "800 15px Georgia, serif";
-    ctx.fillText(rankTxt(card), -w/2 + 6, -h/2 + 5);
-    ctx.restore();
+  const bx = -cam.x * .12;
+  for (let i = 0; i < 26; i++){
+    const x = ((i * 137 + bx) % (W + 300)) - 150;
+    const h = 60 + ((i * 97) % 160);
+    ctx.fillStyle = "rgba(20,30,60,.75)";
+    ctx.fillRect(x, H * .78 - h, 74, h);
+    ctx.fillStyle = "rgba(46,230,255,.10)";
+    for (let w = 0; w < 4; w++)
+      if ((i * 7 + w * 13) % 5 < 2) ctx.fillRect(x + 10 + w * 15, H * .78 - h + 14 + ((i + w) % 4) * 16, 7, 9);
   }
   ctx.restore();
-}
-function drawChipStack(x, y, amount, small){
-  if (!amount) return;
-  const denoms = [[500,"#a855f7"],[100,"#1e293b"],[25,"#22c55e"],[5,"#ef4444"],[1,"#e2e8f0"]];
-  let rem = amount, stack = [];
-  for (const [v, c] of denoms){ while (rem >= v && stack.length < 12){ stack.push(c); rem -= v; } }
-  const r = small ? 11 : 14;
-  stack.forEach((c, i) => {
-    const yy = y - i * (small ? 3.2 : 4.2);
-    ctx.beginPath(); ctx.ellipse(x, yy, r, r * .42, 0, 0, Math.PI * 2);
-    ctx.fillStyle = c; ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1; ctx.stroke();
-  });
-  ctx.fillStyle = "#e8c66a"; ctx.font = "800 12px Segoe UI, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "bottom";
-  ctx.fillText(fmt(amount), x, y - stack.length * (small ? 3.2 : 4.2) - 8);
-}
 
-function drawFelt(t){
-  // vignette room
-  const bg = ctx.createRadialGradient(W/2, H*0.42, 40, W/2, H*0.42, Math.max(W,H)*0.78);
-  bg.addColorStop(0, "#123a30"); bg.addColorStop(.55, "#0a1f1a"); bg.addColorStop(1, "#05090b");
-  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
-
-  // table body: a big rounded arc anchored off the bottom
-  const cx = W/2, cy = H * 0.30, rx = Math.min(W * 0.62, 900), ry = Math.min(H * 0.86, 780);
+  // crowd silhouettes
   ctx.save();
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
-  const fg = ctx.createRadialGradient(cx, cy + ry * .25, 30, cx, cy + ry * .3, ry);
-  fg.addColorStop(0, "#146b52"); fg.addColorStop(.6, "#0d5240"); fg.addColorStop(1, "#07301f");
-  ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
-  // felt speckle
-  ctx.globalAlpha = .05;
+  const cy = H * .78;
   for (let i = 0; i < 90; i++){
-    ctx.fillStyle = i % 2 ? "#fff" : "#000";
-    ctx.fillRect((i * 137.5) % W, (i * 311.7) % H, 2, 2);
+    const px = ((i * 53 + (-cam.x * .35)) % (W + 200)) - 100;
+    const bob = Math.sin(t / 380 + i) * 3;
+    ctx.fillStyle = "rgba(8,12,26,.95)";
+    ctx.beginPath(); ctx.arc(px, cy + 18 + bob, 9, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(px - 9, cy + 24 + bob, 18, 26);
   }
-  ctx.globalAlpha = 1;
   ctx.restore();
 
-  // gold rail
+  // spotlights
   ctx.save();
-  ctx.strokeStyle = "rgba(232,198,106,.55)"; ctx.lineWidth = 6;
-  ctx.shadowColor = "rgba(232,198,106,.4)"; ctx.shadowBlur = 22;
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 2; ctx.shadowBlur = 0;
-  ctx.beginPath(); ctx.ellipse(cx, cy, rx - 6, ry - 6, 0, 0, Math.PI * 2); ctx.stroke();
-  ctx.restore();
-
-  // arc legend
-  ctx.save();
-  ctx.fillStyle = "rgba(232,198,106,.30)";
-  ctx.font = "800 15px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("BLACKJACK  PAYS  3  TO  2", cx, H * 0.40);
-  ctx.font = "600 11px Segoe UI, sans-serif"; ctx.fillStyle = "rgba(232,198,106,.20)";
-  ctx.fillText("DEALER MUST DRAW TO 16 AND STAND ON ALL 17s", cx, H * 0.44);
-  ctx.restore();
-
-  // shoe
-  const sp = shoePos();
-  ctx.save();
-  ctx.fillStyle = "#2a1810"; ctx.strokeStyle = "rgba(232,198,106,.4)"; ctx.lineWidth = 2;
-  rr(sp.x - 30, sp.y - 22, 60, 44, 6); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = "rgba(232,198,106,.5)"; ctx.font = "700 9px Segoe UI, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("SHOE", sp.x, sp.y + 1);
-  const pen = 1 - T.shoeIdx / (DECKS * 52);
-  ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(sp.x - 26, sp.y + 26, 52, 5);
-  ctx.fillStyle = pen < .3 ? "#f87171" : "#4ade80"; ctx.fillRect(sp.x - 26, sp.y + 26, 52 * pen, 5);
+  ctx.globalCompositeOperation = "lighter";
+  for (let i = 0; i < 3; i++){
+    const sx = W * (.2 + i * .3) + Math.sin(t / 1400 + i * 2) * 90;
+    const lg = ctx.createLinearGradient(sx, 0, sx, H * .82);
+    lg.addColorStop(0, i === 1 ? "rgba(255,212,71,.10)" : "rgba(46,230,255,.07)");
+    lg.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = lg;
+    ctx.beginPath(); ctx.moveTo(sx, 0); ctx.lineTo(sx + 150, H * .82); ctx.lineTo(sx - 150, H * .82);
+    ctx.closePath(); ctx.fill();
+  }
   ctx.restore();
 }
 
-function drawSeats(t){
-  for (let i = 0; i < SEATS; i++){
-    const s = T.seats[i], p = seatPos(i);
-    const mine = i === mySeat;
-    const isTurn = T.phase === PHASE.PLAYING && T.turnSeat === i;
-
-    // bet circle
-    ctx.save();
-    ctx.beginPath(); ctx.ellipse(p.x, p.y + 66, 34, 15, 0, 0, Math.PI * 2);
-    ctx.strokeStyle = mine ? "rgba(232,198,106,.75)" : "rgba(255,255,255,.18)";
-    ctx.lineWidth = mine ? 2.2 : 1.4;
-    if (mine){ ctx.shadowColor = "rgba(232,198,106,.5)"; ctx.shadowBlur = 14; }
-    ctx.stroke();
-    ctx.restore();
-
-    if (!occupied(s)){
-      ctx.fillStyle = "rgba(255,255,255,.16)";
-      ctx.font = "700 11px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("OPEN SEAT", p.x, p.y + 66);
-      continue;
-    }
-
-    // turn spotlight
-    if (isTurn){
-      const pulse = .5 + .5 * Math.sin(t / 180);
-      ctx.save();
-      ctx.beginPath(); ctx.ellipse(p.x, p.y + 20, 92, 74, 0, 0, Math.PI * 2);
-      const g = ctx.createRadialGradient(p.x, p.y + 20, 8, p.x, p.y + 20, 92);
-      g.addColorStop(0, `rgba(232,198,106,${.16 + pulse * .12})`);
-      g.addColorStop(1, "rgba(232,198,106,0)");
-      ctx.fillStyle = g; ctx.fill();
-      ctx.restore();
-    }
-
-    // cards
-    (s.hands || []).forEach((h, hi) => {
-      const activeHand = isTurn && T.turnHand === hi;
-      (h.cards || []).forEach((c, ci) => {
-        if (isFlying(i, hi, ci)) return;
-        const sl = cardSlot(i, hi, ci);
-        drawCard(sl.x, sl.y, c, false, 1, (ci - 1) * 0.03);
-      });
-      if (!h.cards || !h.cards.length) return;
-      const v = handValue(h.cards);
-      const bj = isBlackjack(h);
-      const sl = cardSlot(i, hi, 0);
-      // hand total badge
-      const bx = sl.x + ((h.cards.length - 1) * 20) / 2, by = p.y + 40;
-      ctx.save();
-      const col = v.bust ? "#f87171" : bj ? "#e8c66a" : activeHand ? "#fff" : "rgba(255,255,255,.82)";
-      ctx.fillStyle = "rgba(0,0,0,.55)";
-      rr(bx - 24, by - 11, 48, 22, 11); ctx.fill();
-      ctx.strokeStyle = activeHand ? "rgba(232,198,106,.9)" : "rgba(255,255,255,.2)";
-      ctx.lineWidth = activeHand ? 1.8 : 1; ctx.stroke();
-      ctx.fillStyle = col;
-      ctx.font = "800 13px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText(v.bust ? "BUST" : bj ? "BJ" : (v.soft ? "" : "") + v.total, bx, by);
-      ctx.restore();
-      // per-hand bet
-      drawChipStack(bx + (s.hands.length > 1 ? 0 : 0), p.y + 74, h.bet, true);
-    });
-    if (!s.hands.length && s.bet) drawChipStack(p.x, p.y + 74, s.bet, false);
-
-    // name plate
-    ctx.save();
-    const py = p.y + 104;
-    ctx.fillStyle = mine ? "rgba(232,198,106,.14)" : "rgba(0,0,0,.42)";
-    rr(p.x - 62, py - 15, 124, 30, 8); ctx.fill();
-    ctx.strokeStyle = mine ? "rgba(232,198,106,.6)" : "rgba(255,255,255,.12)";
-    ctx.lineWidth = 1; ctx.stroke();
-    ctx.font = "16px serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(AVATARS[s.avatar % AVATARS.length], p.x - 55, py);
-    ctx.fillStyle = mine ? "#e8c66a" : "#dfe7e4";
-    ctx.font = "800 11.5px Segoe UI, sans-serif";
-    ctx.fillText((s.name || "Player").slice(0, 9) + (s.bot ? " •" : ""), p.x - 33, py - 5);
-    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "700 10px Segoe UI, sans-serif";
-    ctx.fillText(fmt(s.bank), p.x - 33, py + 7);
-    ctx.restore();
-
-    // turn timer ring
-    if (isTurn && T.phaseEnd > t){
-      const total = s.bot ? 1600 : T_TURN;
-      const frac = clamp((T.phaseEnd - now()) / total, 0, 1);
-      ctx.save();
-      ctx.beginPath(); ctx.arc(p.x, py, 22, -Math.PI/2, -Math.PI/2 + frac * Math.PI * 2);
-      ctx.strokeStyle = frac < .3 ? "#f87171" : "#e8c66a"; ctx.lineWidth = 3;
-      ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 10;
-      ctx.stroke(); ctx.restore();
-    }
+function drawFloor(){
+  const gy = H * .80;
+  ctx.fillStyle = "#0a1220"; ctx.fillRect(0, gy, W, H - gy);
+  // neon grid receding
+  ctx.strokeStyle = "rgba(46,230,255,.16)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = -20; i <= 40; i++){
+    const wx = i * 80;
+    const a = worldToScreen(wx, 0), b = worldToScreen(wx, -260);
+    ctx.moveTo(a.x, a.y); ctx.lineTo(b.x + (b.x - W / 2) * .6, H);
   }
-}
-
-function drawDealer(t){
-  const d = dealerPos();
-  (T.dealer.cards || []).forEach((c, i) => {
-    if (isFlying(-1, 0, i)) return;
-    const sl = cardSlot(-1, 0, i);
-    const hidden = i === 1 && T.dealer.hole;
-    drawCard(sl.x, sl.y, c, hidden, 1, 0);
+  for (let j = 1; j < 9; j++){
+    const y = gy + j * j * 3.4;
+    ctx.moveTo(0, y); ctx.lineTo(W, y);
+  }
+  ctx.stroke();
+  // arena edge glow
+  ctx.strokeStyle = "rgba(255,59,92,.5)"; ctx.lineWidth = 3;
+  const l = worldToScreen(70, 0), r = worldToScreen(ARENA_W - 70, 0);
+  ctx.beginPath(); ctx.moveTo(l.x, l.y); ctx.lineTo(r.x, r.y); ctx.stroke();
+  // cage posts
+  [70, ARENA_W - 70].forEach(wx => {
+    const p = worldToScreen(wx, 0), tp = worldToScreen(wx, 300);
+    ctx.strokeStyle = "rgba(140,160,220,.35)"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(tp.x, tp.y); ctx.stroke();
   });
-  if (T.dealer.cards && T.dealer.cards.length){
-    const shown = T.dealer.hole ? [T.dealer.cards[0]] : T.dealer.cards;
-    const v = handValue(shown);
-    ctx.save();
-    ctx.fillStyle = "rgba(0,0,0,.55)";
-    rr(d.x - 26, d.y - 74, 52, 22, 11); ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1; ctx.stroke();
-    ctx.fillStyle = v.bust ? "#f87171" : "#fff";
-    ctx.font = "800 13px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText(v.bust ? "BUST" : v.total + (T.dealer.hole ? "+" : ""), d.x, d.y - 63);
-    ctx.restore();
-  }
-  // dealer plate
+}
+
+// ---- the mech itself, drawn procedurally so it can animate
+function drawBot(b, t){
+  const s = worldToScreen(b.x, b.y);
+  const z = cam.z, col = b.def.col;
+  const walk = Math.min(1, Math.abs(b.vx) / 4);
+  const phase = t / 90;
+  const lean = clamp(b.vx * .02, -.22, .22);
+  const dead = b.hp <= 0;
+
   ctx.save();
+  ctx.translate(s.x, s.y);
+  ctx.scale(z, z);
+  if (dead){ ctx.rotate(b.def.side === 0 ? -1.35 : 1.35); ctx.translate(0, 26); }
+  else ctx.rotate(lean);
+  ctx.scale(b.face, 1);
+
+  // shadow
+  ctx.save(); ctx.scale(1 / z, 1 / z);
   ctx.fillStyle = "rgba(0,0,0,.45)";
-  rr(d.x - 58, d.y - 118, 116, 28, 9); ctx.fill();
-  ctx.strokeStyle = "rgba(232,198,106,.4)"; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = "#e8c66a"; ctx.font = "800 11px Segoe UI, sans-serif";
-  ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.fillText("🤖  DEALER", d.x, d.y - 104);
+  ctx.beginPath(); ctx.ellipse(0, 4, 36 * z, 8 * z, 0, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-}
 
-function isFlying(seat, hand, idx){
-  return flyers.some(f => f.seat === seat && (seat === -1 || f.hand === hand) && f.idx === idx);
-}
+  const flash = b.hitFlash > 0;
+  const body = flash ? "#ffffff" : "#1b2540";
+  const trim = flash ? "#ffffff" : col;
 
-function drawFlyers(dt){
-  for (let i = flyers.length - 1; i >= 0; i--){
-    const f = flyers[i];
-    f.t += dt;
-    const p = clamp(f.t / f.dur, 0, 1);
-    const e = 1 - Math.pow(1 - p, 3);
-    const to = cardSlot(f.seat, f.hand, f.idx);
-    const x = f.from.x + (to.x - f.from.x) * e;
-    const y = f.from.y + (to.y - f.from.y) * e;
-    // flip: scaleX crosses zero at the halfway point
-    const faceDown = f.hole ? true : p < .5;
-    const sc = f.hole ? 1 : Math.abs(Math.cos(p * Math.PI));
-    drawCard(x, y, f.card, faceDown, Math.max(.06, sc), (1 - e) * 0.5);
-    if (p >= 1) flyers.splice(i, 1);
-  }
-}
-function drawChipsFx(dt){
-  for (let i = chips.length - 1; i >= 0; i--){
-    const c = chips[i]; c.t += dt;
-    const p = clamp(c.t / c.dur, 0, 1), e = 1 - Math.pow(1 - p, 2.4);
-    const x = c.x + (c.tx - c.x) * e;
-    const y = c.y + (c.ty - c.y) * e - Math.sin(p * Math.PI) * 70;
+  // legs
+  const legSwing = Math.sin(phase * 6) * 14 * walk;
+  [-1, 1].forEach((sgn, li) => {
+    const sw = li === 0 ? legSwing : -legSwing;
     ctx.save();
-    ctx.beginPath(); ctx.ellipse(x, y, 11, 5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = c.c; ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.translate(sgn * 11, -26);
+    ctx.rotate(sw * Math.PI / 180 * (dead ? 0 : 1));
+    ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.roundRect(-7, 0, 14, 28, 3); ctx.fill(); ctx.stroke();
+    ctx.translate(0, 26);
+    ctx.rotate(Math.abs(sw) * Math.PI / 180 * .5);
+    ctx.beginPath(); ctx.roundRect(-8, 0, 16, 12, 3); ctx.fill(); ctx.stroke();
     ctx.restore();
-    if (p >= 1) chips.splice(i, 1);
+  });
+
+  // torso
+  const bob = Math.sin(phase * 12) * 1.6 * walk;
+  ctx.translate(0, bob);
+  ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2.4;
+  ctx.beginPath(); ctx.roundRect(-20, -78, 40, 54, 7); ctx.fill(); ctx.stroke();
+  // chest core
+  ctx.fillStyle = flash ? "#fff" : col;
+  ctx.globalAlpha = .85;
+  ctx.beginPath(); ctx.arc(0, -56, 7 + Math.sin(t / 160) * 1.2, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // shoulder pads
+  ctx.fillStyle = body; ctx.strokeStyle = trim;
+  ctx.beginPath(); ctx.roundRect(-30, -76, 13, 20, 4); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.roundRect(17, -76, 13, 20, 4); ctx.fill(); ctx.stroke();
+
+  // arms -- driven by attack state
+  const atk = b.state === "melee" ? (1 - b.stateT / 18) : 0;
+  const punch = Math.sin(atk * Math.PI) * 30;
+  const gun = b.state === "shoot" ? 1 : 0;
+  // back arm
+  ctx.save();
+  ctx.translate(-16, -66); ctx.rotate(-.5 + gun * .2);
+  ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-6, 0, 12, 26, 3); ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // front arm / weapon
+  ctx.save();
+  ctx.translate(16, -66);
+  ctx.rotate(gun ? -1.45 : (-.35 - atk * .9));
+  ctx.translate(punch * .3, 0);
+  ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(-6, 0, 12, 24, 3); ctx.fill(); ctx.stroke();
+  // fist / barrel
+  ctx.translate(0, 24);
+  if (gun){
+    ctx.fillStyle = "#2a3352"; ctx.beginPath(); ctx.roundRect(-5, 0, 10, 20, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = col; ctx.globalAlpha = .9;
+    ctx.beginPath(); ctx.arc(0, 20, 4.5, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = flash ? "#fff" : "#2a3352";
+    ctx.beginPath(); ctx.roundRect(-8, 0, 16, 14, 4); ctx.fill(); ctx.stroke();
   }
-}
-function drawBursts(dt){
-  for (let i = bursts.length - 1; i >= 0; i--){
-    const b = bursts[i]; b.life -= dt;
-    if (b.life <= 0){ bursts.splice(i, 1); continue; }
-    b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 620 * dt; b.vx *= .99;
-    const a = clamp(b.life / b.max, 0, 1);
-    ctx.globalAlpha = a;
-    ctx.fillStyle = `rgb(${b.c})`;
-    if (b.spin){
-      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.life * 9);
-      ctx.fillRect(-b.r, -b.r * .5, b.r * 2, b.r); ctx.restore();
-    } else {
-      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * a + .5, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // head
+  ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2.2;
+  ctx.beginPath(); ctx.roundRect(-13, -100, 26, 22, 5); ctx.fill(); ctx.stroke();
+  // eye
+  ctx.fillStyle = b.bers > 0 ? "#ff3b5c" : (flash ? "#fff" : col);
+  ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 12;
+  ctx.fillRect(-8, -93, 16, 5);
+  ctx.shadowBlur = 0;
+  // antenna
+  ctx.strokeStyle = trim; ctx.lineWidth = 1.6;
+  ctx.beginPath(); ctx.moveTo(6, -100); ctx.lineTo(11, -112); ctx.stroke();
+  ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -113, 2.2, 0, Math.PI * 2); ctx.fill();
+
+  ctx.restore();
+
+  // ---- status auras (screen space)
+  if (b.shield > 0){
+    ctx.save(); ctx.translate(s.x, s.y - 52 * z);
+    const pulse = .55 + Math.sin(t / 110) * .2;
+    ctx.strokeStyle = `rgba(46,230,255,${pulse})`; ctx.lineWidth = 2.5;
+    ctx.shadowColor = "#2ee6ff"; ctx.shadowBlur = 18;
+    ctx.beginPath(); ctx.ellipse(0, 0, 46 * z, 62 * z, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  if (b.over > 0){
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 3; i++){
+      const a = t / 90 + i * 2.1;
+      ctx.strokeStyle = "rgba(255,212,71,.55)"; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y - 50 * z, (36 + i * 7) * z, a, a + 1.5); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if (b.bers > 0){
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = "rgba(255,59,92,.16)";
+    ctx.beginPath(); ctx.arc(s.x, s.y - 50 * z, 58 * z, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  if (b.stun > 0){
+    for (let i = 0; i < 3; i++){
+      const a = t / 120 + i * 2.1;
+      const px = s.x + Math.cos(a) * 22 * z, py = s.y - 108 * z + Math.sin(a) * 6 * z;
+      ctx.fillStyle = "#ffd447";
+      ctx.beginPath(); ctx.arc(px, py, 2.6 * z, 0, Math.PI * 2); ctx.fill();
     }
   }
-  ctx.globalAlpha = 1;
+  // smoke when badly damaged
+  if (b.hp > 0 && b.hp / b.def.maxHp < .35 && Math.random() < .3){
+    sparks.push({ x: s.x + (Math.random() - .5) * 26, y: s.y - 70 * z, vx: (Math.random() - .5) * 20,
+                  vy: -40 - Math.random() * 40, life: .8, max: .8, col: "80,90,110", r: 3 + Math.random() * 4 });
+  }
 }
-function drawFloats(dt){
-  for (let i = floats.length - 1; i >= 0; i--){
-    const f = floats[i]; f.t += dt;
+
+function drawPickups(F, t){
+  for (const p of F.pickups){
+    const meta = POWERUPS.find(x => x.id === p.id) || POWERUPS[0];
+    const s = worldToScreen(p.x, p.y + 26 + Math.sin(t / 240) * 6);
+    ctx.save();
+    ctx.translate(s.x, s.y);
+    ctx.rotate(Math.sin(t / 500) * .25);
+    const z = cam.z;
+    ctx.shadowColor = meta.col; ctx.shadowBlur = 22;
+    ctx.fillStyle = "rgba(10,14,26,.9)";
+    ctx.strokeStyle = meta.col; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.roundRect(-17 * z, -17 * z, 34 * z, 34 * z, 8 * z); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = meta.col;
+    ctx.font = `900 ${17 * z}px Segoe UI, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(meta.icon, 0, 1);
+    ctx.restore();
+    // beam from sky while falling
+    if (p.y > 8){
+      const top = worldToScreen(p.x, 400);
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createLinearGradient(top.x, top.y, s.x, s.y);
+      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, meta.col + "55");
+      ctx.fillStyle = g; ctx.fillRect(s.x - 14, top.y, 28, s.y - top.y);
+      ctx.restore();
+    }
+  }
+}
+
+function drawShots(F, t){
+  for (const s of F.shots){
+    const p = worldToScreen(s.x, s.y);
+    const col = F.bots[s.owner].def.col;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    if (s.rocket){
+      ctx.fillStyle = "#ff8a2b"; ctx.shadowColor = "#ff8a2b"; ctx.shadowBlur = 16;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, 9 * cam.z, 5 * cam.z, 0, 0, Math.PI * 2); ctx.fill();
+      addSpark(p.x - Math.sign(s.vx) * 10, p.y, 1, "255,138,43", 0, 40);
+    } else {
+      ctx.strokeStyle = col; ctx.lineWidth = 3.5 * cam.z;
+      ctx.shadowColor = col; ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.moveTo(p.x - s.vx * 2.2, p.y); ctx.lineTo(p.x + s.vx * .6, p.y); ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawFx(dt){
+  // sparks
+  for (let i = sparks.length - 1; i >= 0; i--){
+    const s = sparks[i]; s.life -= dt;
+    if (s.life <= 0){ sparks.splice(i, 1); continue; }
+    s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 420 * dt; s.vx *= .98;
+    const a = s.life / s.max;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = `rgb(${s.col})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r * a + .4, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  // shockwave rings
+  for (let i = rings.length - 1; i >= 0; i--){
+    const r = rings[i]; r.t += dt;
+    const p = r.t / r.dur;
+    if (p >= 1){ rings.splice(i, 1); continue; }
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = (1 - p) * .8;
+    ctx.strokeStyle = r.col; ctx.lineWidth = (1 - p) * 6 + 1;
+    ctx.beginPath(); ctx.arc(r.x, r.y, r.r0 + p * r.r1, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+  // damage numbers / call-outs
+  for (let i = floaters.length - 1; i >= 0; i--){
+    const f = floaters[i]; f.t += dt;
     const p = f.t / f.dur;
-    if (p >= 1){ floats.splice(i, 1); continue; }
+    if (p >= 1){ floaters.splice(i, 1); continue; }
     ctx.save();
     ctx.globalAlpha = clamp((1 - p) * 2.2, 0, 1);
-    ctx.translate(f.x, f.y + f.vy * p);
-    const s = f.big ? 1 + (1 - Math.pow(1 - clamp(p * 3, 0, 1), 3)) * .3 : 1;
-    ctx.scale(s, s);
-    ctx.font = f.big ? "900 30px Georgia, serif" : "900 18px Segoe UI, sans-serif";
+    ctx.translate(f.x, f.y - p * (f.big ? 60 : 42));
+    const sc = f.big ? 1 + (1 - Math.pow(1 - Math.min(1, p * 3), 3)) * .4 : 1;
+    ctx.scale(sc, sc);
+    ctx.font = f.big ? "900 34px Segoe UI, sans-serif" : "900 19px Segoe UI, sans-serif";
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    if (f.glow){ ctx.shadowColor = f.col; ctx.shadowBlur = 26; }
-    ctx.fillStyle = f.col;
-    ctx.fillText(f.txt, 0, 0);
-    ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.2; ctx.strokeText(f.txt, 0, 0);
+    ctx.lineWidth = 3.5; ctx.strokeStyle = "rgba(0,0,0,.75)";
+    ctx.strokeText(f.txt, 0, 0);
+    ctx.fillStyle = f.col; ctx.fillText(f.txt, 0, 0);
     ctx.restore();
   }
-}
-function drawRings(dt){
-  for (let i = glowRing.length - 1; i >= 0; i--){
-    const g = glowRing[i]; g.t += dt;
-    const p = g.t / g.dur;
-    if (p >= 1){ glowRing.splice(i, 1); continue; }
-    ctx.save();
-    ctx.globalAlpha = (1 - p) * .8;
-    ctx.strokeStyle = `rgb(${g.col})`; ctx.lineWidth = 3 * (1 - p) + 1;
-    ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 20;
-    ctx.beginPath(); ctx.ellipse(g.x, g.y + 20, 40 + p * 110, 26 + p * 70, 0, 0, Math.PI * 2);
-    ctx.stroke(); ctx.restore();
-  }
+  ctx.globalAlpha = 1;
 }
 
-function drawBanner(t){
-  let txt = T.msg || "";
-  if (T.phase === PHASE.BETTING){
-    const left = Math.max(0, Math.ceil((T.phaseEnd - now()) / 1000));
-    txt = "PLACE YOUR BETS  ·  " + left + "s";
-  } else if (T.phase === PHASE.IDLE){
-    txt = T.seats.some(occupied) ? "Starting..." : "WAITING FOR PLAYERS";
+// ---- health bars + fight HUD
+function drawFightHUD(F){
+  const pad = 16, barW = Math.min(W * .36, 420), barH = 22, top = 66;
+  for (let i = 0; i < 2; i++){
+    const b = F.bots[i], right = i === 1;
+    const x = right ? W - pad - barW : pad;
+    const frac = clamp(b.hp / b.def.maxHp, 0, 1);
+    ctx.save();
+    ctx.fillStyle = "rgba(6,9,18,.85)";
+    ctx.beginPath(); ctx.roundRect(x, top, barW, barH, 6); ctx.fill();
+    ctx.strokeStyle = "rgba(120,140,220,.3)"; ctx.lineWidth = 1; ctx.stroke();
+    const fw = (barW - 6) * frac;
+    const g = ctx.createLinearGradient(x, 0, x + barW, 0);
+    g.addColorStop(0, b.def.col); g.addColorStop(1, b.def.col + "88");
+    ctx.fillStyle = g;
+    ctx.shadowColor = b.def.col; ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.roundRect(right ? x + barW - 3 - fw : x + 3, top + 3, fw, barH - 6, 4); ctx.fill();
+    ctx.shadowBlur = 0;
+    // name + hp
+    ctx.font = "900 14px Segoe UI, sans-serif";
+    ctx.textAlign = right ? "right" : "left"; ctx.textBaseline = "bottom";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(b.def.name, right ? x + barW : x, top - 5);
+    ctx.font = "700 11px Segoe UI, sans-serif";
+    ctx.fillStyle = "rgba(200,210,240,.75)";
+    ctx.textBaseline = "top";
+    ctx.fillText(Math.ceil(b.hp) + " / " + b.def.maxHp + "   " + b.def.chassis,
+                 right ? x + barW : x, top + barH + 5);
+    // active buffs
+    const buffs = [];
+    if (b.over > 0) buffs.push(["OVERCLOCK", "#ffd447"]);
+    if (b.shield > 0) buffs.push(["SHIELD", "#2ee6ff"]);
+    if (b.bers > 0) buffs.push(["BERSERK", "#ff3b5c"]);
+    if (b.rocket > 0) buffs.push(["ROCKETS x" + b.rocket, "#ff8a2b"]);
+    if (b.stun > 0) buffs.push(["STUNNED", "#a78bfa"]);
+    buffs.forEach((bf, k) => {
+      ctx.font = "800 10px Segoe UI, sans-serif";
+      ctx.fillStyle = bf[1];
+      ctx.fillText(bf[0], right ? x + barW : x, top + barH + 22 + k * 13);
+    });
+    ctx.restore();
   }
-  if (!txt) return;
+  // fight clock
+  const left = Math.max(0, Math.ceil((MAX_TICKS - F.tick) / 60));
   ctx.save();
-  ctx.font = "800 13px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  const w = ctx.measureText(txt).width + 40;
-  ctx.fillStyle = "rgba(0,0,0,.5)";
-  rr(W/2 - w/2, H * 0.475, w, 32, 16); ctx.fill();
-  ctx.strokeStyle = "rgba(232,198,106,.35)"; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = "#e8c66a";
-  ctx.fillText(txt.toUpperCase(), W/2, H * 0.475 + 16);
+  ctx.font = "900 22px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillStyle = left < 10 ? "#ff3b5c" : "#e8ecff";
+  ctx.fillText(left + "s", W / 2, top);
   ctx.restore();
 }
+/* =====================================================================
+   ARENA STATE + NETWORK
 
-let lastFrame = performance.now();
+   Shared state is tiny: a phase, a deadline, and two seeds. Everything
+   else -- every punch, every pickup, the winner -- is derived locally by
+   running the same simulation. An elected host only advances the phase
+   machine; it never streams combat.
+   ===================================================================== */
+const PHASE = { BETTING:"betting", FIGHT:"fight", RESULT:"result" };
+let A = {
+  phase: PHASE.BETTING, phaseEnd: now() + T_BET, fightNo: 1,
+  botSeed: (Math.random() * 4294967296) >>> 0, fightSeed: 0, startAt: 0
+};
+let F = null;                 // live simulation
+let bots = makeBots(A.botSeed);
+let odds = oddsFor(bots);
+let myUid = "u" + Math.random().toString(36).slice(2, 10);
+let isHost = false, netReady = false, lastStateAt = 0;
+let myBet = null;             // {side, amount, fightNo}
+let settled = -1;             // last fightNo we paid out
+let bookBets = {};            // everyone's bets this fight (display only)
+let baseRef = null, stateRef = null, betsRef = null, chatRef = null, richRef = null;
+
+const ROOM = () => (S.room || "arena").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "arena";
+const rnd32 = () => (Math.random() * 4294967296) >>> 0;
+
+function setNet(mode, txt){ $("netDot").className = "dot " + mode; $("netTxt").textContent = txt; }
+
+function connect(){
+  if (!ONLINE){
+    isHost = true; netReady = true;
+    setNet("solo", "Solo arena");
+    $("joinNote").innerHTML = "<b style='color:#ffd447'>Solo mode.</b> No database configured, so this arena is yours alone.";
+    beginBetting(true);
+    return;
+  }
+  const base = "arena/" + ROOM();
+  baseRef  = db.ref(base);
+  stateRef = db.ref(base + "/state");
+  betsRef  = db.ref(base + "/bets");
+  chatRef  = db.ref(base + "/chat");
+  richRef  = db.ref("richlist");
+
+  db.ref(".info/connected").on("value", s => {
+    if (!s.val()){ setNet("", "Reconnecting"); return; }
+    setNet("live", "Live: " + ROOM());
+    db.ref(base + "/viewers/" + myUid).onDisconnect().remove();
+    db.ref(base + "/viewers/" + myUid).set({ name: S.name || "Punter", ts: now() });
+  });
+
+  stateRef.on("value", snap => {
+    netReady = true; lastStateAt = now();
+    const v = snap.val();
+    if (!v){ if (isHost) pushState(); return; }
+    adoptState(v);
+  });
+
+  betsRef.on("value", snap => { bookBets = snap.val() || {}; renderBook(); });
+
+  chatRef.limitToLast(24).on("child_added", s => {
+    const m = s.val(); if (!m) return;
+    addChat(m.name, m.text, m.sys, m.col);
+  });
+
+  // Host election: whoever holds a fresh lease drives the phase machine.
+  // A host that stops advancing (throttled tab, closed page) is replaced.
+  setInterval(() => {
+    if (!ONLINE || !netReady) return;
+    const stalled = !isHost && lastStateAt && now() - lastStateAt > 12000 &&
+                    A.phaseEnd && now() - A.phaseEnd > 12000;
+    db.ref(base + "/host").transaction(cur => {
+      const t = now();
+      if (!cur || !cur.uid || t - (cur.ts || 0) > 7000 || cur.uid === myUid) return { uid: myUid, ts: t };
+      if (stalled) return { uid: myUid, ts: t };
+      return;
+    }, (err, committed, snap) => {
+      const v = snap && snap.val();
+      const was = isHost;
+      isHost = !!(v && v.uid === myUid);
+      if (isHost && !was) sysChat("Ring control taken over by " + (S.name || "a viewer") + ".");
+    });
+  }, 2500);
+}
+
+// Adopt shared state. The key subtlety: when a fight is already running we
+// rebuild the simulation and FAST-FORWARD it to the correct tick, so a
+// viewer arriving mid-fight lands exactly in step with everyone else.
+function adoptState(v){
+  const newFight = v.fightNo !== A.fightNo;
+  const phaseChanged = v.phase !== A.phase;
+  A.phase = v.phase; A.phaseEnd = v.phaseEnd; A.fightNo = v.fightNo;
+  A.botSeed = v.botSeed; A.fightSeed = v.fightSeed || 0; A.startAt = v.startAt || 0;
+
+  if (newFight || !bots || (bots.seedFrom !== A.botSeed)){
+    bots = makeBots(A.botSeed); bots.seedFrom = A.botSeed;
+    odds = oddsFor(bots);
+    if (newFight){ myBet = null; pendingBet = 0; sel = -1; }
+    renderMatchup();
+  }
+  if (A.phase === PHASE.FIGHT && A.fightSeed){
+    const wantTick = Math.floor((now() - A.startAt) / TICK_MS);
+    if (!F || F.seedFrom !== A.fightSeed){
+      F = initFight(A.botSeed, A.fightSeed); F.seedFrom = A.fightSeed;
+      lastAnnounced = -1; announced = {};
+      if (wantTick > 4) simulateTo(F, wantTick);      // late joiner catch-up
+      else { SFX.bell(); announce("FIGHT!", "#ffd447"); }
+    } else if (wantTick - F.tick > 90){
+      simulateTo(F, wantTick);                        // we fell badly behind
+    }
+  }
+  if (phaseChanged) onPhase(A.phase);
+  syncUI();
+}
+
+function pushState(){
+  if (!ONLINE || !isHost) return;
+  stateRef.set({ phase: A.phase, phaseEnd: A.phaseEnd, fightNo: A.fightNo,
+                 botSeed: A.botSeed, fightSeed: A.fightSeed, startAt: A.startAt, hostTs: now() })
+          .catch(e => console.warn(e));
+}
+
+/* ---- host phase machine ---- */
+function beginBetting(local){
+  A.phase = PHASE.BETTING;
+  A.fightNo = (A.fightNo || 0) + (local ? 0 : 1);
+  A.botSeed = rnd32();
+  A.fightSeed = 0;                 // deliberately withheld until the bell
+  A.startAt = 0;
+  A.phaseEnd = now() + T_BET;
+  bots = makeBots(A.botSeed); bots.seedFrom = A.botSeed;
+  odds = oddsFor(bots);
+  F = null; myBet = null; pendingBet = 0; sel = -1;
+  if (ONLINE && isHost) betsRef.remove();
+  renderMatchup(); onPhase(A.phase); pushState(); syncUI();
+}
+function beginFight(){
+  A.phase = PHASE.FIGHT;
+  A.fightSeed = rnd32();           // revealed now -- bets are already locked
+  A.startAt = now() + 600;         // small grace so everyone starts together
+  A.phaseEnd = A.startAt + MAX_TICKS * TICK_MS;
+  pushState();
+}
+function beginResult(){
+  A.phase = PHASE.RESULT;
+  A.phaseEnd = now() + T_RESULT;
+  pushState();
+}
+function hostTick(){
+  if (!isHost) return;
+  const t = now();
+  if (A.phase === PHASE.BETTING && t >= A.phaseEnd) beginFight();
+  else if (A.phase === PHASE.FIGHT){
+    if (F && F.over) beginResult();
+    else if (t >= A.phaseEnd + 3000) beginResult();
+  }
+  else if (A.phase === PHASE.RESULT && t >= A.phaseEnd) beginBetting(false);
+}
+
+/* ---- phase reactions (all clients) ---- */
+function onPhase(p){
+  if (p === PHASE.BETTING){
+    settledThisFight = false;
+    announce("PLACE YOUR BETS", "#2ee6ff");
+    sysChat("Fight #" + A.fightNo + ": " + bots[0].name + " vs " + bots[1].name);
+  }
+  if (p === PHASE.FIGHT){ SFX.bell(); announce("FIGHT!", "#ffd447"); }
+  if (p === PHASE.RESULT) settle();
+}
+
+let settledThisFight = false;
+function settle(){
+  if (settledThisFight) return;
+  settledThisFight = true;
+  // Winner is derived locally from the seeds -- identical for everyone.
+  const w = F && F.over ? F.winner : resolveWinner(A.botSeed, A.fightSeed);
+  const winner = w >= 0 ? bots[w] : null;
+  if (winner){
+    announce(winner.name + " WINS", winner.col, true);
+    rings.push({ x: W/2, y: H*.5, r0: 30, r1: 460, dur: 1.1, col: winner.col, t: 0 });
+  } else announce("DRAW", "#8791b5", true);
+
+  if (myBet && myBet.fightNo === A.fightNo){
+    const st = S.stats;
+    st.bets++;
+    if (w < 0){                                  // draw: stake returned
+      S.bank += myBet.amount;
+      toast("Draw - stake returned.");
+    } else if (myBet.side === w){
+      const ret = Math.round(myBet.amount * myBet.odds);
+      const profit = ret - myBet.amount;
+      S.bank += ret; st.net += profit; st.wins++;
+      st.streak = (st.streak || 0);
+      curStreak++; if (curStreak > st.streak) st.streak = curStreak;
+      if (profit > st.big) st.big = profit;
+      if (S.bank > st.peak) st.peak = S.bank;
+      SFX.cash();
+      toast("YOU WIN " + fmt(ret) + "  (+" + fmt(profit) + ")", 4200);
+      floater(W/2, H*.42, "+" + fmt(profit), "#3ddc84", true);
+      if (ONLINE) postRich();
+    } else {
+      st.net -= myBet.amount; curStreak = 0;
+      toast("Lost " + fmt(myBet.amount) + ".", 3200);
+    }
+    save();
+  }
+  myBet = null;
+  syncUI();
+}
+let curStreak = 0;
+
+/* ---- betting ---- */
+let pendingBet = 0, sel = -1;
+function selectSide(i){
+  if (A.phase !== PHASE.BETTING || myBet) return;
+  sel = i;
+  $("sideA").classList.toggle("sel", i === 0);
+  $("sideB").classList.toggle("sel", i === 1);
+  syncUI();
+}
+function addStake(v){
+  if (A.phase !== PHASE.BETTING || myBet) return;
+  if (v === 0){ pendingBet = 0; }
+  else if (v === -1){ pendingBet = Math.floor(S.bank); }
+  else pendingBet = Math.min(Math.floor(S.bank), pendingBet + v);
+  syncUI();
+}
+function placeBet(){
+  if (A.phase !== PHASE.BETTING || myBet) return;
+  if (sel < 0){ toast("Pick a robot first."); return; }
+  if (pendingBet < MIN_BET){ toast("Minimum bet is " + fmt(MIN_BET) + "."); return; }
+  if (pendingBet > S.bank){ toast("Not enough in the bank."); return; }
+  S.bank -= pendingBet; save();
+  myBet = { side: sel, amount: pendingBet, odds: odds[sel], fightNo: A.fightNo };
+  if (ONLINE && betsRef)
+    betsRef.child(myUid).set({ name: S.name || "Punter", side: sel, amount: pendingBet, fightNo: A.fightNo });
+  SFX.pick();
+  toast("Bet placed: " + fmt(pendingBet) + " on " + bots[sel].name);
+  pendingBet = 0;
+  syncUI();
+}
+
+function renderBook(){
+  const rows = Object.values(bookBets || {}).filter(b => b && b.fightNo === A.fightNo);
+  let pa = 0, pb = 0;
+  rows.forEach(b => { if (b.side === 0) pa += b.amount; else pb += b.amount; });
+  $("poolA").textContent = rows.length ? fmt(pa) + " staked" : "";
+  $("poolB").textContent = rows.length ? fmt(pb) + " staked" : "";
+  const list = $("bettorsList");
+  if (!rows.length){ $("bettors").style.display = "none"; return; }
+  $("bettors").style.display = "block";
+  rows.sort((a, b) => b.amount - a.amount);
+  list.innerHTML = rows.slice(0, 12).map(b =>
+    `<div class="r"><span class="n" style="color:${b.side === 0 ? "#2ee6ff" : "#ff3b5c"}">${esc(b.name)}</span>
+     <span>${fmt(b.amount)}</span></div>`).join("");
+}
+
+function renderMatchup(){
+  $("nameA").textContent = bots[0].name;
+  $("nameB").textContent = bots[1].name;
+  const st = b => `${b.chassis} · PWR ${(b.pwr*100|0)} · SPD ${(b.spd*100|0)} · ARM ${(b.arm*100|0)} · TEC ${(b.tec*100|0)}`;
+  $("statsA").textContent = st(bots[0]);
+  $("statsB").textContent = st(bots[1]);
+  $("oddsA").textContent = odds[0].toFixed(2) + "x";
+  $("oddsB").textContent = odds[1].toFixed(2) + "x";
+  $("fightNo").textContent = "#" + A.fightNo;
+}
+
+/* ---- announcer ---- */
+let announced = {}, lastAnnounced = -1;
+const CALLS = {
+  ko:      ["AND THAT IS THAT.", "SCRAP METAL.", "LIGHTS OUT!", "IT IS OVER!"],
+  crit:    ["OH, that hurt!", "Massive hit!", "Right through the plating!", "Brutal."],
+  power:   ["Power-up grabbed!", "That changes things.", "Look at that!"],
+  low:     ["{n} is barely holding together!", "{n} is smoking badly!", "{n} is one hit from the scrapheap!"],
+  comeback:["What a turnaround!", "{n} is fighting back!"],
+  start:   ["Here we go!", "Both machines online.", "The crowd is baying for oil."]
+};
+function announce(txt, col, big){
+  floater(W / 2, H * (big ? .34 : .28), txt, col || "#e8ecff", big !== false);
+}
+function commentate(ev){
+  if (!S.com) return;
+  for (const e of ev){
+    if (e.t === "hit" && e.kind === "crit" && Math.random() < .5)
+      sysChat("📣 " + pick(CALLS.crit));
+    if (e.t === "power")
+      sysChat("📣 " + pick(CALLS.power).replace("{n}", F.bots[e.i].def.name));
+    if (e.t === "ko")
+      sysChat("📣 " + pick(CALLS.ko));
+  }
+  // low-health call, once per bot per fight
+  if (F) F.bots.forEach((b, i) => {
+    if (b.hp > 0 && b.hp / b.def.maxHp < .22 && !announced["low" + i]){
+      announced["low" + i] = 1;
+      sysChat("📣 " + pick(CALLS.low).replace("{n}", b.def.name));
+    }
+  });
+}
+function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+
+/* ---- chat ---- */
+function addChat(name, text, sys, col){
+  const log = $("chatLog");
+  const d = document.createElement("div");
+  d.className = "m" + (sys ? " sys" : "");
+  d.innerHTML = sys ? esc(text)
+    : `<span class="who" style="color:${col || "#8791b5"}">${esc(name)}</span> ${esc(text)}`;
+  log.appendChild(d);
+  while (log.children.length > 50) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+function sysChat(text){
+  if (ONLINE && chatRef && isHost) chatRef.push({ text, sys: true, ts: now() });
+  else if (!ONLINE) addChat("", text, true);
+}
+function sendChat(text){
+  if (!text.trim()) return;
+  if (ONLINE && chatRef) chatRef.push({ name: S.name || "Punter", text: text.slice(0, 140), col: "#ffd447", ts: now() });
+  else addChat(S.name || "You", text, false, "#ffd447");
+}
+
+/* ---- rich list ---- */
+function postRich(){
+  if (!ONLINE || !richRef) return;
+  richRef.child(myUid).set({ name: S.name || "Punter", bank: Math.round(S.bank), ts: now() }).catch(()=>{});
+}
+function loadRich(){
+  const body = $("rlBody");
+  if (!ONLINE){
+    body.innerHTML = `<tr><td>1</td><td>${esc(S.name || "You")}</td><td class="num g">${fmt(S.bank)}</td></tr>`;
+    $("statsNote").textContent = "Solo mode - only your own bank is tracked.";
+    return;
+  }
+  $("statsNote").textContent = "Live global board.";
+  richRef.orderByChild("bank").limitToLast(10).once("value", s => {
+    const rows = []; s.forEach(c => rows.push(c.val()));
+    rows.sort((a, b) => b.bank - a.bank);
+    body.innerHTML = rows.length ? rows.map((r, i) =>
+      `<tr><td>${i+1}</td><td>${esc(r.name)}</td><td class="num g">${fmt(r.bank)}</td></tr>`).join("")
+      : `<tr><td colspan="3" style="color:#8791b5">Nobody on the board yet.</td></tr>`;
+  }, () => { body.innerHTML = `<tr><td colspan="3" style="color:#8791b5">Board unavailable.</td></tr>`; });
+}
+
+/* =====================================================================
+   MAIN LOOP
+   ===================================================================== */
+let lastFrame = performance.now(), acc = 0;
 function frame(t){
   requestAnimationFrame(frame);
-  const dt = Math.min(.05, (t - lastFrame) / 1000); lastFrame = t;
-  shake = Math.max(0, shake - dt * 2.4);
+  let dt = Math.min(.05, (t - lastFrame) / 1000); lastFrame = t;
+
+  if (isHost) hostTick();
+
+  // advance the sim to wall-clock, catching up if we dropped frames
+  if (A.phase === PHASE.FIGHT && A.fightSeed){
+    if (!F || F.seedFrom !== A.fightSeed){
+      F = initFight(A.botSeed, A.fightSeed); F.seedFrom = A.fightSeed;
+      announced = {};
+    }
+    const want = Math.floor((now() - A.startAt) / TICK_MS);
+    // A hidden tab pauses rAF, so we can return thousands of ticks behind.
+    // Catching up 8 per frame would crawl through minutes of slow motion, so
+    // resync silently first (no events -> no firework show for old combat).
+    if (want - F.tick > 120) simulateTo(F, want - 30);
+    let steps = 0;
+    while (F.tick < want && steps++ < 8 && !F.over){
+      const ev = stepFight(F);
+      handleEvents(ev);
+    }
+    if (F.over && A.phase === PHASE.FIGHT && isHost) hostTick();
+  }
+
+  // camera
+  if (F){
+    const mid = (F.bots[0].x + F.bots[1].x) / 2;
+    const spread = Math.abs(F.bots[0].x - F.bots[1].x);
+    const wantZ = clamp(Math.min(W / (spread + 420), H / 460), .55, 1.5);
+    cam.x += (mid - cam.x) * .07;
+    cam.z += (wantZ - cam.z) * .05;
+  } else {
+    cam.x += (ARENA_W / 2 - cam.x) * .05;
+    cam.z += (clamp(W / (ARENA_W * .75), .5, 1.1) - cam.z) * .05;
+  }
+  cam.shake = Math.max(0, cam.shake - dt * 2.6);
+  cam.flash = Math.max(0, cam.flash - dt * 3.2);
 
   ctx.clearRect(0, 0, W, H);
   ctx.save();
-  if (shake > 0) ctx.translate((Math.random() - .5) * shake * 12, (Math.random() - .5) * shake * 12);
-  drawFelt(t);
-  drawSeats(t);
-  drawDealer(t);
-  drawFlyers(dt);
-  drawChipsFx(dt);
-  drawRings(dt);
-  drawBursts(dt);
-  drawFloats(dt);
-  drawBanner(t);
+  if (S.shake && cam.shake > 0)
+    ctx.translate((Math.random() - .5) * cam.shake * 22, (Math.random() - .5) * cam.shake * 22);
+
+  drawBackdrop(t);
+  drawFloor();
+  if (F){
+    drawPickups(F, t);
+    // draw the further bot first so overlaps read correctly
+    const order = F.bots[0].x <= F.bots[1].x ? [0, 1] : [1, 0];
+    order.forEach(i => drawBot(F.bots[i], t));
+    drawShots(F, t);
+  } else {
+    drawIdleBots(t);
+  }
+  drawFx(dt);
+  ctx.restore();
+
+  if (cam.flash > 0){
+    ctx.fillStyle = `rgba(255,255,255,${cam.flash * .5})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+  if (F) drawFightHUD(F);
+  drawPhaseBanner(t);
+  requestAnimationFrame; // no-op
+}
+
+// Between fights, show the two contenders posing at their corners.
+function drawIdleBots(t){
+  const mk = (i) => ({
+    def: bots[i], hp: bots[i].maxHp, x: i === 0 ? 300 : ARENA_W - 300, y: 0,
+    vx: Math.sin(t / 600 + i) * .6, vy: 0, face: i === 0 ? 1 : -1,
+    stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0
+  });
+  drawBot(mk(0), t); drawBot(mk(1), t);
+}
+
+function drawPhaseBanner(t){
+  let txt = "", col = "#8791b5";
+  if (A.phase === PHASE.BETTING){
+    const left = Math.max(0, Math.ceil((A.phaseEnd - now()) / 1000));
+    txt = "BETS CLOSE IN " + left + "s"; col = left <= 5 ? "#ff3b5c" : "#ffd447";
+  } else if (A.phase === PHASE.RESULT){
+    const w = F && F.over ? F.winner : -1;
+    txt = w >= 0 ? bots[w].name + " TAKES IT" : "FIGHT OVER";
+    col = w >= 0 ? bots[w].col : "#8791b5";
+  }
+  if (!txt) return;
+  ctx.save();
+  ctx.font = "900 15px Segoe UI, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = ctx.measureText(txt).width + 44;
+  ctx.fillStyle = "rgba(6,9,18,.8)";
+  ctx.beginPath(); ctx.roundRect(W/2 - w/2, H * .13, w, 34, 17); ctx.fill();
+  ctx.strokeStyle = "rgba(120,140,220,.3)"; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = col;
+  ctx.fillText(txt, W/2, H * .13 + 18);
   ctx.restore();
 }
+
+// Turn simulation events into noise, light and debris.
+function handleEvents(ev){
+  if (!ev || !ev.length) return;
+  for (const e of ev){
+    if (e.t === "hit"){
+      const s = worldToScreen(e.x, 50);
+      const heavy = e.kind === "crit" || e.kind === "rocket";
+      addSpark(s.x, s.y, heavy ? 26 : 12, heavy ? "255,212,71" : "255,255,255", 0, heavy ? 340 : 200);
+      floater(s.x, s.y - 20, "-" + Math.round(e.dmg), heavy ? "#ffd447" : "#ffffff", false);
+      cam.shake = Math.min(1, cam.shake + (heavy ? .55 : .18));
+      if (heavy){ SFX.big(); rings.push({ x:s.x, y:s.y, r0:10, r1:120, dur:.45, col:"rgba(255,212,71,.9)", t:0 }); }
+      else SFX.hit();
+      if (e.kind === "crit") floater(s.x, s.y - 46, "CRITICAL", "#ffd447", true);
+    }
+    if (e.t === "shoot"){ SFX.laser(); const s = worldToScreen(e.x, 44); addSpark(s.x, s.y, 5, "255,255,255", 0, 120); }
+    if (e.t === "block"){ const s = worldToScreen(e.x, 50); SFX.shield();
+      rings.push({ x:s.x, y:s.y, r0:20, r1:70, dur:.4, col:"rgba(46,230,255,.9)", t:0 });
+      floater(s.x, s.y - 30, "BLOCKED", "#2ee6ff", false); }
+    if (e.t === "power"){
+      const meta = POWERUPS.find(p => p.id === e.id) || POWERUPS[0];
+      const s = worldToScreen(e.x, 60);
+      SFX.pick();
+      floater(s.x, s.y - 40, meta.name, meta.col, true);
+      rings.push({ x:s.x, y:s.y, r0:14, r1:150, dur:.7, col:meta.col, t:0 });
+      addSpark(s.x, s.y, 24, "255,255,255", 0, 260);
+    }
+    if (e.t === "drop"){ const meta = POWERUPS.find(p => p.id === e.id); if (meta) sysChat("⬇ " + meta.name + " incoming!"); }
+    if (e.t === "ko"){
+      const s = worldToScreen(e.x, 50);
+      SFX.ko(); cam.shake = 1; cam.flash = 1;
+      addSpark(s.x, s.y, 90, "255,138,43", 0, 520);
+      addSpark(s.x, s.y, 60, "255,212,71", 0, 380);
+      rings.push({ x:s.x, y:s.y, r0:20, r1:400, dur:1.0, col:"rgba(255,138,43,.95)", t:0 });
+      announce("K.O.", "#ff8a2b", true);
+    }
+  }
+  commentate(ev);
+}
+
 /* =====================================================================
    UI WIRING
    ===================================================================== */
 function syncUI(){
   $("bankTxt").textContent = fmt(S.bank);
-  const me = mySeat >= 0 ? T.seats[mySeat] : null;
-  // betSentRound stops the tray flickering back between locking a bet and the
-  // host echoing it, which would otherwise let a client stake twice.
-  const betting = T.phase === PHASE.BETTING && me && !me.bet && betSentRound !== T.round;
-  const myTurn = T.phase === PHASE.PLAYING && T.turnSeat === mySeat;
+  $("fightNo").textContent = "#" + A.fightNo;
+  const betting = A.phase === PHASE.BETTING && !myBet;
+  $("dock").classList.toggle("on", A.phase === PHASE.BETTING);
+  $("betAmt").textContent = fmt(pendingBet);
+  $("placeBtn").disabled = !betting || sel < 0 || pendingBet < MIN_BET || pendingBet > S.bank;
+  $("dockTitle").textContent = myBet ? "BET IS IN - GOOD LUCK" : "PLACE YOUR BETS";
+  const left = Math.max(0, Math.ceil((A.phaseEnd - now()) / 1000));
+  $("dockTimer").textContent = A.phase === PHASE.BETTING ? left + "s" : "--";
 
-  $("tray").classList.toggle("on", !!betting);
-  $("actions").classList.toggle("on", !!myTurn);
-  $("leaveBtn").style.display = mySeat >= 0 ? "" : "none";
-  $("betPill").style.display = pendingBet || (me && me.bet) ? "flex" : "none";
-  $("betTxt").textContent = fmt(pendingBet || (me ? me.bet : 0));
-  $("dealBtn").disabled = pendingBet < MIN_BET;
-  $("undoBtn").disabled = !betStack.length;
-  $("rebetBtn").disabled = !S.lastBet || S.lastBet > S.bank;
-
-  if (myTurn && me){
-    const h = me.hands[T.turnHand];
-    if (h){
-      const two = h.cards.length === 2;
-      $("dblBtn").disabled = !two || S.bank < h.bet;
-      $("splitBtn").disabled = !canSplit(h) || me.hands.length >= 2 || S.bank < h.bet;
-      if (S.hints && T.dealer.cards.length){
-        const mv = basicStrategy(h, cardVal(T.dealer.cards[0]));
-        const nm = { H:"HIT", S:"STAND", D:"DOUBLE", P:"SPLIT" }[mv];
-        $("actHint").textContent = "YOUR TURN  ·  BASIC STRATEGY SAYS " + nm;
-        [["hitBtn","H"],["standBtn","S"],["dblBtn","D"],["splitBtn","P"]].forEach(([id, k]) => {
-          $(id).style.boxShadow = (k === mv && !$(id).disabled) ? "0 0 0 2px #e8c66a, 0 0 20px rgba(232,198,106,.45)" : "";
-        });
-      } else {
-        $("actHint").textContent = "YOUR TURN";
-        ["hitBtn","standBtn","dblBtn","splitBtn"].forEach(id => $(id).style.boxShadow = "");
-      }
-    }
-  }
+  const tk = $("ticket");
+  if (myBet){
+    tk.style.display = "block";
+    const b = bots[myBet.side];
+    tk.innerHTML = `<div class="h">YOUR TICKET</div>
+      <div class="w" style="color:${b.col}">${esc(b.name)}</div>
+      <div>${fmt(myBet.amount)} @ ${myBet.odds.toFixed(2)}x</div>
+      <div style="color:#8791b5">returns ${fmt(myBet.amount * myBet.odds)}</div>`;
+  } else tk.style.display = "none";
 }
 
-/* ---- betting ---- */
-function addChip(v){
-  const me = mySeat >= 0 ? T.seats[mySeat] : null;
-  if (!me || T.phase !== PHASE.BETTING || me.bet) return;
-  if (pendingBet + v > S.bank){ toast("Not enough in the bank."); return; }
-  if (pendingBet + v > MAX_BET){ toast("Table max is " + fmt(MAX_BET) + "."); return; }
-  pendingBet += v; betStack.push(v);
-  SFX.chip(); fxChips(mySeat, 1);
-  syncUI();
-}
-function undoChip(){
-  if (!betStack.length) return;
-  pendingBet -= betStack.pop();
-  SFX.click(); syncUI();
-}
-function lockBet(){
-  const me = mySeat >= 0 ? T.seats[mySeat] : null;
-  if (!me || pendingBet < MIN_BET) return;
-  // never stake into a seat that is no longer mine
-  if (ONLINE && me.uid !== myUid){ toast("Reclaiming your seat..."); return; }
-  if (me.bet){ toast("Bet already placed for this round."); return; }
-  S.bank -= pendingBet; S.lastBet = pendingBet; save();
-  me.bank = S.bank;
-  betSentRound = T.round;
-  sendBet(pendingBet);
-  me.bet = pendingBet;
-  pendingBet = 0; betStack = [];
-  SFX.chip();
-  toast("Bet locked in.");
-  syncUI();
-}
+$("sideA").onclick = () => selectSide(0);
+$("sideB").onclick = () => selectSide(1);
+document.querySelectorAll(".chip").forEach(c =>
+  c.addEventListener("click", () => addStake(+c.dataset.v)));
+$("placeBtn").onclick = placeBet;
 
-document.querySelectorAll(".chip").forEach(el =>
-  el.addEventListener("click", () => addChip(+el.dataset.v)));
-$("undoBtn").onclick  = undoChip;
-$("dealBtn").onclick  = lockBet;
-$("rebetBtn").onclick = () => {
-  if (!S.lastBet || S.lastBet > S.bank) return;
-  pendingBet = 0; betStack = [];
-  pendingBet = S.lastBet; betStack = [S.lastBet];
-  SFX.chip(); fxChips(mySeat, 3); syncUI();
-};
-
-$("hitBtn").onclick   = () => { SFX.click(); sendAction("hit"); };
-$("standBtn").onclick = () => { SFX.click(); sendAction("stand"); };
-$("dblBtn").onclick   = () => { SFX.click(); sendAction("double"); };
-$("splitBtn").onclick = () => { SFX.click(); sendAction("split"); };
-
-window.addEventListener("keydown", e => {
-  if (e.target.tagName === "INPUT") return;
-  const k = e.key.toLowerCase();
-  const myTurn = T.phase === PHASE.PLAYING && T.turnSeat === mySeat;
-  if (myTurn){
-    if (k === "h") $("hitBtn").click();
-    if (k === "s") $("standBtn").click();
-    if (k === "d" && !$("dblBtn").disabled) $("dblBtn").click();
-    if (k === "p" && !$("splitBtn").disabled) $("splitBtn").click();
-  }
-  if (k === "enter" && !$("dealBtn").disabled && $("tray").classList.contains("on")) lockBet();
-});
-
-/* ---- join ---- */
-const avBox = $("avatars");
-AVATARS.forEach((a, i) => {
-  const d = document.createElement("div");
-  d.className = "av" + (i === S.avatar ? " on" : "");
-  d.textContent = a;
-  d.onclick = () => { S.avatar = i; save();
-    [...avBox.children].forEach((c, j) => c.classList.toggle("on", j === i)); SFX.click(); };
-  avBox.appendChild(d);
-});
-$("nameIn").value = S.name || "";
-$("joinBtn").onclick = async () => {
-  const n = ($("nameIn").value || "").trim().slice(0, 12) || "Player";
-  S.name = n; save();
-  ac();                                  // unlock audio on this user gesture
-  const btn = $("joinBtn");
-  btn.disabled = true; btn.textContent = "TAKING A SEAT...";
-  const ok = await takeSeat();
-  btn.disabled = false; btn.textContent = "TAKE A SEAT";
-  if (!ok) return;
+$("joinBtn").onclick = () => {
+  S.name = ($("nameIn").value || "").trim().slice(0, 12) || "Punter";
+  save(); ac();
   $("joinOv").classList.add("hidden");
-  toast("Seated. " + (ONLINE ? "Others can join at this URL." : "Solo table."));
+  if (ONLINE) postRich();
   syncUI();
 };
 $("nameIn").addEventListener("keydown", e => { if (e.key === "Enter") $("joinBtn").click(); });
 
-$("leaveBtn").onclick = () => {
-  leaveSeat();
-  $("joinOv").classList.remove("hidden");
-  syncUI();
-};
-
-/* ---- options ---- */
 function syncOpts(){
   $("sfxTog").classList.toggle("on", S.sfx);
-  $("botsTog").classList.toggle("on", S.bots);
-  $("chatTog").classList.toggle("on", S.botChat);
-  $("hintTog").classList.toggle("on", S.hints);
-  $("fastTog").classList.toggle("on", S.fast);
+  $("comTog").classList.toggle("on", S.com);
+  $("shakeTog").classList.toggle("on", S.shake);
   $("roomIn").value = S.room;
   $("optNote").innerHTML = ONLINE
-    ? "Connected to Firebase. Share this URL and pick the same table name to play together."
-    : "<b style='color:#e8c66a'>Solo mode:</b> add Firebase credentials in the script header to open the table to other players.";
+    ? "Connected. Share this URL - anyone in the same arena sees the same fights."
+    : "<b style='color:#ffd447'>Solo mode:</b> no database configured.";
 }
 $("optBtn").onclick = () => { $("optOv").classList.remove("hidden"); syncOpts(); };
 $("optClose").onclick = () => $("optOv").classList.add("hidden");
-$("sfxTog").onclick  = () => { S.sfx = !S.sfx; save(); syncOpts(); if (S.sfx) SFX.chip(); };
-$("botsTog").onclick = () => { S.bots = !S.bots; save(); syncOpts(); if (S.bots) fillBots(); else clearBots(); push(); };
-$("chatTog").onclick = () => { S.botChat = !S.botChat; save(); syncOpts(); };
-$("hintTog").onclick = () => { S.hints = !S.hints; save(); syncOpts(); syncUI(); };
-$("fastTog").onclick = () => { S.fast = !S.fast; save(); syncOpts(); };
+$("sfxTog").onclick = () => { S.sfx = !S.sfx; save(); syncOpts(); if (S.sfx) SFX.pick(); };
+$("comTog").onclick = () => { S.com = !S.com; save(); syncOpts(); };
+$("shakeTog").onclick = () => { S.shake = !S.shake; save(); syncOpts(); };
 $("roomIn").onchange = e => {
-  S.room = (e.target.value || "main").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "main";
-  save(); toast("Table changed to '" + S.room + "'. Reloading...");
-  setTimeout(() => location.reload(), 900);
+  S.room = (e.target.value || "arena").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "arena";
+  save(); toast("Arena changed. Reloading..."); setTimeout(() => location.reload(), 800);
 };
 $("rebuyBtn").onclick = () => {
-  S.bank += START_BANK; save();
-  if (mySeat >= 0) T.seats[mySeat].bank = S.bank;
-  toast("Rebought " + fmt(START_BANK) + "."); syncUI(); push();
+  if (S.bank >= 100){ toast("Bailouts are for the broke."); return; }
+  S.bank += 500; save(); syncUI(); toast("Bailout claimed.");
 };
 
-/* ---- stats ---- */
 $("statsBtn").onclick = () => {
   const st = S.stats;
-  $("sHands").textContent = st.hands;
+  $("sBets").textContent = st.bets;
   $("sNet").textContent = fmt(st.net);
-  $("sNet").className = st.net > 0 ? "g" : st.net < 0 ? "r" : "";
-  const decided = st.hands - st.pushes;
-  $("sWin").textContent = decided > 0 ? Math.round(st.wins / decided * 100) + "%" : "0%";
-  $("sBj").textContent = st.bj;
-  $("sBest").textContent = fmt(st.best);
+  $("sNet").className = st.net > 0 ? "g" : st.net < 0 ? "r2" : "";
+  $("sWin").textContent = st.bets ? Math.round(st.wins / st.bets * 100) + "%" : "0%";
+  $("sStreak").textContent = st.streak || 0;
+  $("sBig").textContent = fmt(st.big);
   $("sPeak").textContent = fmt(st.peak);
-  loadHighRollers();
+  loadRich();
   $("statsOv").classList.remove("hidden");
 };
 $("statsClose").onclick = () => $("statsOv").classList.add("hidden");
 
-/* ---- chat ---- */
 $("chatHd").onclick = () => {
   const c = $("chat"); c.classList.toggle("min");
-  $("chatToggle").textContent = c.classList.contains("min") ? "▲" : "▼";
+  $("chatToggle").innerHTML = c.classList.contains("min") ? "&#9650;" : "&#9660;";
 };
 $("chatIn").addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.value.trim()){
-    sendChat(e.target.value.trim());
-    e.target.value = "";
-  }
+  if (e.key === "Enter" && e.target.value.trim()){ sendChat(e.target.value.trim()); e.target.value = ""; }
 });
 
 /* =====================================================================
    BOOT
    ===================================================================== */
 resize();
+$("nameIn").value = S.name || "";
+renderMatchup();
 connect();
 syncOpts();
 syncUI();
 requestAnimationFrame(frame);
 
-// The dealer engine runs on a timer, NOT on requestAnimationFrame: browsers
-// pause rAF in hidden tabs, which would freeze the table for every player the
-// moment the host switched tabs. Timers keep running (throttled, which is fine
-// for a phase machine driven by absolute timestamps).
-setInterval(() => { if (isHost) { hostTick(); pruneSeats(); } }, 120);
-
-// Safety net: the controls must never sit stale waiting on a message that did
-// not arrive. Cheap enough to run continuously, and it makes a missed update
-// cost 300ms rather than the whole round.
+// The phase machine runs on a timer, not rAF: browsers pause rAF in hidden
+// tabs, which would freeze the arena for everyone if the host looked away.
+setInterval(() => { if (isHost) hostTick(); }, 200);
 setInterval(syncUI, 300);
 
-// Solo mode still needs a heartbeat for the engine, and bots need a table.
-if (!ONLINE){
-  log("Solo table. Add Firebase keys to play with others.");
-} else {
-  log("Connecting to table '" + ROOM() + "'...");
-}
-setInterval(() => { if (isHost) { fillBots(); } }, 15000);
-window.addEventListener("beforeunload", () => { if (mySeat >= 0) leaveSeat(); });
 </script>
 </body>
 </html>
