@@ -851,6 +851,9 @@ function connect(){
     }
   });
 
+  db.ref(base + "/beats").on("value", s => { beats = s.val() || {}; });
+  db.ref(base + "/beats/" + myUid).onDisconnect().remove();
+
   chatRef.limitToLast(30).on("child_added", snap => {
     const m = snap.val(); if (!m) return;
     addChat(m.name, m.text, m.sys);
@@ -1047,7 +1050,7 @@ async function takeSeat(){
    from under me (host pruned it, or a race), reclaim it rather than silently
    betting into a seat that no longer exists. */
 const SEAT_TTL = 30000;
-let hbTimer = null;
+let hbTimer = null, beats = {};
 function startHeartbeat(){
   clearInterval(hbTimer);
   if (!ONLINE) return;
@@ -1057,7 +1060,9 @@ function startHeartbeat(){
     const snap = await ref.child("uid").get().catch(() => null);
     const holder = snap && snap.val();
     if (holder === myUid){
-      ref.child("lastSeen").set(now()).catch(()=>{});
+      // Heartbeats live OUTSIDE /state: the host rewrites the whole state
+      // object on every push, which would clobber anything written in there.
+      db.ref("tables/" + ROOM() + "/beats/" + myUid).set(now()).catch(()=>{});
       return;
     }
     // lost the seat -- try to get it back, refunding anything staked but undealt
@@ -1074,14 +1079,20 @@ function startHeartbeat(){
   }, 6000);
 }
 // Host side: reclaim seats whose player stopped heartbeating.
+let seatSeen = {};
 function pruneSeats(){
   if (!isHost || !ONLINE) return;
   let changed = false;
+  const t = now();
   T.seats.forEach(s => {
     if (!occupied(s) || s.bot || s.uid === myUid) return;
-    if (!s.lastSeen) { s.lastSeen = now(); return; }
-    if (now() - s.lastSeen > SEAT_TTL){
+    const beat = beats[s.uid];
+    if (beat){ seatSeen[s.uid] = Math.max(seatSeen[s.uid] || 0, beat); }
+    // give a newly seated player a full TTL before the first beat is required
+    if (!seatSeen[s.uid]){ seatSeen[s.uid] = s.joined || t; }
+    if (t - seatSeen[s.uid] > SEAT_TTL){
       log((s.name || "A player") + " left the table.");
+      delete seatSeen[s.uid];
       Object.assign(s, blankSeat()); changed = true;
     }
   });
