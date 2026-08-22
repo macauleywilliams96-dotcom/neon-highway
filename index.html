@@ -485,6 +485,7 @@ function hostTick(){
       // wait for at least one seated player, then open betting
       if (T.seats.some(occupied)){
         T.phase = PHASE.BETTING; T.phaseEnd = t + T_BET; T.round++;
+        recorded = {};
         T.dealer = { cards: [], hole: true };
         T.seats.forEach(s => { s.hands = []; s.bet = 0; s.result = null; s.active = 0; });
         maybeBotBets();
@@ -728,8 +729,15 @@ function settle(){
   push();
 }
 
-/* ---- stats ---- */
+/* ---- stats ----
+   Guarded per (round, hand): the host path settles through settle() and pure
+   clients settle through onPhaseChange(), and a client promoted to host
+   mid-round could otherwise count the same hand twice. */
+let recorded = {};
 function recordHand(res, net, handIdx){
+  const key = T.round + ":" + handIdx;
+  if (recorded[key]) return;
+  recorded[key] = true;
   const st = S.stats;
   st.hands++; st.net += net;
   if (res === "win" || res === "blackjack") st.wins++;
@@ -821,7 +829,6 @@ function connect(){
     presRef.onDisconnect().remove();
     presRef.set({ name: S.name || "Player", ts: firebase.database.ServerValue.TIMESTAMP });
     // free my seat automatically if the tab dies
-    if (mySeat >= 0) db.ref(base + "/state/seats/" + mySeat).onDisconnect().set(blankSeat());
   });
 
   tableRef.on("value", snap => {
@@ -916,6 +923,7 @@ function onPhaseChange(from, to){
       if (net > 0) fxPayout(mySeat, net);
     }
   }
+  if (to === PHASE.BETTING) recorded = {};
   if (to === PHASE.PLAYING && T.turnSeat === mySeat) SFX.turn();
 }
 
@@ -1021,7 +1029,10 @@ async function takeSeat(){
     if (claimed){
       mySeat = i;
       Object.assign(T.seats[i], mySeatData());
-      ref.onDisconnect().set(blankSeat());
+      // Deliberately NOT onDisconnect().set(blank): a backgrounded tab can idle
+      // its socket, and yanking the seat mid-round would strand the player's
+      // money. The host prunes seats that stop heartbeating instead.
+      startHeartbeat();
       log((S.name || "You") + " joined the table.");
       if (chatRef) chatRef.push({ name: "", text: (S.name || "A player") + " sits down.", sys: true, ts: now() });
       push();
@@ -1031,7 +1042,54 @@ async function takeSeat(){
   toast("Table is full - try again in a moment.");
   return false;
 }
+/* Seat lifecycle.
+   A seat is held by a heartbeat, not by socket liveness. If my seat is taken
+   from under me (host pruned it, or a race), reclaim it rather than silently
+   betting into a seat that no longer exists. */
+const SEAT_TTL = 30000;
+let hbTimer = null;
+function startHeartbeat(){
+  clearInterval(hbTimer);
+  if (!ONLINE) return;
+  hbTimer = setInterval(async () => {
+    if (mySeat < 0) return;
+    const ref = db.ref("tables/" + ROOM() + "/state/seats/" + mySeat);
+    const snap = await ref.child("uid").get().catch(() => null);
+    const holder = snap && snap.val();
+    if (holder === myUid){
+      ref.child("lastSeen").set(now()).catch(()=>{});
+      return;
+    }
+    // lost the seat -- try to get it back, refunding anything staked but undealt
+    if (pendingBet){ S.bank += pendingBet; pendingBet = 0; betStack = []; save(); }
+    const mine = T.seats[mySeat];
+    if (mine && mine.bet && !(mine.hands || []).length){ S.bank += mine.bet; save(); }
+    mySeat = -1;
+    const ok = await takeSeat();
+    if (!ok){
+      toast("Lost your seat - the table filled up.");
+      $("joinOv").classList.remove("hidden");
+    } else toast("Reconnected to your seat.");
+    syncUI();
+  }, 6000);
+}
+// Host side: reclaim seats whose player stopped heartbeating.
+function pruneSeats(){
+  if (!isHost || !ONLINE) return;
+  let changed = false;
+  T.seats.forEach(s => {
+    if (!occupied(s) || s.bot || s.uid === myUid) return;
+    if (!s.lastSeen) { s.lastSeen = now(); return; }
+    if (now() - s.lastSeen > SEAT_TTL){
+      log((s.name || "A player") + " left the table.");
+      Object.assign(s, blankSeat()); changed = true;
+    }
+  });
+  if (changed) push();
+}
+
 function leaveSeat(){
+  clearInterval(hbTimer);
   if (mySeat < 0) return;
   const i = mySeat;
   if (ONLINE) db.ref("tables/" + ROOM() + "/state/seats/" + i).set(blankSeat());
@@ -1552,6 +1610,9 @@ function undoChip(){
 function lockBet(){
   const me = mySeat >= 0 ? T.seats[mySeat] : null;
   if (!me || pendingBet < MIN_BET) return;
+  // never stake into a seat that is no longer mine
+  if (ONLINE && me.uid !== myUid){ toast("Reclaiming your seat..."); return; }
+  if (me.bet){ toast("Bet already placed for this round."); return; }
   S.bank -= pendingBet; S.lastBet = pendingBet; save();
   me.bank = S.bank;
   sendBet(pendingBet);
@@ -1692,7 +1753,7 @@ requestAnimationFrame(frame);
 // pause rAF in hidden tabs, which would freeze the table for every player the
 // moment the host switched tabs. Timers keep running (throttled, which is fine
 // for a phase machine driven by absolute timestamps).
-setInterval(() => { if (isHost) hostTick(); }, 120);
+setInterval(() => { if (isHost) { hostTick(); pruneSeats(); } }, 120);
 
 // Solo mode still needs a heartbeat for the engine, and bots need a table.
 if (!ONLINE){
