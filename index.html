@@ -441,68 +441,95 @@ function basicStrategy(hand, upVal){
 const PERSONAS = [
   {
     id: "party", name: "REX", av: "🦁", col: "#fbbf24", chatty: .95,
-    join:  ["REX IS IN THE BUILDING", "right lads who's buying", "LETS GOOOO", "big night big night"],
-    win:   ["GET INNNN", "EASY. EASY GAME.", "money money money", "REX DOES IT AGAIN 🔥", "shots for the table!!"],
-    lose:  ["nah thats rigged", "one more one more", "im not even tilted", "double it next hand watch"],
-    bust:  ["WHY DID I HIT THAT", "im a clown 🤡", "bin it", "lads i cooked myself"],
-    bj:    ["BLACKJACKKKK LETS GO 🎉🎉", "NATURAL BABY", "im him. im actually him"],
-    dbust: ["DEALER DOWN LADS", "GET IN 😂😂", "cheers big man"],
-    other: ["yesss {p} my g", "{p} carrying the table", "someone tell {p} to calm down"],
-    obust: ["ohhhh {p} 💀", "unlucky {p} lmaooo", "{p} what was that"],
-    broke: ["im tapped out lads", "thats me done. was fun"],
-    idle:  ["anyone else buzzing or just me", "im due. im so due", "one big hand and im off"]
+    join:  ["RIGHT WHO'S READY TO LOSE MONEY", "REX IS IN THE FUCKING BUILDING",
+            "lads. LADS. im on one tonight", "borrowed this off me mum so lets go"],
+    win:   ["GET INNNN YOU BEAUTY", "EASY. FUCKING. GAME.", "money money money 🤑",
+            "im built different i swear", "SHOTS FOR THE TABLE", "pay me you bald prick"],
+    lose:  ["thats fucking rigged that is", "nah im fine. im fine. IM FINE.",
+            "one more hand then im off (im not)", "double it next hand watch this shit"],
+    bust:  ["WHY THE FUCK DID I HIT THAT", "im such a clown 🤡", "bin me. bin me now.",
+            "lads i have absolutely cooked myself", "thats on me thats 100% on me"],
+    bj:    ["BLACKJACK YOU MUGS 🎉🎉", "NATURAL BABY GET INNN", "im him. im actually fucking him."],
+    dbust: ["GET IN YOU SMUG BASTARD", "DEALER DOWN LADS 😂😂", "suffer. absolutely suffer."],
+    other: ["yesss {p} my g 🔥", "{p} carrying this shit table", "someone get {p} a drink"],
+    obust: ["ohhhh {p} 💀💀", "unlucky {p} you absolute donut", "{p} what in the fuck was that"],
+    broke: ["im tapped out lads. skint.", "thats the rent gone. worth it.",
+            "right im off before i sell a kidney"],
+    idle:  ["anyone else buzzing or is it just me", "im due. im so fucking due.",
+            "one big hand and im gone i swear on me nan", "this table is dead lively it up"]
   },
   {
     id: "doom", name: "MOPEY", av: "🐸", col: "#94a3b8", chatty: .8,
-    join:  ["hi", "back again i suppose", "nothing better to do"],
-    win:   ["oh. i won.", "doesnt really fix anything though", "small mercies", "i'll lose it back shortly"],
-    lose:  ["yeah that tracks", "of course", "story of my life honestly", "i knew before the cards came out"],
-    bust:  ["obviously", "why do i do this to myself", "22. always 22.", "im going to bed after this. i wont."],
-    bj:    ["oh wow. something good happened.", "im suspicious of this", "dont get used to it"],
-    dbust: ["even a broken clock", "i'll take it i guess"],
-    other: ["nice one {p}. genuinely.", "at least someone's happy", "{p} deserves it more than me"],
-    obust: ["welcome to my life {p}", "we're the same {p}"],
-    broke: ["thats my rent gone", "well. that's that then."],
-    idle:  ["does anyone actually win at this", "i should be asleep", "my therapist would hate this"]
+    join:  ["hi", "back again. obviously.", "nothing better to do with my evening"],
+    win:   ["oh. i won. weird.", "doesnt fix anything though does it",
+            "i'll give it all back within the hour", "small mercies i suppose"],
+    lose:  ["yeah that tracks", "of course. course i did.", "why am i even fucking surprised",
+            "i knew before the cards came out", "this is just what happens to me"],
+    bust:  ["obviously.", "why do i do this to myself", "22. its always fucking 22.",
+            "im going to bed after this. (im not.)"],
+    bj:    ["oh. something good happened.", "im deeply suspicious of this",
+            "dont get used to it. i certainly wont."],
+    dbust: ["even a broken clock", "i'll take it. i suppose."],
+    other: ["nice one {p}. genuinely.", "at least someone's having a nice time",
+            "{p} deserves it more than i do"],
+    obust: ["welcome to my world {p}", "we're the same, {p}. we're the same."],
+    broke: ["well thats the rent. brilliant.", "and thats me. cheers everyone. sorry."],
+    idle:  ["does anyone actually win at this", "i should be asleep",
+            "my therapist would have a fucking field day with this",
+            "im fine by the way. nobody asked. but im fine."]
   },
   {
     id: "rage", name: "DUKE", av: "🐺", col: "#f87171", chatty: .85,
-    join:  ["right. lets have it.", "this shoe better behave"],
-    win:   ["FINALLY", "about bloody time", "thats what i wanted", "took long enough"],
-    lose:  ["ARE YOU JOKING", "this dealer is bent", "every single time", "rigged. absolutely rigged.", "how does he keep doing that"],
-    bust:  ["OH COME ON", "one card. ONE CARD.", "unbelievable", "im breaking my keyboard"],
-    bj:    ["THERE it is", "finally some respect"],
-    dbust: ["HA. suffer.", "good. GOOD.", "how do you like it"],
-    other: ["{p} getting all my cards", "fine. good for {p}. FINE."],
-    obust: ["{p} join the club", "see?? SEE?? its not just me"],
-    broke: ["im done. this table's a scam.", "never again. see you tomorrow."],
-    idle:  ["shuffle it properly", "this shoe is ice cold", "im watching you dealer"]
+    join:  ["right. lets fucking have it then.", "this shoe better behave itself"],
+    win:   ["FINALLY", "about fucking time", "thats all i wanted. thats ALL i wanted.",
+            "took you long enough you prick"],
+    lose:  ["ARE YOU HAVING A LAUGH", "this dealer is bent. hes bent i tell you.",
+            "every. single. fucking. time.", "how does he keep doing that", "absolute joke this"],
+    bust:  ["OH COME ON", "ONE CARD. ONE FUCKING CARD.", "unbelievable this is",
+            "im gonna put my fist through this screen"],
+    bj:    ["THERE it is", "finally some fucking respect around here"],
+    dbust: ["HA. suffer you prick.", "good. GOOD. bleed a bit.", "not so smug now are you"],
+    other: ["{p} getting all my fucking cards", "fine. good for {p}. FINE."],
+    obust: ["{p} welcome to the fucking club", "see?? SEE?? its not just me!"],
+    broke: ["im done. this tables a scam.", "never again. see you tomorrow."],
+    idle:  ["shuffle it properly you muppet", "this shoe is stone cold",
+            "im watching you dealer. im watching."]
   },
   {
     id: "smug", name: "KIRA", av: "💎", col: "#38bdf8", chatty: .7,
-    join:  ["evening.", "let's see who can actually count", "hope everyone's read a book"],
-    win:   ["as calculated", "basic strategy. try it.", "correct play, correct result", "not luck. maths."],
-    lose:  ["variance. nothing more.", "the play was still right", "long run, darling. long run."],
-    bust:  ["marginal spot. i stand by it.", "correct hit. wrong outcome."],
+    join:  ["evening.", "lets see who can actually count", "i do hope someone here has read a book"],
+    win:   ["as calculated.", "basic strategy. try it sometime.", "correct play, correct result.",
+            "thats not luck thats maths, sweetheart"],
+    lose:  ["variance. nothing more.", "the play was still correct.", "long run, darling. long run."],
+    bust:  ["marginal spot. i stand by it.", "correct hit, wrong outcome. it happens."],
     bj:    ["naturally.", "the shoe was rich. obviously."],
-    dbust: ["predictable on a 6 up", "textbook"],
-    other: ["{p} got lucky and we both know it", "sure {p}. sure."],
-    obust: ["{p} that was a stand. always a stand.", "{p} please look up a chart", "and that's why we don't hit 16 vs 6, {p}"],
-    broke: ["i'll be back with a proper bankroll"],
-    idle:  ["count's positive, if anyone cares", "nobody here is counting are they", "the house edge is 0.5% and you lot make it 8%"]
+    dbust: ["entirely predictable on a 6 up", "textbook."],
+    other: ["{p} got lucky and we both know it", "sure, {p}. sure."],
+    obust: ["{p} that was a stand. it is ALWAYS a stand.",
+            "{p} please, for the love of god, look at a chart",
+            "and thats precisely why we dont hit 16 vs 6, {p}",
+            "{p} you are single-handedly funding this establishment"],
+    broke: ["i shall return with a proper bankroll."],
+    idle:  ["counts positive, if anyone cares. nobody cares.",
+            "not one of you is counting are you",
+            "the house edge is half a percent and you lot turn it into eight"]
   },
   {
     id: "lucky", name: "MIMI", av: "🐯", col: "#f472b6", chatty: .75,
     join:  ["ooh this seat feels lucky ✨", "hi everyone!! 🍀", "i brought my lucky socks"],
-    win:   ["THE SOCKS WORK", "i KNEW it 🍀", "the universe provides ✨", "i felt that one coming"],
-    lose:  ["the energy shifted", "someone jinxed it 😤", "i shouldn't have moved seats"],
-    bust:  ["that card was cursed", "the shoe is angry today", "i blame mercury"],
+    win:   ["THE SOCKS WORK", "i KNEW it 🍀", "the universe provides ✨",
+            "i felt that one in my bones"],
+    lose:  ["the energy shifted i literally felt it", "someone jinxed it 😤",
+            "i shouldnt have moved seats", "ok the universe can get fucked actually"],
+    bust:  ["that card was cursed", "the shoe is angry today",
+            "mercury is in retrograde dont @ me"],
     bj:    ["MANIFESTED ✨✨", "told you. TOLD YOU."],
-    dbust: ["karma is real 💅", "the universe heard me"],
-    other: ["yayyy {p} 🎉", "{p} has good energy"],
-    obust: ["oh no {p} 😢", "{p} rub the felt it helps"],
-    broke: ["the universe says go outside", "i'll be back when the moon changes"],
-    idle:  ["everyone touch the table for luck", "i can feel a big one coming", "who wants to swap seats"]
+    dbust: ["karma is real 💅", "the universe heard me screaming"],
+    other: ["yayyy {p} 🎉", "{p} has such good energy honestly"],
+    obust: ["oh no {p} 😢", "{p} rub the felt it genuinely helps"],
+    broke: ["the universe says go outside", "back when the moon changes 🌙"],
+    idle:  ["everyone touch the table for luck", "i can feel a big one coming",
+            "who wants to swap seats with me"]
   },
   {
     id: "quiet", name: "ZED", av: "🎭", col: "#a78bfa", chatty: .35,
@@ -512,24 +539,33 @@ const PERSONAS = [
     bust:  ["hm.", "too greedy."],
     bj:    ["ah.", "the shoe is kind today."],
     dbust: ["the house bleeds too."],
-    other: ["{p}.", "watching you, {p}."],
-    obust: ["{p} learns.", "..."],
+    other: ["{p}.", "i am watching you, {p}."],
+    obust: ["{p} learns.", "...."],
     broke: ["i take my leave."],
-    idle:  ["the deck is thinning.", "patience.", "...."]
+    idle:  ["the deck thins.", "patience.", "....",
+            "none of you will remember this hand. i will."]
   }
 ];
 const DEALER_LINES = {
   bust:   ["Twenty-two. Bad luck.", "That'll do it.", "Over. Next.", "The house thanks you, {p}.",
-           "You knew that card was coming, {p}.", "One too many. Always one too many."],
-  win:    ["Dealer takes it.", "House wins. Again.", "Dealer stands on {d}. Collect.", "Thank you all. Genuinely.",
-           "I do love a shoe like this one.", "Better luck next hand. You'll need it."],
+           "You knew that card was coming, {p}.", "One too many. Always one too many.",
+           "Bold. Wrong, but bold.", "{p}, that was genuinely difficult to watch.",
+           "And it's gone. Marvellous."],
+  win:    ["Dealer takes it.", "House wins. Again.", "Dealer stands on {d}. Collect.",
+           "Thank you all. Genuinely.", "I do love a shoe like this one.",
+           "Better luck next hand. You'll need it.",
+           "Keep going. These lights don't pay for themselves.",
+           "Another one for the house. Astonishing."],
   lose:   ["Dealer busts. It happens.", "Enjoy it. It's rare.", "Paying the table. Reluctantly.",
-           "Well played. Don't get comfortable."],
-  bj:     ["Blackjack. Three to two, {p}.", "Natural. Lovely.", "Beginner's luck, {p}."],
-  dbj:    ["Dealer blackjack. Terribly sorry.", "Ace showing. You should have insured.", "Natural twenty-one. My condolences."],
+           "Well played. Don't get comfortable.", "Savour that one. Truly."],
+  bj:     ["Blackjack. Three to two, {p}.", "Natural. Lovely.", "Beginner's luck, {p}.",
+           "Enjoy it, {p}. I'll have it back by round six."],
+  dbj:    ["Dealer blackjack. Terribly sorry.", "Ace showing. You should have insured.",
+           "Natural twenty-one. My condolences.", "That's the job, I'm afraid."],
   shuffle:["Fresh shoe. New luck, allegedly.", "Shuffling. Reset your superstitions."],
   idle:   ["Bets, please.", "Take your time. The house is patient.", "Money on the felt.",
-           "The odds haven't changed since last hand, in case anyone was hoping."]
+           "The odds haven't changed since last hand, in case anyone was hoping.",
+           "Chips down. Dignity optional."]
 };
 
 // Host-only mood tracking. Bots tilt, spiral or get insufferable over time.
@@ -567,8 +603,8 @@ function botSay(seatIdx, event, ctx){
   const p = personaOf(s);
   const m = mood[s.uid] || (mood[s.uid] = { streak: 0, spoke: 0, tilt: 0 });
   const t = now();
-  if (t - lastBotChat < 1800) return;                    // keep the feed readable
-  if (t - m.spoke < 7000) return;                        // per-bot cooldown
+  if (t - lastBotChat < 1300) return;                    // keep the feed readable
+  if (t - m.spoke < 5500) return;                        // per-bot cooldown
   let chance = p.chatty * (event === "idle" ? .22 : .8);
   if (m.tilt > 2) chance = Math.min(1, chance + .2);     // tilted bots can't shut up
   if (Math.random() > chance) return;
@@ -581,8 +617,10 @@ function botSay(seatIdx, event, ctx){
 function dealerSay(event, ctx){
   if (!isHost || !S.botChat) return;
   const t = now();
-  if (t - lastDealerChat < 4000) return;
-  if (Math.random() > (event === "idle" ? .3 : .65)) return;
+  // The dealer is punctuation, not the main voice -- he was drowning the bots
+  // out at a 4s cooldown, which made the table feel like a one-man show.
+  if (t - lastDealerChat < 11000) return;
+  if (Math.random() > (event === "idle" ? .15 : .4)) return;
   lastDealerChat = t;
   pushChat("DEALER", fill(pickFresh(DEALER_LINES[event] || DEALER_LINES.idle, "dealer:" + event), ctx),
            { av: "🤖", col: "#e8c66a", dealer: true });
