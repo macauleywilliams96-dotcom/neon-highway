@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>NEON HIGHWAY // Synthwave Rhythm</title>
+<style>
+  :root{
+    --cyan:#22e7ff; --mag:#ff3df0; --yel:#ffe14d; --grn:#3dff8f; --org:#ff8a2b;
+    --bg:#05020e; --panel:rgba(12,6,28,.85); --line:rgba(160,120,255,.35);
+    --txt:#eae2ff;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;overflow:hidden;}
+  #stage{position:fixed;inset:0;overflow:hidden}
+  #ytWrap{position:absolute;inset:-6%;z-index:0;pointer-events:none;filter:saturate(1.15)}
+  #player{width:100%;height:100%}
+  #veil{position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(120% 80% at 50% 8%, rgba(80,0,140,.35), transparent 60%),
+      linear-gradient(180deg, rgba(5,2,14,.80) 0%, rgba(5,2,14,.88) 45%, rgba(5,2,14,.95) 100%);}
+  canvas#game{position:absolute;inset:0;z-index:2;width:100%;height:100%;display:block}
+
+  #bar{position:absolute;z-index:20;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;
+    padding:10px 14px;background:linear-gradient(180deg,rgba(8,3,20,.92),rgba(8,3,20,.35));
+    border-bottom:1px solid var(--line);backdrop-filter:blur(6px);flex-wrap:wrap}
+  #bar .brand{font-weight:900;letter-spacing:3px;font-size:15px;
+    background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent;
+    text-shadow:0 0 22px rgba(255,61,240,.35);white-space:nowrap}
+  input[type=text]{flex:1;min-width:220px;max-width:560px;padding:10px 14px;border-radius:9px;color:#fff;
+    background:rgba(255,255,255,.10);border:1px solid rgba(34,231,255,.55);outline:none;font-size:13px;
+    box-shadow:0 0 18px rgba(34,231,255,.16)}
+  input[type=text]::placeholder{color:#b9b0dd}
+  @keyframes hint{0%,100%{box-shadow:0 0 14px rgba(34,231,255,.16);border-color:rgba(34,231,255,.55)}
+                  50%{box-shadow:0 0 30px rgba(34,231,255,.75);border-color:#22e7ff}}
+  #url.hint{animation:hint 1.05s ease-in-out infinite}
+  input[type=text]:focus{border-color:var(--cyan);box-shadow:0 0 14px rgba(34,231,255,.35)}
+  button{cursor:pointer;border:1px solid var(--line);color:var(--txt);border-radius:9px;
+    padding:9px 14px;font-weight:700;font-size:12.5px;letter-spacing:.6px;
+    background:linear-gradient(180deg,rgba(120,60,255,.35),rgba(40,10,90,.5));transition:.15s}
+  button:hover{transform:translateY(-1px);border-color:var(--cyan);box-shadow:0 0 16px rgba(34,231,255,.3)}
+  button.primary{background:linear-gradient(90deg,#7a1bff,#ff3df0);border-color:transparent}
+  button.ghost{background:rgba(255,255,255,.04)}
+  #presets{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:7px 10px;font-size:11.5px;border-radius:20px;border:1px solid var(--line);
+    background:rgba(255,255,255,.04);cursor:pointer;white-space:nowrap;transition:.15s;color:var(--txt)}
+  .chip:hover{border-color:var(--mag);color:#fff;box-shadow:0 0 12px rgba(255,61,240,.35)}
+
+  .overlay{position:absolute;left:0;right:0;bottom:0;top:62px;z-index:8;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,1,12,.78);backdrop-filter:blur(9px);animation:fade .25s ease}
+  .overlay.hidden{display:none}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .card{width:min(560px,92vw);max-height:86vh;overflow:auto;padding:26px;border-radius:18px;
+    background:var(--panel);border:1px solid var(--line);
+    box-shadow:0 0 60px rgba(122,27,255,.35), inset 0 0 40px rgba(255,61,240,.06);
+    animation:pop .3s cubic-bezier(.2,1.4,.4,1)}
+  @keyframes pop{from{transform:translateY(18px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+  .card h1{margin:0 0 6px;font-size:26px;letter-spacing:2px;
+    background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .card h2{margin:0 0 14px;font-size:13px;font-weight:600;color:#a89dd0;letter-spacing:1px}
+  .statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
+  .stat{padding:12px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+  .stat b{display:block;font-size:22px;color:#fff}
+  .stat span{font-size:11px;color:#a89dd0;letter-spacing:1.2px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px solid rgba(160,120,255,.18)}
+  th{font-size:10.5px;letter-spacing:1.3px;color:#a89dd0}
+  tbody tr{animation:slidein .35s backwards}
+  @keyframes slidein{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
+  .rank1{color:var(--yel);font-weight:800}.rank2{color:#dcd7ff;font-weight:700}.rank3{color:var(--org);font-weight:700}
+  .row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+  .note{font-size:11.5px;color:#8f86b8;line-height:1.5;margin-top:12px}
+  .kbd{display:inline-block;min-width:26px;text-align:center;padding:3px 7px;margin:0 2px;border-radius:6px;
+    background:rgba(255,255,255,.07);border:1px solid var(--line);font-weight:800;font-size:12px}
+
+  #sync{position:absolute;left:0;right:0;bottom:0;top:62px;z-index:7;display:none;align-items:center;justify-content:center;
+    background:rgba(4,1,12,.55);backdrop-filter:blur(3px)}
+  #sync.on{display:flex}
+  #sync .box{text-align:center}
+  #sync .ring{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;
+    border:3px solid rgba(255,255,255,.12);border-top-color:var(--cyan);border-right-color:var(--mag);
+    animation:spin .9s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #sync .t{letter-spacing:3px;font-weight:800;font-size:14px;color:#fff;text-shadow:0 0 18px var(--cyan)}
+  #sync .s{font-size:11.5px;color:#a89dd0;margin-top:6px;letter-spacing:1px}
+  #sync .box{width:min(520px,90vw)}
+  #pbarWrap{margin:16px auto 6px;width:100%;height:9px;border-radius:6px;
+    background:rgba(255,255,255,.08);border:1px solid var(--line);overflow:hidden}
+  #pbar{height:100%;width:0%;border-radius:6px;transition:width .3s ease;
+    background:linear-gradient(90deg,#22e7ff,#ff3df0);box-shadow:0 0 16px rgba(255,61,240,.6)}
+  #pct{font-size:11px;color:#c9c1ea;letter-spacing:2px;font-weight:800}
+  #unblock{display:none;margin-top:16px}
+  #errBox{display:none;margin-top:14px;padding:12px;border-radius:10px;text-align:left;
+    background:rgba(255,60,90,.10);border:1px solid rgba(255,80,110,.5);
+    font-size:12px;line-height:1.55;color:#ffd7de}
+  #errBox b{color:#ff8098}
+  /* ---- diagnostic log ---- */
+  #logPanel{position:absolute;z-index:15;left:12px;bottom:12px;width:min(430px,46vw);max-height:34vh;
+    overflow:auto;padding:10px 12px;border-radius:10px;background:rgba(6,2,16,.90);
+    border:1px solid var(--line);font-family:Consolas,ui-monospace,monospace;font-size:11px;
+    line-height:1.55;color:#b9b0dd;display:none}
+  #logPanel.on{display:block}
+  #logPanel .hd{display:flex;justify-content:space-between;color:#7a6fa8;letter-spacing:1.5px;
+    font-weight:700;margin-bottom:6px;font-size:10px}
+  #logPanel .l{white-space:pre-wrap;word-break:break-word}
+  #logPanel .l .ts{color:#5d5486}
+  .lg-ok{color:#3dff8f}.lg-warn{color:#ffe14d}.lg-err{color:#ff6b85}.lg-info{color:#22e7ff}
+  #toast{position:absolute;z-index:9;left:50%;bottom:26px;transform:translateX(-50%);
+    padding:10px 16px;border-radius:10px;background:rgba(20,6,40,.95);border:1px solid var(--line);
+    font-size:12.5px;display:none}
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="ytWrap"><div id="player"></div></div>
+  <div id="veil"></div>
+  <canvas id="game"></canvas>
+
+  <div id="bar">
+    <div class="brand">NEON&nbsp;HIGHWAY</div>
+    <input id="url" type="text" placeholder="Paste any YouTube URL or Video ID..." spellcheck="false" />
+    <button class="primary" id="loadBtn">LOAD &amp; PLAY</button>
+    <button class="ghost" id="lbBtn">LEADERBOARD</button>
+    <button class="ghost" id="quitBtn">RESTART</button>
+    <button class="ghost" id="logBtn">LOG</button>
+    <div id="presets"></div>
+  </div>
+
+  <div id="sync"><div class="box">
+    <div class="ring"></div>
+    <div class="t" id="syncTitle">SYNCING AUDIO / WAITING FOR VIDEO...</div>
+    <div class="s" id="syncReason">Buffering</div>
+    <div id="pbarWrap"><div id="pbar"></div></div>
+    <div id="pct">0%</div>
+    <button class="primary" id="unblock">CLICK TO START PLAYBACK</button>
+    <div id="errBox"></div>
+  </div></div>
+
+  <div id="logPanel">
+    <div class="hd"><span>ENGINE LOG</span><span>[L] TO TOGGLE</span></div>
+    <div id="logLines"></div>
+  </div>
+
+  <div class="overlay" id="startOv"><div class="card">
+    <h1>NEON HIGHWAY</h1>
+    <h2>SYNTHWAVE RHYTHM // YOUTUBE ENGINE</h2>
+    <p style="font-size:13px;line-height:1.6;color:#c9c1ea;margin:0 0 12px">
+      <b style="color:#22e7ff">Start here:</b> paste a YouTube URL into the input bar at the
+      <b>very top of the screen</b> and press <b>LOAD &amp; PLAY</b> &mdash; or just click one of the
+      preset chips (Neon Drive, Kavinsky, ...) beside it.</p>
+    <p style="font-size:13px;line-height:1.6;color:#c9c1ea">
+      Hit the notes as they cross the strike bar.<br>
+      <span class="kbd">Q</span><span class="kbd">W</span><span class="kbd">E</span><span class="kbd">R</span><span class="kbd">T</span>
+      &nbsp;-&gt; 5 lanes. Chain hits to ramp the multiplier up to <b>4x</b>.
+    </p>
+    <div class="statgrid">
+      <div class="stat"><b>&plusmn;40ms</b><span>PERFECT</span></div>
+      <div class="stat"><b>&plusmn;80ms</b><span>GREAT</span></div>
+      <div class="stat"><b>&plusmn;120ms</b><span>GOOD</span></div>
+      <div class="stat"><b>SEEDED</b><span>SAME CHART GLOBALLY</span></div>
+    </div>
+    <div class="row"><button class="primary" id="startBtn">SHOW ME WHERE TO PASTE THE LINK</button></div>
+    <div class="note">Charts are generated deterministically from the YouTube video ID, so every player worldwide
+      gets the identical note map for the same song. Ads and buffering automatically freeze the highway.</div>
+  </div></div>
+
+  <div class="overlay hidden" id="resultOv"><div class="card">
+    <h1 id="rankTxt">TRACK COMPLETE</h1>
+    <h2 id="songTitle"></h2>
+    <div class="statgrid">
+      <div class="stat"><b id="rScore">0</b><span>SCORE</span></div>
+      <div class="stat"><b id="rAcc">0%</b><span>ACCURACY</span></div>
+      <div class="stat"><b id="rCombo">0</b><span>MAX COMBO</span></div>
+      <div class="stat"><b id="rHits">0/0</b><span>NOTES HIT</span></div>
+    </div>
+    <input id="tag" type="text" maxlength="14" placeholder="GAMER TAG" style="width:100%" />
+    <div class="row">
+      <button class="primary" id="submitBtn">SUBMIT SCORE</button>
+      <button class="ghost" id="skipBtn">VIEW LEADERBOARD</button>
+      <button class="ghost" id="againBtn">RETRY TRACK</button>
+    </div>
+    <div class="note" id="submitNote"></div>
+  </div></div>
+
+  <div class="overlay hidden" id="lbOv"><div class="card">
+    <h1>GLOBAL TOP 10</h1>
+    <h2 id="lbSong">-</h2>
+    <table><thead><tr><th>#</th><th>GAMER TAG</th><th>SCORE</th><th>ACC</th><th>COMBO</th></tr></thead>
+      <tbody id="lbBody"></tbody></table>
+    <div class="row"><button class="primary" id="lbClose">CLOSE</button></div>
+    <div class="note" id="lbNote"></div>
+  </div></div>
+
+  <div id="toast"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+/* =====================================================================
+   1. FIREBASE CONFIG  --  PASTE YOUR FREE CREDENTIALS HERE
+   ---------------------------------------------------------------------
+   How to enable the GLOBAL online leaderboard (takes ~2 minutes, free):
+     1. Go to https://console.firebase.google.com  ->  "Add project".
+     2. Inside the project, open  Build > Realtime Database > Create Database
+        (choose "Start in test mode" for a quick public leaderboard).
+     3. Open  Project settings (gear icon) > Your apps > Web app  </>
+     4. Copy the generated firebaseConfig values into the object below,
+        INCLUDING the "databaseURL" (looks like
+        https://your-project-default-rtdb.firebaseio.com ).
+     5. Save + redeploy this file to GitHub Pages. Done.
+
+   If you leave the placeholders as they are, the game silently falls back
+   to a local, per-browser leaderboard stored in localStorage.
+   ===================================================================== */
+const firebaseConfig = {
+  apiKey:            "YOUR_API_KEY",
+  authDomain:        "YOUR_PROJECT.firebaseapp.com",
+  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+  projectId:         "YOUR_PROJECT",
+  storageBucket:     "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId:             "YOUR_APP_ID"
+};
+
+let db = null, FIREBASE_ON = false;
+(function initFirebase(){
+  const bad = v => !v || /^YOUR_/.test(v) || /YOUR_PROJECT/.test(v);
+  if (bad(firebaseConfig.apiKey) || bad(firebaseConfig.databaseURL)) return;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.database();
+    FIREBASE_ON = true;
+  } catch (e) { console.warn("Firebase init failed, using localStorage:", e); }
+})();
+
+/* =====================================================================
+   1b. DIAGNOSTIC LOG + LOADING PROGRESS
+   ===================================================================== */
+const T0 = performance.now();
+const logLines = [];
+function log(msg, kind){
+  const t = ((performance.now() - T0) / 1000).toFixed(2).padStart(6, " ");
+  logLines.push({ t, msg, kind: kind || "" });
+  if (logLines.length > 200) logLines.shift();
+  const box = document.getElementById("logLines");
+  if (box){
+    box.innerHTML = logLines.map(l =>
+      `<div class="l"><span class="ts">${l.t}s</span> <span class="lg-${l.kind || "info"}">${escapeHtml(l.msg)}</span></div>`
+    ).join("");
+    box.parentElement.scrollTop = box.parentElement.scrollHeight;
+  }
+  console.log("[NEON " + t + "s]", msg);
+}
+let curPhase = 0;
+function setPhase(pct, label){
+  curPhase = Math.max(curPhase, pct);
+  const b = document.getElementById("pbar"), p = document.getElementById("pct");
+  if (b) b.style.width = curPhase + "%";
+  if (p) p.textContent = Math.round(curPhase) + "%" + (label ? "  //  " + label.toUpperCase() : "");
+}
+function resetPhase(){ curPhase = 0; setPhase(0, "starting"); showError(null); showUnblock(false); }
+function showError(html){
+  const e = document.getElementById("errBox");
+  if (!e) return;
+  if (!html){ e.style.display = "none"; e.innerHTML = ""; return; }
+  e.style.display = "block"; e.innerHTML = html;
+}
+function showUnblock(on){
+  const b = document.getElementById("unblock");
+  if (b) b.style.display = on ? "inline-block" : "none";
+}
+const YT_ERRORS = {
+  2:   "Invalid video ID (error 2). Check the link you pasted.",
+  5:   "The HTML5 player could not load this video (error 5).",
+  100: "Video not found or removed (error 100).",
+  101: "The uploader has disabled embedding for this video (error 101). Pick another track.",
+  150: "The uploader has disabled embedding for this video (error 150). Pick another track."
+};
+const IS_FILE = location.protocol === "file:";
+
+/* =====================================================================
+   2. CONSTANTS
+   ===================================================================== */
+const LANES = 5;
+const KEYS  = ["q","w","e","r","t"];
+const KEY_LABEL = ["Q","W","E","R","T"];
+const LANE_COL = [
+  { r: 34,  g: 231, b: 255 },  // Q cyan
+  { r: 255, g: 61,  b: 240 },  // W magenta
+  { r: 255, g: 225, b: 77  },  // E yellow
+  { r: 61,  g: 255, b: 143 },  // R green
+  { r: 255, g: 138, b: 43  }   // T orange
+];
+const W_PERFECT = 0.040, W_GREAT = 0.080, W_GOOD = 0.120;
+const LOOKAHEAD = 1.55;          // seconds a note is visible before the strike bar
+const DEPTH     = 7.2;           // perspective strength
+const PRESETS = [
+  { id: "gCYcHz2k5x0", name: "Neon Drive" },
+  { id: "MV_3Dpw-BRY", name: "Kavinsky" },
+  { id: "dQw4w9WgXcQ", name: "Classic" },
+  { id: "wOMwO5T3yT4", name: "Dance Fever" }
+];
+
+/* =====================================================================
+   3. DETERMINISTIC SEEDED CHART GENERATOR
+   Seed derives purely from the YouTube video id => every player on earth
+   gets a byte-identical note chart for the same song.
+   ===================================================================== */
+function hashSeed(str){
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++){
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h >>> 0;
+}
+function mulberry32(a){
+  return function(){
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// Build the chart from (videoId, duration). Duration is quantised so a
+// 1-frame difference in getDuration() cannot change anybody's chart.
+function generateChart(videoId, duration){
+  const dur  = Math.max(20, Math.round(duration));
+  const rnd  = mulberry32(hashSeed(videoId + "|" + dur));
+  const bpm  = 118 + Math.floor(rnd() * 54);       // 118 - 171 bpm
+  const beat = 60 / bpm;
+  const start = 2.2 + rnd() * 1.5;                 // small intro breathing room
+  const end   = dur - 2.0;
+  const notes = [];
+  let t = start, lastLane = -1, bar = 0;
+
+  while (t < end){
+    // Song sections drive density: verse / build / chorus
+    const prog = (t - start) / Math.max(1, end - start);
+    const section = Math.floor(bar / 4) % 4;
+    let density = 0.55 + 0.30 * Math.sin(prog * Math.PI);   // ramps mid-song
+    if (section === 3) density += 0.22;                     // chorus punch
+    density = Math.min(0.95, density);
+
+    const sub = (rnd() < density * 0.55) ? 0.5 : 1;          // eighths or quarters
+    if (rnd() < density){
+      let lane = Math.floor(rnd() * LANES);
+      if (lane === lastLane && rnd() < 0.72) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
+      notes.push({ time: +t.toFixed(4), lane, hit: false, judged: false });
+      lastLane = lane;
+      // occasional chord (2 simultaneous notes) in high-density sections
+      if (density > 0.78 && rnd() < 0.13){
+        const l2 = (lane + 2 + Math.floor(rnd() * 2)) % LANES;
+        notes.push({ time: +t.toFixed(4), lane: l2, hit: false, judged: false });
+      }
+    }
+    t += beat * sub;
+    bar += sub / 4;
+  }
+  notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
+  return { notes, bpm, beat, start };
+}
+
+/* =====================================================================
+   4. YOUTUBE ENGINE + ANTI-AD / BUFFERING SYNC LOCK
+   ===================================================================== */
+function parseVideoId(input){
+  const s = (input || "").trim();
+  if (!s) return null;
+  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+  const m = s.match(/(?:v=|\/embed\/|youtu\.be\/|\/shorts\/|\/live\/|\/v\/)([A-Za-z0-9_-]{11})/);
+  return m ? m[1] : null;
+}
+
+let player = null, ytReady = false, pendingId = null;
+const yt = {
+  id: null,
+  title: "",
+  duration: 0,
+  state: -1,
+  audioTime: 0,        // authoritative song clock (seconds)
+  lastPoll: 0,         // player.getCurrentTime() at last poll
+  lastPollWall: 0,     // performance.now() at last poll
+  stalledSince: 0,
+  locked: true,        // true => notes frozen (ad / buffering / paused)
+  reason: "Waiting for video"
+};
+
+const tag = document.createElement("script");
+tag.src = "https://www.youtube.com/iframe_api";
+tag.onerror = () => {
+  log("FAILED to download the YouTube IFrame API script.", "err");
+  showError("<b>Could not reach youtube.com.</b> The IFrame API script was blocked &mdash; check your network, an ad-blocker, or a content blocker extension.");
+};
+document.head.appendChild(tag);
+log("Booting engine. Firebase: " + (FIREBASE_ON ? "ONLINE" : "local fallback") + ". Origin: " + location.protocol, FIREBASE_ON ? "ok" : "warn");
+if (IS_FILE){
+  log("Running from file:// - the YouTube player will refuse to load here.", "err");
+}
+log("Requesting YouTube IFrame API...");
+setPhase(6, "loading youtube api");
+
+// If the API never arrives, say so instead of spinning forever.
+setTimeout(() => {
+  if (!window.YT || !YT.Player) {
+    log("YouTube IFrame API did not load after 8s.", "err");
+    showError("<b>YouTube API never loaded.</b> Most often an ad-blocker or offline network. Reload once the connection is back.");
+  }
+}, 8000);
+
+window.onYouTubeIframeAPIReady = function(){
+  log("YouTube IFrame API ready. Constructing player...", "ok");
+  setPhase(18, "creating player");
+  player = new YT.Player("player", {
+    height: "100%", width: "100%", videoId: "",
+    playerVars: {
+      controls: 0, disablekb: 1, modestbranding: 1, rel: 0,
+      iv_load_policy: 3, playsinline: 1, fs: 0, origin: location.origin
+    },
+    events: {
+      onReady: () => {
+        ytReady = true;
+        log("Player ready.", "ok");
+        setPhase(30, "player ready");
+        if (pendingId){ const p = pendingId; pendingId = null; loadVideo(p); }
+      },
+      onStateChange: onPlayerStateChange,
+      onError: e => {
+        const msg = YT_ERRORS[e.data] || ("YouTube player error " + e.data + ".");
+        log("PLAYER ERROR " + e.data + ": " + msg, "err");
+        showError("<b>" + escapeHtml(msg) + "</b>" +
+          (IS_FILE ? "<br>You are opening this file directly (file://). YouTube blocks embeds from file URLs &mdash; serve the folder over http, e.g. <code>npx serve .</code>, or push it to GitHub Pages." : "<br>Try a different video or one of the preset chips."));
+        toast(msg);
+        showLog(true);
+      }
+    }
+  });
+};
+
+const ST_NAME = { "-1": "UNSTARTED", 0: "ENDED", 1: "PLAYING", 2: "PAUSED", 3: "BUFFERING", 5: "CUED" };
+function onPlayerStateChange(e){
+  yt.state = e.data;
+  log("State -> " + (ST_NAME[e.data] || e.data));
+  if (e.data === YT.PlayerState.BUFFERING) setPhase(Math.max(curPhase, 55), "buffering");
+  if (e.data === YT.PlayerState.PLAYING){
+    setPhase(100, "playing");
+    showUnblock(false); showError(null);
+    try {
+      const d = player.getDuration();
+      if (d && Math.abs(d - yt.duration) > 0.5 && game.mode === "loading"){
+        yt.duration = d;
+        beginGame();
+      }
+    } catch (err) {}
+  }
+  if (e.data === YT.PlayerState.ENDED && game.mode === "play") endGame();
+}
+
+let loadWaiter = null;
+function loadVideo(id){
+  yt.id = id; yt.duration = 0; yt.audioTime = 0;
+  yt.lastPoll = 0; yt.lastPollWall = performance.now();
+  game.mode = "loading";
+  resetPhase();
+  setSync(true, "Loading track");
+  log("Loading video id: " + id);
+
+  if (IS_FILE){
+    showError("<b>Opened as a local file (file://).</b> YouTube refuses to embed on file URLs, so the player shows a configuration error.<br>Serve the folder over http instead &mdash; <code>npx serve .</code> &mdash; or publish to GitHub Pages.");
+    showLog(true);
+  }
+  if (!ytReady){
+    pendingId = id;
+    log("Player not ready yet - queued this video.", "warn");
+    setPhase(12, "waiting for player");
+    return;
+  }
+
+  setPhase(38, "requesting video");
+  try {
+    player.loadVideoById(id);
+    player.setVolume(75);
+  } catch (e){ log("loadVideoById threw: " + e.message, "err"); }
+  try { yt.title = (player.getVideoData && player.getVideoData().title) || id; } catch(e){ yt.title = id; }
+
+  clearInterval(loadWaiter);
+  let tries = 0;
+  loadWaiter = setInterval(() => {
+    tries++;
+    let d = 0, st = -1, frac = 0;
+    try { d = player.getDuration(); st = player.getPlayerState(); frac = player.getVideoLoadedFraction() || 0; } catch(e){}
+
+    // creep the bar with real buffer progress while we wait on metadata
+    if (curPhase < 70) setPhase(38 + Math.min(30, frac * 60), frac > 0 ? "buffering " + Math.round(frac * 100) + "%" : "contacting youtube");
+
+    if (d > 5 && game.mode === "loading"){
+      yt.duration = d;
+      try { yt.title = player.getVideoData().title || id; } catch(e){}
+      log("Metadata OK - \"" + yt.title + "\", " + d.toFixed(1) + "s", "ok");
+      setPhase(80, "building chart");
+      clearInterval(loadWaiter);
+      beginGame();
+      return;
+    }
+
+    // Autoplay policies block sound-on playback until the user gestures.
+    if (tries === 10 && st !== 1){
+      log("No playback after 2.5s - browser autoplay block is likely.", "warn");
+      showUnblock(true);
+      document.getElementById("syncReason").textContent = "Autoplay blocked - press the button below";
+    }
+    if (tries % 8 === 0) log("Still waiting... state=" + (ST_NAME[st] || st) + " duration=" + d.toFixed(1) + " buffered=" + Math.round(frac * 100) + "%", "warn");
+
+    if (tries > 60){
+      clearInterval(loadWaiter);
+      log("Gave up waiting for metadata after 15s.", "err");
+      showError("<b>The video never started.</b> It may be embed-disabled, region-locked, or blocked by an extension. Try a preset chip or a different link.");
+      showLog(true);
+    }
+  }, 250);
+}
+
+function showLog(on){ document.getElementById("logPanel").classList.toggle("on", !!on); }
+document.getElementById("unblock").onclick = () => {
+  log("Manual start pressed.", "info");
+  try { player.playVideo(); player.setVolume(75); } catch(e){ log("playVideo threw: " + e.message, "err"); }
+  showUnblock(false);
+};
+
+/* Frame-by-frame sync guard.
+   The highway only advances when the *video itself* is genuinely playing.
+   Ads keep the player in PLAYING while getCurrentTime() stops advancing, so a
+   stall detector catches them too. */
+function updateClock(now){
+  if (!player || !yt.id || !player.getCurrentTime){ yt.locked = true; return; }
+  let st = -1, ct = 0;
+  try { st = player.getPlayerState(); ct = player.getCurrentTime() || 0; } catch(e){ yt.locked = true; return; }
+  yt.state = st;
+
+  const S = (window.YT && YT.PlayerState) ? YT.PlayerState : {PLAYING:1,PAUSED:2,BUFFERING:3,ENDED:0,CUED:5};
+
+  if (st === S.BUFFERING){ lock("Buffering video"); return; }
+  if (st === S.PAUSED)   { lock("Paused"); return; }
+  if (st === S.ENDED)    { lock("Track ended"); return; }
+  if (st !== S.PLAYING)  { lock("Waiting for video"); return; }
+
+  if (ct !== yt.lastPoll){
+    // real playback progress -> resync the authoritative clock
+    if (Math.abs(ct - yt.audioTime) > 0.25) yt.audioTime = ct;   // hard resync after a seek/ad
+    else yt.audioTime = yt.audioTime * 0.85 + ct * 0.15;         // gentle drift correction
+    yt.lastPoll = ct;
+    yt.lastPollWall = now;
+    yt.stalledSince = 0;
+    if (yt.locked){
+      yt.locked = false; setSync(false); ignoreMissUntil = yt.audioTime + 0.25;
+      if (game.mode === "play") log("Playback resumed at " + yt.audioTime.toFixed(2) + "s - highway live.", "ok");
+    }
+  } else {
+    // currentTime frozen while "PLAYING" => almost certainly an ad or a hitch
+    if (!yt.stalledSince) yt.stalledSince = now;
+    if (now - yt.stalledSince > 420){ lock("Ad break / stream stall"); return; }
+  }
+
+  if (!yt.locked){
+    // interpolate between polls so note motion is smooth & frame-independent
+    yt.audioTime += (now - yt.lastFrame) / 1000;
+  }
+}
+function lock(reason){
+  if (!yt.locked || yt.reason !== reason){
+    yt.locked = true; yt.reason = reason;
+    setSync(true, reason);
+    if (game.mode === "play"){
+      log("Highway FROZEN: " + reason, "warn");
+      // mid-song the bar reports how much of the stream is buffered ahead
+      let frac = 0; try { frac = player.getVideoLoadedFraction() || 0; } catch(e){}
+      const b = document.getElementById("pbar"), p = document.getElementById("pct");
+      if (b) b.style.width = Math.max(4, frac * 100) + "%";
+      if (p) p.textContent = Math.round(frac * 100) + "%  //  " + reason.toUpperCase();
+    }
+  }
+}
+function setSync(on, reason){
+  const el = document.getElementById("sync");
+  if (on && game.mode !== "menu"){ el.classList.add("on"); document.getElementById("syncReason").textContent = reason || ""; }
+  else el.classList.remove("on");
+}
+
+/* =====================================================================
+   5. GAME STATE
+   ===================================================================== */
+const cvs = document.getElementById("game");
+const ctx = cvs.getContext("2d", { alpha: true });
+let W = 0, H = 0, DPR = 1;
+let ignoreMissUntil = 0;
+
+const game = {
+  mode: "menu",           // menu | loading | play | over
+  chart: null,
+  notes: [],
+  nextIdx: 0,
+  score: 0, combo: 0, maxCombo: 0, mult: 1,
+  hits: 0, total: 0, perfect: 0, great: 0, good: 0, miss: 0,
+  accWeight: 0,
+  shake: 0,
+  laneFlash: [0,0,0,0,0],
+  laneHold:  [false,false,false,false,false],
+  particles: [],
+  splashes: [],
+  scroll: 0
+};
+
+function resize(){
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = cvs.clientWidth; H = cvs.clientHeight;
+  cvs.width  = Math.floor(W * DPR);
+  cvs.height = Math.floor(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+
+/* ---- 3D projection ---------------------------------------------------
+   dd = normalised depth: 0 at the strike bar (near), 1 at the horizon.
+   Classic 1/(1+z) perspective divide gives correct convergence.        */
+function horizonY(){ return H * 0.30; }
+function strikeY(){  return H * 0.855; }
+function laneHalfW(){ return Math.min(W * 0.40, 520); }
+
+function project(laneX, dd){
+  const s  = 1 / (1 + dd * DEPTH);
+  const hy = horizonY(), sy = strikeY();
+  return { x: W / 2 + laneX * s, y: hy + (sy - hy) * s, s };
+}
+function laneCenterX(lane){
+  const hw = laneHalfW();
+  return (-hw) + (hw * 2) * ((lane + 0.5) / LANES);
+}
+function laneWidth(){ return (laneHalfW() * 2) / LANES; }
+
+/* =====================================================================
+   6. RENDERING
+   ===================================================================== */
+function drawBackdrop(t){
+  // horizon sun glow + retro grid receding into the vanishing point
+  const hy = horizonY();
+  const g = ctx.createRadialGradient(W/2, hy, 0, W/2, hy, Math.max(W, H) * 0.55);
+  g.addColorStop(0, "rgba(255,61,240,.18)");
+  g.addColorStop(0.35, "rgba(122,27,255,.10)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  ctx.strokeStyle = "rgba(120,80,220,.22)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = -8; i <= 8; i++){
+    const a = project(i * laneHalfW() * 0.55, 0);
+    ctx.moveTo(W/2, hy); ctx.lineTo(a.x, H);
+  }
+  ctx.stroke();
+
+  // horizontal grid ribs scrolling toward the viewer (locked when synced off)
+  ctx.strokeStyle = "rgba(255,61,240,.16)";
+  ctx.beginPath();
+  for (let i = 0; i < 22; i++){
+    let dd = ((i / 22) + game.scroll) % 1;
+    const p = project(0, dd * 1.6);
+    ctx.moveTo(0, p.y); ctx.lineTo(W, p.y);
+  }
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(34,231,255,.35)";
+  ctx.beginPath(); ctx.moveTo(0, hy); ctx.lineTo(W, hy); ctx.stroke();
+}
+
+function drawHighway(t){
+  const hy = horizonY();
+  // deck
+  const far = project(-laneHalfW(), 1), farR = project(laneHalfW(), 1);
+  const nearL = project(-laneHalfW(), 0), nearR = project(laneHalfW(), 0);
+  const deck = ctx.createLinearGradient(0, hy, 0, H);
+  deck.addColorStop(0, "rgba(20,4,44,.10)");
+  deck.addColorStop(1, "rgba(46,8,90,.55)");
+  ctx.beginPath();
+  ctx.moveTo(far.x, far.y); ctx.lineTo(farR.x, farR.y);
+  ctx.lineTo(nearR.x, H); ctx.lineTo(nearL.x, H); ctx.closePath();
+  ctx.fillStyle = deck; ctx.fill();
+
+  // glowing lane dividers
+  for (let i = 0; i <= LANES; i++){
+    const lx = -laneHalfW() + (laneHalfW() * 2) * (i / LANES);
+    const a = project(lx, 1), b = project(lx, 0);
+    const edge = (i === 0 || i === LANES);
+    const c = edge ? LANE_COL[i === 0 ? 0 : LANES - 1] : { r: 150, g: 110, b: 255 };
+    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${edge ? .75 : .30})`;
+    ctx.lineWidth = edge ? 2.4 : 1.2;
+    ctx.shadowBlur = edge ? 18 : 6;
+    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.7)`;
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, H); ctx.stroke();
+  }
+  ctx.shadowBlur = 0;
+
+  // lane press flashes
+  for (let i = 0; i < LANES; i++){
+    if (game.laneFlash[i] <= 0 && !game.laneHold[i]) continue;
+    const c = LANE_COL[i], hw = laneWidth() / 2, cx = laneCenterX(i);
+    const a1 = project(cx - hw, 1), a2 = project(cx + hw, 1);
+    const b1 = project(cx - hw, 0), b2 = project(cx + hw, 0);
+    const alpha = Math.max(game.laneFlash[i], game.laneHold[i] ? 0.16 : 0);
+    const gr = ctx.createLinearGradient(0, horizonY(), 0, H);
+    gr.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0)`);
+    gr.addColorStop(1, `rgba(${c.r},${c.g},${c.b},${alpha * .55})`);
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y);
+    ctx.lineTo(b2.x, H); ctx.lineTo(b1.x, H); ctx.closePath(); ctx.fill();
+  }
+}
+
+function drawStrikeBar(t){
+  const sy = strikeY(), hw = laneHalfW();
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,255,255,.85)";
+  ctx.lineWidth = 3; ctx.shadowBlur = 26; ctx.shadowColor = "rgba(34,231,255,.9)";
+  ctx.beginPath(); ctx.moveTo(W/2 - hw, sy); ctx.lineTo(W/2 + hw, sy); ctx.stroke();
+  ctx.restore();
+
+  for (let i = 0; i < LANES; i++){
+    const c = LANE_COL[i];
+    const cx = W/2 + laneCenterX(i);
+    const r = laneWidth() * 0.30;
+    const pulse = 1 + game.laneFlash[i] * 0.45;
+    ctx.save();
+    ctx.translate(cx, sy);
+    ctx.scale(pulse, pulse);
+    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${0.10 + game.laneFlash[i] * 0.55})`;
+    ctx.shadowBlur = 22 + game.laneFlash[i] * 30;
+    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.9)`;
+    ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},.95)`; ctx.stroke();
+    ctx.restore();
+
+    ctx.font = `800 ${Math.max(12, r * 0.75)}px Segoe UI, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = `rgba(255,255,255,${0.55 + game.laneFlash[i] * 0.45})`;
+    ctx.fillText(KEY_LABEL[i], cx, sy + r * 1.75 + 6);
+  }
+}
+
+function drawNotes(){
+  const at = yt.audioTime;
+  for (let i = 0; i < game.notes.length; i++){
+    const n = game.notes[i];
+    if (n.hit) continue;
+    const dt = n.time - at;
+    if (dt > LOOKAHEAD) break;
+    if (dt < -W_GOOD - 0.15) continue;
+    const dd = Math.max(0, dt / LOOKAHEAD);
+    const c = LANE_COL[n.lane];
+    const cx = laneCenterX(n.lane);
+    const half = laneWidth() * 0.36;
+    const a = project(cx - half, dd), b = project(cx + half, dd);
+    const thick = Math.max(3, 34 * a.s);
+    const y = a.y;
+    const fade = dt < 0 ? Math.max(0, 1 + dt / (W_GOOD + 0.15)) : 1;
+
+    ctx.save();
+    ctx.globalAlpha = fade;
+    // glow body
+    const g = ctx.createLinearGradient(a.x, y, b.x, y);
+    g.addColorStop(0, `rgba(${c.r},${c.g},${c.b},.35)`);
+    g.addColorStop(.5, `rgba(255,255,255,.95)`);
+    g.addColorStop(1, `rgba(${c.r},${c.g},${c.b},.35)`);
+    ctx.shadowBlur = 18 * a.s + 6; ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.95)`;
+    ctx.fillStyle = g;
+    roundRect(a.x, y - thick/2, b.x - a.x, thick, Math.min(8, thick/2));
+    ctx.fill();
+    // rim
+    ctx.shadowBlur = 0; ctx.lineWidth = Math.max(1, 2 * a.s);
+    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},.95)`; ctx.stroke();
+    ctx.restore();
+  }
+}
+function roundRect(x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function drawParticles(dt){
+  for (let i = game.particles.length - 1; i >= 0; i--){
+    const p = game.particles[i];
+    p.life -= dt;
+    if (p.life <= 0){ game.particles.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; p.vx *= 0.99;
+    const a = Math.max(0, p.life / p.max);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = `rgb(${p.c.r},${p.c.g},${p.c.b})`;
+    ctx.shadowBlur = 14; ctx.shadowColor = ctx.fillStyle;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a + 0.6, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+}
+function burst(lane, strength){
+  const c = LANE_COL[lane];
+  const x = W/2 + laneCenterX(lane), y = strikeY();
+  const n = Math.round(14 + strength * 18);
+  for (let i = 0; i < n; i++){
+    const ang = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 1.35;
+    const sp  = 130 + Math.random() * 420 * strength;
+    game.particles.push({
+      x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
+      r: 1.6 + Math.random() * 3.4, c, life: 0.45 + Math.random() * 0.5,
+      max: 0.95
+    });
+  }
+}
+
+function splash(text, color){
+  game.splashes.push({ text, color, life: 0.75, max: 0.75 });
+}
+function drawSplashes(dt){
+  for (let i = game.splashes.length - 1; i >= 0; i--){
+    const s = game.splashes[i];
+    s.life -= dt;
+    if (s.life <= 0){ game.splashes.splice(i, 1); continue; }
+    const p = 1 - s.life / s.max;
+    const scale = 1 + (1 - Math.pow(1 - p, 3)) * 0.35;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, s.life * 3);
+    ctx.translate(W/2, strikeY() - H * 0.16 - p * 26);
+    ctx.scale(scale, scale);
+    ctx.font = "900 40px Segoe UI, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowBlur = 28; ctx.shadowColor = s.color;
+    ctx.fillStyle = "#fff"; ctx.fillText(s.text, 0, 0);
+    ctx.lineWidth = 2; ctx.strokeStyle = s.color; ctx.strokeText(s.text, 0, 0);
+    ctx.restore();
+  }
+}
+
+function drawHUD(){
+  const acc = accuracy();
+  ctx.save();
+  ctx.textBaseline = "top";
+  // score
+  ctx.textAlign = "left";
+  ctx.font = "900 40px Segoe UI, sans-serif";
+  ctx.fillStyle = "#fff"; ctx.shadowBlur = 18; ctx.shadowColor = "rgba(34,231,255,.8)";
+  ctx.fillText(game.score.toLocaleString(), 22, 68);
+  ctx.shadowBlur = 0;
+  ctx.font = "700 11px Segoe UI, sans-serif"; ctx.fillStyle = "#a89dd0";
+  ctx.fillText("SCORE", 24, 112);
+  ctx.fillText("ACCURACY  " + acc.toFixed(1) + "%", 24, 132);
+  ctx.fillText("MAX COMBO  " + game.maxCombo, 24, 152);
+
+  // multiplier
+  ctx.textAlign = "right";
+  const mc = LANE_COL[Math.min(4, game.mult)] || LANE_COL[0];
+  ctx.font = "900 44px Segoe UI, sans-serif";
+  ctx.shadowBlur = 22; ctx.shadowColor = `rgba(${mc.r},${mc.g},${mc.b},.95)`;
+  ctx.fillStyle = "#fff";
+  ctx.fillText(game.mult + "x", W - 22, 68);
+  ctx.shadowBlur = 0;
+  ctx.font = "700 11px Segoe UI, sans-serif"; ctx.fillStyle = "#a89dd0";
+  ctx.fillText("MULTIPLIER", W - 24, 118);
+
+  // combo counter (center)
+  if (game.combo > 1){
+    ctx.textAlign = "center";
+    const t = Math.min(1, game.combo / 60);
+    ctx.font = `900 ${34 + t * 22}px Segoe UI, sans-serif`;
+    ctx.shadowBlur = 20 + t * 30; ctx.shadowColor = "rgba(255,61,240,.9)";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(game.combo, W/2, 62);
+    ctx.shadowBlur = 0;
+    ctx.font = "700 11px Segoe UI, sans-serif"; ctx.fillStyle = "#a89dd0";
+    ctx.fillText("COMBO", W/2, 62 + 40 + t * 22);
+  }
+
+  // multiplier progress bar
+  const need = 10, prog = Math.min(1, (game.combo % need) / need);
+  const bw = Math.min(320, W * 0.4), bx = W/2 - bw/2, by = H - 26;
+  ctx.fillStyle = "rgba(255,255,255,.08)";
+  roundRect(bx, by, bw, 7, 4); ctx.fill();
+  const bg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+  bg.addColorStop(0, "#22e7ff"); bg.addColorStop(1, "#ff3df0");
+  ctx.fillStyle = bg;
+  roundRect(bx, by, Math.max(2, bw * (game.mult >= 4 ? 1 : prog)), 7, 4); ctx.fill();
+
+  // song progress
+  if (yt.duration > 0){
+    const p = Math.min(1, yt.audioTime / yt.duration);
+    ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(0, 0, W, 3);
+    ctx.fillStyle = "rgba(34,231,255,.85)";  ctx.fillRect(0, 0, W * p, 3);
+  }
+  ctx.restore();
+}
+
+/* =====================================================================
+   7. MAIN LOOP
+   ===================================================================== */
+yt.lastFrame = performance.now();
+function frame(now){
+  requestAnimationFrame(frame);
+  const dt = Math.min(0.05, (now - yt.lastFrame) / 1000);
+
+  if (game.mode === "play" || game.mode === "loading") updateClock(now);
+  yt.lastFrame = now;
+
+  if (game.mode === "play" && !yt.locked){
+    game.scroll = (game.scroll + dt * 0.35) % 1;
+    checkMisses();
+    if (yt.duration && yt.audioTime >= yt.duration - 0.4) endGame();
+    if (game.nextIdx >= game.notes.length && yt.audioTime > lastNoteTime() + 2.2) endGame();
+  }
+
+  for (let i = 0; i < LANES; i++) game.laneFlash[i] = Math.max(0, game.laneFlash[i] - dt * 3.4);
+  game.shake = Math.max(0, game.shake - dt * 3.2);
+
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  if (game.shake > 0){
+    const s = game.shake * (game.combo > 30 ? 9 : 5);
+    ctx.translate((Math.random() - .5) * s, (Math.random() - .5) * s);
+  }
+  drawBackdrop(now);
+  drawHighway(now);
+  if (game.mode === "play" || game.mode === "over") drawNotes();
+  drawStrikeBar(now);
+  drawParticles(dt);
+  drawSplashes(dt);
+  ctx.restore();
+  if (game.mode === "play" || game.mode === "over") drawHUD();
+}
+
+function lastNoteTime(){ return game.notes.length ? game.notes[game.notes.length - 1].time : 0; }
+
+/* =====================================================================
+   8. SCORING / INPUT
+   ===================================================================== */
+function accuracy(){
+  if (game.total === 0) return 100;
+  return (game.accWeight / game.total) * 100;
+}
+function updateMult(){
+  game.mult = Math.min(4, 1 + Math.floor(game.combo / 10));
+}
+function judge(lane, delta){
+  const ad = Math.abs(delta);
+  let base, label, col, weight, strength;
+  if (ad <= W_PERFECT){ base = 300; label = "PERFECT"; col = "#22e7ff"; weight = 1.0; strength = 1.0; game.perfect++; }
+  else if (ad <= W_GREAT){ base = 200; label = "GREAT"; col = "#ff3df0"; weight = 0.75; strength = 0.7; game.great++; }
+  else { base = 100; label = "GOOD"; col = "#ffe14d"; weight = 0.5; strength = 0.45; game.good++; }
+
+  game.combo++; game.maxCombo = Math.max(game.maxCombo, game.combo);
+  updateMult();
+  game.score += base * game.mult;
+  game.hits++; game.total++; game.accWeight += weight;
+  game.laneFlash[lane] = 1;
+  burst(lane, strength);
+  splash(label, col);
+  if (game.combo >= 20) game.shake = Math.min(1, 0.25 + game.combo / 220);
+}
+function registerMiss(lane){
+  game.combo = 0; game.mult = 1; game.miss++; game.total++;
+  splash("MISS", "#ff4d5e");
+  if (lane != null) game.laneFlash[lane] = 0.5;
+}
+function checkMisses(){
+  const at = yt.audioTime;
+  while (game.nextIdx < game.notes.length){
+    const n = game.notes[game.nextIdx];
+    if (n.hit || n.judged){ game.nextIdx++; continue; }
+    if (n.time < at - W_GOOD){
+      n.judged = true;
+      if (at > ignoreMissUntil) registerMiss(n.lane);
+      game.nextIdx++;
+    } else break;
+  }
+}
+function hitLane(lane){
+  if (game.mode !== "play" || yt.locked) return;
+  const at = yt.audioTime;
+  let best = null, bestD = 1e9;
+  for (let i = game.nextIdx; i < game.notes.length; i++){
+    const n = game.notes[i];
+    const d = n.time - at;
+    if (d > W_GOOD) break;
+    if (n.hit || n.judged || n.lane !== lane) continue;
+    if (Math.abs(d) < bestD){ bestD = Math.abs(d); best = n; }
+  }
+  if (best && bestD <= W_GOOD){
+    best.hit = true; best.judged = true;
+    judge(lane, best.time - at);
+  } else {
+    game.laneFlash[lane] = 0.35;   // dry strum, no penalty
+  }
+}
+
+window.addEventListener("keydown", e => {
+  if (e.target && e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  const i = KEYS.indexOf(k);
+  if (i >= 0){
+    e.preventDefault();
+    if (!game.laneHold[i]){ game.laneHold[i] = true; hitLane(i); }
+  }
+  if (k === "escape" && game.mode === "play"){ try { player.pauseVideo(); } catch(err){} }
+  if (k === "l"){ document.getElementById("logPanel").classList.toggle("on"); }
+});
+window.addEventListener("keyup", e => {
+  const i = KEYS.indexOf(e.key.toLowerCase());
+  if (i >= 0) game.laneHold[i] = false;
+});
+// touch / click lanes (mobile friendly)
+cvs.addEventListener("pointerdown", e => {
+  if (game.mode !== "play") return;
+  const rect = cvs.getBoundingClientRect();
+  const x = e.clientX - rect.left - W/2;
+  const hw = laneHalfW();
+  const lane = Math.floor(((x + hw) / (hw * 2)) * LANES);
+  if (lane >= 0 && lane < LANES) hitLane(lane);
+});
+
+/* =====================================================================
+   9. FLOW: start / begin / end
+   ===================================================================== */
+function startTrack(input){
+  const id = parseVideoId(input);
+  if (!id){ toast("Could not read that YouTube URL or ID."); return; }
+  document.getElementById("startOv").classList.add("hidden");
+  document.getElementById("resultOv").classList.add("hidden");
+  document.getElementById("lbOv").classList.add("hidden");
+  document.getElementById("url").value = id;
+  document.getElementById("url").blur();
+  loadVideo(id);
+}
+
+function beginGame(){
+  game.chart = generateChart(yt.id, yt.duration);
+  game.notes = game.chart.notes;
+  game.nextIdx = 0;
+  game.score = 0; game.combo = 0; game.maxCombo = 0; game.mult = 1;
+  game.hits = 0; game.total = 0; game.perfect = 0; game.great = 0; game.good = 0; game.miss = 0;
+  game.accWeight = 0; game.particles.length = 0; game.splashes.length = 0;
+  game.mode = "play";
+  ignoreMissUntil = 0;
+  setPhase(92, "starting playback");
+  log(`Chart built: ${game.notes.length} notes, ~${game.chart.bpm} BPM, seed 0x${hashSeed(yt.id).toString(16)}`, "ok");
+  try { player.playVideo(); } catch(e){ log("playVideo threw: " + e.message, "err"); }
+  toast(`${game.notes.length} notes  //  ~${game.chart.bpm} BPM  //  seed ${hashSeed(yt.id).toString(16)}`);
+}
+
+function endGame(){
+  if (game.mode !== "play") return;
+  game.mode = "over";
+  setSync(false);
+  try { player.pauseVideo(); } catch(e){}
+  const acc = accuracy();
+  const rank = acc >= 97 ? "S RANK" : acc >= 92 ? "A RANK" : acc >= 82 ? "B RANK" : acc >= 70 ? "C RANK" : "TRACK COMPLETE";
+  document.getElementById("rankTxt").textContent = rank;
+  document.getElementById("songTitle").textContent = (yt.title || yt.id) + "  //  " + yt.id;
+  document.getElementById("rScore").textContent = game.score.toLocaleString();
+  document.getElementById("rAcc").textContent = acc.toFixed(1) + "%";
+  document.getElementById("rCombo").textContent = game.maxCombo;
+  document.getElementById("rHits").textContent = game.hits + "/" + game.notes.length;
+  document.getElementById("submitNote").textContent = FIREBASE_ON
+    ? "Connected to the global Firebase leaderboard."
+    : "Firebase keys not set - scores save locally in this browser.";
+  const t = document.getElementById("tag");
+  t.value = localStorage.getItem("nh_tag") || "";
+  document.getElementById("resultOv").classList.remove("hidden");
+}
+
+/* =====================================================================
+   10. LEADERBOARD (Firebase RTDB, localStorage fallback)
+   ===================================================================== */
+function lbKey(id){ return "nh_lb_" + id; }
+
+function submitScore(){
+  const name = (document.getElementById("tag").value || "ANON").trim().toUpperCase().slice(0, 14) || "ANON";
+  localStorage.setItem("nh_tag", name);
+  const entry = {
+    username: name,
+    score: game.score,
+    accuracy: +accuracy().toFixed(2),
+    maxCombo: game.maxCombo,
+    youtubeId: yt.id,
+    timestamp: Date.now()
+  };
+  if (FIREBASE_ON){
+    db.ref("scores/" + yt.id).push(entry)
+      .then(() => { toast("Score posted to the global leaderboard."); openLeaderboard(); })
+      .catch(err => { console.warn(err); saveLocal(entry); toast("Firebase write failed - saved locally."); openLeaderboard(); });
+  } else {
+    saveLocal(entry);
+    toast("Saved to local leaderboard.");
+    openLeaderboard();
+  }
+}
+function saveLocal(entry){
+  const k = lbKey(entry.youtubeId);
+  const arr = JSON.parse(localStorage.getItem(k) || "[]");
+  arr.push(entry);
+  arr.sort((a, b) => b.score - a.score);
+  localStorage.setItem(k, JSON.stringify(arr.slice(0, 50)));
+}
+
+function openLeaderboard(){
+  const id = yt.id || parseVideoId(document.getElementById("url").value);
+  document.getElementById("resultOv").classList.add("hidden");
+  document.getElementById("lbOv").classList.remove("hidden");
+  document.getElementById("lbSong").textContent = id ? ((yt.title || "Track") + "  //  " + id) : "No track loaded";
+  const body = document.getElementById("lbBody");
+  const note = document.getElementById("lbNote");
+  body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">Loading...</td></tr>`;
+  if (!id){ body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">Load a track first.</td></tr>`; return; }
+
+  if (FIREBASE_ON){
+    note.textContent = "Live global scores via Firebase Realtime Database.";
+    db.ref("scores/" + id).orderByChild("score").limitToLast(10).on("value", snap => {
+      const rows = [];
+      snap.forEach(c => rows.push(c.val()));
+      rows.sort((a, b) => b.score - a.score);
+      renderLB(rows);
+    }, err => { console.warn(err); note.textContent = "Firebase read failed - showing local scores."; renderLB(localRows(id)); });
+  } else {
+    note.textContent = "Firebase not configured - showing this browser's local scores. See the firebaseConfig block at the top of the script to go global.";
+    renderLB(localRows(id));
+  }
+}
+function localRows(id){
+  return JSON.parse(localStorage.getItem(lbKey(id)) || "[]").sort((a, b) => b.score - a.score).slice(0, 10);
+}
+function renderLB(rows){
+  const body = document.getElementById("lbBody");
+  if (!rows.length){ body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">No scores yet - be the first.</td></tr>`; return; }
+  body.innerHTML = rows.slice(0, 10).map((r, i) => `
+    <tr style="animation-delay:${i * 45}ms">
+      <td class="${i < 3 ? 'rank' + (i + 1) : ''}">${i + 1}</td>
+      <td class="${i < 3 ? 'rank' + (i + 1) : ''}">${escapeHtml(r.username || "ANON")}</td>
+      <td>${(r.score || 0).toLocaleString()}</td>
+      <td>${(r.accuracy != null ? r.accuracy.toFixed(1) : "-")}%</td>
+      <td>${r.maxCombo || 0}</td>
+    </tr>`).join("");
+}
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+/* =====================================================================
+   11. UI WIRING
+   ===================================================================== */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.style.display = "none", 3200);
+}
+
+const presetBox = document.getElementById("presets");
+PRESETS.forEach(p => {
+  const b = document.createElement("button");
+  b.className = "chip"; b.textContent = p.name;
+  b.onclick = () => startTrack(p.id);
+  presetBox.appendChild(b);
+});
+
+document.getElementById("loadBtn").onclick = () => startTrack(document.getElementById("url").value);
+document.getElementById("url").addEventListener("keydown", e => {
+  if (e.key === "Enter") startTrack(e.target.value);
+});
+document.getElementById("startBtn").onclick = () => {
+  const u = document.getElementById("url");
+  u.focus(); u.classList.add("hint");
+  setTimeout(() => u.classList.remove("hint"), 3600);
+  toast("Paste a YouTube link in the glowing bar at the top, then hit LOAD & PLAY.");
+};
+document.getElementById("lbBtn").onclick = openLeaderboard;
+document.getElementById("logBtn").onclick = () => document.getElementById("logPanel").classList.toggle("on");
+document.getElementById("lbClose").onclick = () => {
+  document.getElementById("lbOv").classList.add("hidden");
+  if (game.mode === "menu") document.getElementById("startOv").classList.remove("hidden");
+};
+document.getElementById("submitBtn").onclick = submitScore;
+document.getElementById("skipBtn").onclick = openLeaderboard;
+document.getElementById("againBtn").onclick = () => {
+  document.getElementById("resultOv").classList.add("hidden");
+  try { player.seekTo(0, true); } catch(e){}
+  beginGame();
+};
+document.getElementById("quitBtn").onclick = () => {
+  game.mode = "menu"; setSync(false);
+  try { player.stopVideo(); } catch(e){}
+  document.getElementById("resultOv").classList.add("hidden");
+  document.getElementById("lbOv").classList.add("hidden");
+  document.getElementById("startOv").classList.remove("hidden");
+};
+
+resize();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
