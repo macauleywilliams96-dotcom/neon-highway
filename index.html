@@ -574,6 +574,13 @@ function lock(reason){
     setSync(true, reason);
     if (game.mode === "play"){
       log("Highway FROZEN: " + reason, "warn");
+      // Never got a single second of audio => the browser is silently refusing
+      // to autoplay with sound. Offer the manual gesture instead of spinning.
+      if (yt.audioTime < 0.05){
+        showUnblock(true);
+        document.getElementById("syncReason").textContent =
+          "Autoplay blocked by the browser - press the button below";
+      }
       // mid-song the bar reports how much of the stream is buffered ahead
       let frac = 0; try { frac = player.getVideoLoadedFraction() || 0; } catch(e){}
       const b = document.getElementById("pbar"), p = document.getElementById("pct");
@@ -1041,6 +1048,8 @@ function startTrack(input){
 }
 
 function beginGame(){
+  clearInterval(loadWaiter);   // both onStateChange and the poller can land here
+  loadWaiter = null;
   game.chart = generateChart(yt.id, yt.duration);
   game.notes = game.chart.notes;
   game.nextIdx = 0;
