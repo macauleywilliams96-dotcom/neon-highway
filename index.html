@@ -760,6 +760,7 @@ function botAct(seatIdx){
   if (mv === "P" && (s.hands.length >= 2 || s.bank < h.bet)) mv = "H";
   act(seatIdx, T.turnHand, mv === "H" ? "hit" : mv === "S" ? "stand" : mv === "D" ? "double" : "split");
 }
+const KEEP_OPEN = 2;         // always leave room for real people to sit down
 function fillBots(){
   if (!S.bots) return;
   const humans = T.seats.filter(s => occupied(s) && !s.bot).length;
@@ -767,6 +768,8 @@ function fillBots(){
   const names = ["Rex","Nova","Duke","Kira","Ace","Mimi","Zed","Bo"];
   T.seats.forEach((s, i) => {
     if (occupied(s)) return;
+    const free = T.seats.filter(x => !occupied(x)).length;
+    if (free <= KEEP_OPEN) return;
     if (Math.random() < 0.55){
       s.uid = "bot_" + i; s.bot = true;
       s.name = names[Math.floor(Math.random() * names.length)];
@@ -987,21 +990,46 @@ function loadHighRollers(){
 }
 
 /* ---- seating ---- */
-function takeSeat(){
-  const seatIdx = T.seats.findIndex(s => !occupied(s));
-  if (seatIdx < 0){ toast("Table is full - try again in a moment."); return false; }
-  const seat = T.seats[seatIdx];
-  Object.assign(seat, blankSeat(), {
+function mySeatData(){
+  return Object.assign(blankSeat(), {
     uid: myUid || "local", name: S.name || "Player", avatar: S.avatar,
     bank: S.bank, joined: now()
   });
-  mySeat = seatIdx;
-  if (ONLINE && !isHost) db.ref("tables/" + ROOM() + "/state/seats/" + seatIdx).set(seat);
-  if (ONLINE) db.ref("tables/" + ROOM() + "/state/seats/" + seatIdx).onDisconnect().set(blankSeat());
-  log((S.name || "You") + " joined the table.");
-  if (ONLINE && chatRef) chatRef.push({ name: "", text: (S.name || "A player") + " sits down.", sys: true, ts: now() });
-  push();
-  return true;
+}
+// Claiming a seat MUST be atomic: two players hitting "take a seat" at the same
+// moment would otherwise both read the same empty slot and both write to it,
+// and a local read can also be stale relative to bots the host just seated.
+// A transaction per seat aborts if anyone (human or bot) already holds it.
+async function takeSeat(){
+  if (!ONLINE){
+    const i = T.seats.findIndex(s => !occupied(s));
+    if (i < 0){ toast("Table is full."); return false; }
+    Object.assign(T.seats[i], mySeatData());
+    mySeat = i; log((S.name || "You") + " joined the table."); push();
+    return true;
+  }
+  for (let i = 0; i < SEATS; i++){
+    const ref = db.ref("tables/" + ROOM() + "/state/seats/" + i);
+    let claimed = false;
+    try {
+      const res = await ref.transaction(cur => {
+        if (cur && cur.uid) return;          // taken -- abort, try the next seat
+        return mySeatData();
+      });
+      claimed = res.committed && res.snapshot.val() && res.snapshot.val().uid === (myUid || "local");
+    } catch(e){ console.warn("seat claim failed", e); }
+    if (claimed){
+      mySeat = i;
+      Object.assign(T.seats[i], mySeatData());
+      ref.onDisconnect().set(blankSeat());
+      log((S.name || "You") + " joined the table.");
+      if (chatRef) chatRef.push({ name: "", text: (S.name || "A player") + " sits down.", sys: true, ts: now() });
+      push();
+      return true;
+    }
+  }
+  toast("Table is full - try again in a moment.");
+  return false;
 }
 function leaveSeat(){
   if (mySeat < 0) return;
@@ -1574,11 +1602,15 @@ AVATARS.forEach((a, i) => {
   avBox.appendChild(d);
 });
 $("nameIn").value = S.name || "";
-$("joinBtn").onclick = () => {
+$("joinBtn").onclick = async () => {
   const n = ($("nameIn").value || "").trim().slice(0, 12) || "Player";
   S.name = n; save();
   ac();                                  // unlock audio on this user gesture
-  if (!takeSeat()) return;
+  const btn = $("joinBtn");
+  btn.disabled = true; btn.textContent = "TAKING A SEAT...";
+  const ok = await takeSeat();
+  btn.disabled = false; btn.textContent = "TAKE A SEAT";
+  if (!ok) return;
   $("joinOv").classList.add("hidden");
   toast("Seated. " + (ONLINE ? "Others can join at this URL." : "Solo table."));
   syncUI();
