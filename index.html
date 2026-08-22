@@ -1011,7 +1011,21 @@ function mySeatData(){
 // moment would otherwise both read the same empty slot and both write to it,
 // and a local read can also be stale relative to bots the host just seated.
 // A transaction per seat aborts if anyone (human or bot) already holds it.
+// Clear any seat still carrying my uid other than the one I just took. Without
+// this, a claim that commits but is misjudged as failed leaves a ghost seat
+// holding my name -- and a ghost keeps beating, so pruning never reaps it.
+async function releaseOtherSeats(keepIdx){
+  if (!ONLINE) return;
+  for (let j = 0; j < SEATS; j++){
+    if (j === keepIdx) continue;
+    const r = db.ref("tables/" + ROOM() + "/state/seats/" + j);
+    try {
+      await r.transaction(cur => (cur && cur.uid === myUid) ? blankSeat() : undefined);
+    } catch(e){}
+  }
+}
 async function takeSeat(){
+  if (mySeat >= 0 && T.seats[mySeat] && T.seats[mySeat].uid === (myUid || "local")) return true;
   if (!ONLINE){
     const i = T.seats.findIndex(s => !occupied(s));
     if (i < 0){ toast("Table is full."); return false; }
@@ -1036,6 +1050,7 @@ async function takeSeat(){
       // its socket, and yanking the seat mid-round would strand the player's
       // money. The host prunes seats that stop heartbeating instead.
       startHeartbeat();
+      await releaseOtherSeats(i);
       log((S.name || "You") + " joined the table.");
       if (chatRef) chatRef.push({ name: "", text: (S.name || "A player") + " sits down.", sys: true, ts: now() });
       push();
