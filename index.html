@@ -1584,7 +1584,30 @@ requestAnimationFrame(frame);
 
 // The phase machine runs on a timer, not rAF: browsers pause rAF in hidden
 // tabs, which would freeze the arena for everyone if the host looked away.
-setInterval(() => { if (isHost) hostTick(); }, 200);
+/* The host must be able to finish a fight even when its own tab is hidden.
+   rAF is paused in background tabs, so a hidden host never simulated far
+   enough to see the knockout and the whole arena sat frozen on "fight" for
+   everyone until the 75s cap bailed it out. Timers still run (throttled),
+   so the host advances the simulation here as well -- silently, since
+   nobody is watching that copy anyway. For a visible host, rAF has already
+   brought F up to date and this is a no-op. */
+setInterval(() => {
+  if (!isHost) return;
+  if (A.phase === PHASE.FIGHT && A.fightSeed){
+    if (!F || F.seedFrom !== A.fightSeed){ F = initFight(A.botSeed, A.fightSeed); F.seedFrom = A.fightSeed; }
+    const want = Math.floor((now() - A.startAt) / TICK_MS);
+    if (want > F.tick) simulateTo(F, want);
+  }
+  hostTick();
+}, 200);
+
+// Coming back to a hidden tab: resync the simulation immediately rather than
+// crawling through the backlog.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || A.phase !== PHASE.FIGHT || !F) return;
+  const want = Math.floor((now() - A.startAt) / TICK_MS);
+  if (want - F.tick > 60) simulateTo(F, want - 20);
+});
 setInterval(syncUI, 300);
 
 </script>
