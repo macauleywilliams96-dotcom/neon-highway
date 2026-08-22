@@ -1404,8 +1404,14 @@ async function takeSeat(){
    A seat is held by a heartbeat, not by socket liveness. If my seat is taken
    from under me (host pruned it, or a race), reclaim it rather than silently
    betting into a seat that no longer exists. */
-const SEAT_TTL = 30000;
-let hbTimer = null, beats = {};
+/* Seat TTL is deliberately generous. A closed tab is detected instantly via
+   onDisconnect removing its beat, so the timeout only has to cover a player
+   whose tab is merely hidden -- and browsers throttle timers in background
+   tabs to roughly once a minute. At 30s, anyone who alt-tabbed for half a
+   minute was thrown out of their seat mid-game. */
+const SEAT_TTL = 180000;
+const GONE_GRACE = 12000;    // once the beat disappears, they really have left
+let hbTimer = null, beats = {}, hadBeat = {};
 function startHeartbeat(){
   clearInterval(hbTimer);
   if (!ONLINE) return;
@@ -1442,12 +1448,14 @@ function pruneSeats(){
   T.seats.forEach(s => {
     if (!occupied(s) || s.bot || s.uid === myUid) return;
     const beat = beats[s.uid];
-    if (beat){ seatSeen[s.uid] = Math.max(seatSeen[s.uid] || 0, beat); }
+    if (beat){ seatSeen[s.uid] = Math.max(seatSeen[s.uid] || 0, beat); hadBeat[s.uid] = true; }
     // give a newly seated player a full TTL before the first beat is required
     if (!seatSeen[s.uid]){ seatSeen[s.uid] = s.joined || t; }
-    if (t - seatSeen[s.uid] > SEAT_TTL){
+    // beat vanished after we had one => onDisconnect fired => they closed the tab
+    const gone = !beat && hadBeat[s.uid] && t - seatSeen[s.uid] > GONE_GRACE;
+    if (gone || t - seatSeen[s.uid] > SEAT_TTL){
       log((s.name || "A player") + " left the table.");
-      delete seatSeen[s.uid];
+      delete seatSeen[s.uid]; delete hadBeat[s.uid];
       Object.assign(s, blankSeat()); changed = true;
     }
   });
