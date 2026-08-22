@@ -2,311 +2,275 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-<title>NEON HIGHWAY // Synthwave Rhythm</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>VELVET ACE // Multiplayer Blackjack</title>
 <style>
   :root{
-    --cyan:#22e7ff; --mag:#ff3df0; --yel:#ffe14d; --grn:#3dff8f; --org:#ff8a2b;
-    --bg:#05020e; --panel:rgba(12,6,28,.85); --line:rgba(160,120,255,.35);
-    --txt:#eae2ff;
+    --gold:#e8c66a; --gold-b:#8d6b25;
+    --felt:#0d5c46; --felt-d:#063325;
+    --bg:#0a0d10; --panel:rgba(10,16,20,.9);
+    --line:rgba(232,198,106,.28);
+    --txt:#f0e9dc; --dim:#9aa3a8;
+    --win:#4ade80; --lose:#f87171; --push:#7dd3fc;
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);
-    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;overflow:hidden;}
-  #stage{position:fixed;inset:0;overflow:hidden}
-  #ytWrap{position:absolute;inset:-6%;z-index:0;pointer-events:none;filter:saturate(1.15)}
-  #player{width:100%;height:100%}
-  #veil{position:absolute;inset:0;z-index:1;pointer-events:none;
-    background:
-      radial-gradient(120% 80% at 50% 8%, rgba(80,0,140,.35), transparent 60%),
-      linear-gradient(180deg, rgba(5,2,14,.80) 0%, rgba(5,2,14,.88) 45%, rgba(5,2,14,.95) 100%);}
-  canvas#game{position:absolute;inset:0;z-index:2;width:100%;height:100%;display:block}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--txt);overflow:hidden;
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  #app{position:fixed;inset:0}
+  canvas#table{position:absolute;inset:0;width:100%;height:100%;display:block;z-index:1}
 
-  #bar{position:absolute;z-index:20;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;
-    padding:10px 14px;background:linear-gradient(180deg,rgba(8,3,20,.92),rgba(8,3,20,.35));
-    border-bottom:1px solid var(--line);backdrop-filter:blur(6px);flex-wrap:wrap}
-  #bar .brand{font-weight:900;letter-spacing:3px;font-size:15px;
-    background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent;
-    text-shadow:0 0 22px rgba(255,61,240,.35);white-space:nowrap}
-  input[type=text]{flex:1;min-width:220px;max-width:560px;padding:10px 14px;border-radius:9px;color:#fff;
-    background:rgba(255,255,255,.10);border:1px solid rgba(34,231,255,.55);outline:none;font-size:13px;
-    box-shadow:0 0 18px rgba(34,231,255,.16)}
-  input[type=text]::placeholder{color:#b9b0dd}
-  @keyframes hint{0%,100%{box-shadow:0 0 14px rgba(34,231,255,.16);border-color:rgba(34,231,255,.55)}
-                  50%{box-shadow:0 0 30px rgba(34,231,255,.75);border-color:#22e7ff}}
-  #url.hint{animation:hint 1.05s ease-in-out infinite}
-  input[type=text]:focus{border-color:var(--cyan);box-shadow:0 0 14px rgba(34,231,255,.35)}
-  button{cursor:pointer;border:1px solid var(--line);color:var(--txt);border-radius:9px;
-    padding:9px 14px;font-weight:700;font-size:12.5px;letter-spacing:.6px;
-    background:linear-gradient(180deg,rgba(120,60,255,.35),rgba(40,10,90,.5));transition:.15s}
-  button:hover{transform:translateY(-1px);border-color:var(--cyan);box-shadow:0 0 16px rgba(34,231,255,.3)}
-  button.primary{background:linear-gradient(90deg,#7a1bff,#ff3df0);border-color:transparent}
-  button.ghost{background:rgba(255,255,255,.04)}
-  #presets{display:flex;gap:6px;flex-wrap:wrap}
-  .chip{padding:7px 10px;font-size:11.5px;border-radius:20px;border:1px solid var(--line);
-    background:rgba(255,255,255,.04);cursor:pointer;white-space:nowrap;transition:.15s;color:var(--txt)}
-  .chip:hover{border-color:var(--mag);color:#fff;box-shadow:0 0 12px rgba(255,61,240,.35)}
+  /* ---------------- top bar ---------------- */
+  #bar{position:absolute;z-index:10;top:0;left:0;right:0;height:54px;display:flex;align-items:center;
+    gap:10px;padding:0 14px;background:linear-gradient(180deg,rgba(6,10,12,.96),rgba(6,10,12,.55));
+    border-bottom:1px solid var(--line);backdrop-filter:blur(8px)}
+  .brand{font-weight:900;letter-spacing:4px;font-size:15px;color:var(--gold);
+    text-shadow:0 0 24px rgba(232,198,106,.4);white-space:nowrap}
+  .brand small{display:block;font-size:8.5px;letter-spacing:3px;color:var(--dim);font-weight:600}
+  .spacer{flex:1}
+  .pill{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:22px;
+    background:rgba(255,255,255,.05);border:1px solid var(--line);font-size:12.5px;white-space:nowrap}
+  .pill b{color:var(--gold);font-weight:800;font-variant-numeric:tabular-nums}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--dim);flex:none}
+  .dot.live{background:var(--win);box-shadow:0 0 10px var(--win);animation:pulse 1.8s infinite}
+  .dot.solo{background:var(--gold);box-shadow:0 0 10px var(--gold)}
+  @keyframes pulse{50%{opacity:.35}}
+  button{cursor:pointer;font-family:inherit;border:1px solid var(--line);color:var(--txt);
+    border-radius:9px;padding:9px 15px;font-weight:700;font-size:12px;letter-spacing:.8px;
+    background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.02));transition:.15s}
+  button:hover:not(:disabled){border-color:var(--gold);color:#fff;transform:translateY(-1px);
+    box-shadow:0 4px 18px rgba(232,198,106,.22)}
+  button:disabled{opacity:.32;cursor:not-allowed}
+  button.gold{background:linear-gradient(180deg,#e8c66a,#b08c30);color:#241a05;border-color:transparent;
+    font-weight:900;text-shadow:none}
+  button.gold:hover:not(:disabled){box-shadow:0 6px 24px rgba(232,198,106,.5)}
+  button.danger{background:linear-gradient(180deg,rgba(248,113,113,.3),rgba(120,30,30,.4))}
 
-  .overlay{position:absolute;left:0;right:0;bottom:0;top:62px;z-index:8;display:flex;align-items:center;justify-content:center;
-    background:rgba(4,1,12,.78);backdrop-filter:blur(9px);animation:fade .25s ease}
-  .overlay.hidden{display:none}
+  /* ---------------- action bar ---------------- */
+  #actions{position:absolute;z-index:10;left:50%;transform:translateX(-50%);bottom:16px;
+    display:flex;gap:9px;padding:11px;border-radius:16px;background:var(--panel);
+    border:1px solid var(--line);backdrop-filter:blur(10px);
+    box-shadow:0 10px 44px rgba(0,0,0,.65);opacity:0;pointer-events:none;transition:.22s}
+  #actions.on{opacity:1;pointer-events:auto}
+  #actions button{min-width:96px;padding:13px 17px;font-size:13px}
+  .hint{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:9px;
+    font-size:10.5px;letter-spacing:2px;color:var(--dim);white-space:nowrap}
+
+  /* ---------------- chip tray ---------------- */
+  #tray{position:absolute;z-index:10;left:50%;transform:translateX(-50%);bottom:16px;
+    display:flex;gap:12px;align-items:center;padding:12px 16px;border-radius:16px;
+    background:var(--panel);border:1px solid var(--line);backdrop-filter:blur(10px);
+    box-shadow:0 10px 44px rgba(0,0,0,.65);opacity:0;pointer-events:none;transition:.22s}
+  #tray.on{opacity:1;pointer-events:auto}
+  .chip{width:56px;height:56px;border-radius:50%;cursor:pointer;position:relative;flex:none;
+    border:3px dashed rgba(255,255,255,.75);display:grid;place-items:center;
+    font-weight:900;font-size:13px;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6);
+    transition:.14s;box-shadow:0 5px 14px rgba(0,0,0,.5), inset 0 0 0 4px rgba(0,0,0,.18)}
+  .chip:hover{transform:translateY(-7px) scale(1.06)}
+  .chip:active{transform:translateY(-2px) scale(.98)}
+  .chip.c1{background:radial-gradient(circle,#f8fafc 40%,#cbd5e1)} .chip.c1{color:#1e293b;text-shadow:none}
+  .chip.c5{background:radial-gradient(circle,#ef4444 40%,#991b1b)}
+  .chip.c25{background:radial-gradient(circle,#22c55e 40%,#15803d)}
+  .chip.c100{background:radial-gradient(circle,#1e293b 40%,#020617)}
+  .chip.c500{background:radial-gradient(circle,#a855f7 40%,#6b21a8)}
+  .vr{width:1px;height:44px;background:var(--line);flex:none}
+
+  /* ---------------- chat ---------------- */
+  #chat{position:absolute;z-index:10;left:14px;bottom:16px;width:290px;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    backdrop-filter:blur(10px);overflow:hidden;transition:.25s}
+  #chat.min #chatBody{display:none}
+  #chatHd{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;
+    font-size:10.5px;letter-spacing:2px;color:var(--dim);font-weight:800;
+    border-bottom:1px solid rgba(232,198,106,.14)}
+  #chat.min #chatHd{border-bottom:none}
+  #chatLog{height:168px;overflow-y:auto;padding:9px 12px;font-size:12px;line-height:1.5}
+  #chatLog .m{margin-bottom:5px;word-break:break-word}
+  #chatLog .m .who{color:var(--gold);font-weight:800}
+  #chatLog .m.sys{color:var(--dim);font-style:italic;font-size:11px}
+  #chatIn{width:100%;padding:10px 12px;border:none;border-top:1px solid rgba(232,198,106,.14);
+    background:rgba(0,0,0,.35);color:var(--txt);font-size:12px;outline:none;font-family:inherit}
+  #chatLog::-webkit-scrollbar{width:5px} #chatLog::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+
+  /* ---------------- modals ---------------- */
+  .ov{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;
+    background:rgba(4,7,9,.82);backdrop-filter:blur(10px);animation:fade .25s}
+  .ov.hidden{display:none}
   @keyframes fade{from{opacity:0}to{opacity:1}}
-  .card{width:min(560px,92vw);max-height:86vh;overflow:auto;padding:26px;border-radius:18px;
-    background:var(--panel);border:1px solid var(--line);
-    box-shadow:0 0 60px rgba(122,27,255,.35), inset 0 0 40px rgba(255,61,240,.06);
-    animation:pop .3s cubic-bezier(.2,1.4,.4,1)}
-  @keyframes pop{from{transform:translateY(18px) scale(.96);opacity:0}to{transform:none;opacity:1}}
-  .card h1{margin:0 0 6px;font-size:26px;letter-spacing:2px;
-    background:linear-gradient(90deg,var(--cyan),var(--mag));-webkit-background-clip:text;background-clip:text;color:transparent}
-  .card h2{margin:0 0 14px;font-size:13px;font-weight:600;color:#a89dd0;letter-spacing:1px}
-  .statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0}
-  .stat{padding:12px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
-  .stat b{display:block;font-size:22px;color:#fff}
-  .stat span{font-size:11px;color:#a89dd0;letter-spacing:1.2px}
+  .card-ui{width:min(540px,92vw);max-height:88vh;overflow:auto;padding:30px;border-radius:20px;
+    background:linear-gradient(160deg,rgba(16,26,24,.97),rgba(8,14,16,.98));
+    border:1px solid var(--line);box-shadow:0 24px 80px rgba(0,0,0,.8), inset 0 1px 0 rgba(232,198,106,.18);
+    animation:rise .32s cubic-bezier(.2,1.3,.4,1)}
+  @keyframes rise{from{transform:translateY(22px) scale(.96);opacity:0}to{transform:none;opacity:1}}
+  .card-ui h1{margin:0 0 4px;font-size:29px;letter-spacing:3px;color:var(--gold);font-weight:900}
+  .card-ui h2{margin:0 0 20px;font-size:11px;letter-spacing:3px;color:var(--dim);font-weight:600}
+  .card-ui p{font-size:13.5px;line-height:1.65;color:#cfd8d4}
+  label.f{display:block;margin:14px 0 6px;font-size:10.5px;letter-spacing:2px;color:var(--dim);font-weight:800}
+  input.t{width:100%;padding:13px 15px;border-radius:10px;background:rgba(255,255,255,.06);
+    border:1px solid var(--line);color:#fff;font-size:14px;outline:none;font-family:inherit}
+  input.t:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(232,198,106,.14)}
+  .row{display:flex;gap:9px;margin-top:20px;flex-wrap:wrap}
+  .note{font-size:11.5px;color:var(--dim);line-height:1.6;margin-top:14px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}
+  .kv{padding:13px;border-radius:11px;background:rgba(255,255,255,.045);border:1px solid var(--line)}
+  .kv b{display:block;font-size:20px;color:#fff;font-variant-numeric:tabular-nums}
+  .kv span{font-size:10px;color:var(--dim);letter-spacing:1.5px}
+  .avatars{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font-size:21px;
+    cursor:pointer;border:2px solid transparent;background:rgba(255,255,255,.06);transition:.15s}
+  .av:hover{background:rgba(255,255,255,.12)}
+  .av.on{border-color:var(--gold);background:rgba(232,198,106,.18);box-shadow:0 0 16px rgba(232,198,106,.35)}
+  .tog{width:50px;height:27px;border-radius:15px;border:1px solid var(--line);padding:0;
+    background:rgba(255,255,255,.06);position:relative;cursor:pointer;flex:none;transition:.2s}
+  .tog::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:50%;
+    background:var(--dim);transition:.2s}
+  .tog.on{background:linear-gradient(90deg,#b08c30,#e8c66a);border-color:transparent}
+  .tog.on::after{left:26px;background:#fff}
+  .opt{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(232,198,106,.12)}
+  .opt:last-of-type{border-bottom:none}
+  .opt .lbl{flex:1}.opt .lbl b{display:block;font-size:13px;color:#fff}
+  .opt .lbl span{font-size:11px;color:var(--dim)}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{padding:8px 6px;text-align:left;border-bottom:1px solid rgba(160,120,255,.18)}
-  th{font-size:10.5px;letter-spacing:1.3px;color:#a89dd0}
-  tbody tr{animation:slidein .35s backwards}
-  @keyframes slidein{from{opacity:0;transform:translateX(-16px)}to{opacity:1;transform:none}}
-  .rank1{color:var(--yel);font-weight:800}.rank2{color:#dcd7ff;font-weight:700}.rank3{color:var(--org);font-weight:700}
-  .row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
-  .note{font-size:11.5px;color:#8f86b8;line-height:1.5;margin-top:12px}
-  .kbd{display:inline-block;min-width:26px;text-align:center;padding:3px 7px;margin:0 2px;border-radius:6px;
-    background:rgba(255,255,255,.07);border:1px solid var(--line);font-weight:800;font-size:12px}
+  th,td{padding:9px 6px;text-align:left;border-bottom:1px solid rgba(232,198,106,.14)}
+  th{font-size:10px;letter-spacing:1.5px;color:var(--dim)}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
+  .g{color:var(--win)}.r{color:var(--lose)}
 
-  #sync{position:absolute;left:0;right:0;bottom:0;top:62px;z-index:7;display:none;align-items:center;justify-content:center;
-    background:rgba(4,1,12,.55);backdrop-filter:blur(3px)}
-  #sync.on{display:flex}
-  #sync .box{text-align:center}
-  #sync .ring{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;
-    border:3px solid rgba(255,255,255,.12);border-top-color:var(--cyan);border-right-color:var(--mag);
-    animation:spin .9s linear infinite}
-  @keyframes spin{to{transform:rotate(360deg)}}
-  #sync .t{letter-spacing:3px;font-weight:800;font-size:14px;color:#fff;text-shadow:0 0 18px var(--cyan)}
-  #sync .s{font-size:11.5px;color:#a89dd0;margin-top:6px;letter-spacing:1px}
-  #sync .box{width:min(520px,90vw)}
-  #pbarWrap{margin:16px auto 6px;width:100%;height:9px;border-radius:6px;
-    background:rgba(255,255,255,.08);border:1px solid var(--line);overflow:hidden}
-  #pbar{height:100%;width:0%;border-radius:6px;transition:width .3s ease;
-    background:linear-gradient(90deg,#22e7ff,#ff3df0);box-shadow:0 0 16px rgba(255,61,240,.6)}
-  #pct{font-size:11px;color:#c9c1ea;letter-spacing:2px;font-weight:800}
-  #unblock{display:none;margin-top:16px}
-  #errBox{display:none;margin-top:14px;padding:12px;border-radius:10px;text-align:left;
-    background:rgba(255,60,90,.10);border:1px solid rgba(255,80,110,.5);
-    font-size:12px;line-height:1.55;color:#ffd7de}
-  #errBox b{color:#ff8098}
-  /* ---- diagnostic log ---- */
-  #logPanel{position:absolute;z-index:15;left:12px;bottom:12px;width:min(430px,46vw);max-height:34vh;
-    overflow:auto;padding:10px 12px;border-radius:10px;background:rgba(6,2,16,.90);
-    border:1px solid var(--line);font-family:Consolas,ui-monospace,monospace;font-size:11px;
-    line-height:1.55;color:#b9b0dd;display:none}
-  #logPanel.on{display:block}
-  #logPanel .hd{display:flex;justify-content:space-between;color:#7a6fa8;letter-spacing:1.5px;
-    font-weight:700;margin-bottom:6px;font-size:10px}
-  #logPanel .l{white-space:pre-wrap;word-break:break-word}
-  #logPanel .l .ts{color:#5d5486}
-  .lg-ok{color:#3dff8f}.lg-warn{color:#ffe14d}.lg-err{color:#ff6b85}.lg-info{color:#22e7ff}
-  /* ---- options modal ---- */
-  .opt{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(160,120,255,.14)}
-  .opt:last-child{border-bottom:none}
-  .opt .lbl{flex:1;min-width:0}
-  .opt .lbl b{display:block;font-size:13px;color:#fff;font-weight:700}
-  .opt .lbl span{font-size:11px;color:#8f86b8;line-height:1.4}
-  .opt input[type=range]{width:150px;flex:none;accent-color:#ff3df0;cursor:pointer}
-  .opt .val{width:62px;flex:none;text-align:right;font-size:12px;font-weight:800;color:#22e7ff;
-    font-family:Consolas,ui-monospace,monospace}
-  .opt input[type=text]{width:160px;flex:none;min-width:0;padding:8px 10px;font-size:12px}
-  .seg{display:flex;gap:5px;flex:none}
-  .seg button{padding:7px 11px;font-size:11px;border-radius:7px}
-  .seg button.on{background:linear-gradient(90deg,#7a1bff,#ff3df0);border-color:transparent;color:#fff}
-  .tog{width:52px;height:28px;flex:none;border-radius:16px;border:1px solid var(--line);
-    background:rgba(255,255,255,.06);position:relative;cursor:pointer;transition:.2s;padding:0}
-  .tog::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
-    background:#8f86b8;transition:.2s}
-  .tog.on{background:linear-gradient(90deg,#7a1bff,#ff3df0);border-color:transparent}
-  .tog.on::after{left:27px;background:#fff;box-shadow:0 0 10px rgba(255,255,255,.8)}
-  .sect{margin:18px 0 2px;font-size:10.5px;letter-spacing:2px;color:#22e7ff;font-weight:800}
-  #toast{position:absolute;z-index:9;left:50%;bottom:26px;transform:translateX(-50%);
-    padding:10px 16px;border-radius:10px;background:rgba(20,6,40,.95);border:1px solid var(--line);
-    font-size:12.5px;display:none}
+  #toast{position:absolute;z-index:30;left:50%;top:70px;transform:translateX(-50%);
+    padding:11px 20px;border-radius:11px;background:rgba(10,16,20,.96);border:1px solid var(--line);
+    font-size:13px;display:none;box-shadow:0 8px 30px rgba(0,0,0,.6);max-width:80vw;text-align:center}
+  #err{position:absolute;z-index:30;left:50%;bottom:96px;transform:translateX(-50%);
+    padding:10px 16px;border-radius:10px;background:rgba(70,12,12,.95);border:1px solid rgba(248,113,113,.5);
+    font-size:12px;display:none;color:#ffd7d7;max-width:70vw}
+  @media (max-width:780px){
+    #chat{display:none} .brand small{display:none}
+    #tray{gap:7px;padding:9px} .chip{width:46px;height:46px;font-size:11.5px}
+    #actions button{min-width:74px;padding:11px 12px;font-size:12px}
+  }
 </style>
 </head>
 <body>
-<div id="stage">
-  <div id="ytWrap"><div id="player"></div></div>
-  <div id="veil"></div>
-  <canvas id="game"></canvas>
+<div id="app">
+  <canvas id="table"></canvas>
 
   <div id="bar">
-    <div class="brand">NEON&nbsp;HIGHWAY</div>
-    <input id="url" type="text" placeholder="Paste any YouTube URL or Video ID..." spellcheck="false" />
-    <button class="primary" id="loadBtn">LOAD &amp; PLAY</button>
-    <button class="ghost" id="lbBtn">LEADERBOARD</button>
-    <button class="ghost" id="quitBtn">RESTART</button>
-    <button class="ghost" id="optBtn">OPTIONS</button>
-    <button class="ghost" id="logBtn">LOG</button>
-    <div id="presets"></div>
+    <div class="brand">VELVET ACE<small>MULTIPLAYER BLACKJACK</small></div>
+    <div class="spacer"></div>
+    <div class="pill" id="netPill"><span class="dot" id="netDot"></span><span id="netTxt">Connecting</span></div>
+    <div class="pill">BANK <b id="bankTxt">$1,000</b></div>
+    <div class="pill" id="betPill" style="display:none">BET <b id="betTxt">$0</b></div>
+    <button id="statsBtn">STATS</button>
+    <button id="optBtn">OPTIONS</button>
+    <button id="leaveBtn" style="display:none">STAND UP</button>
   </div>
 
-  <div id="sync"><div class="box">
-    <div class="ring"></div>
-    <div class="t" id="syncTitle">SYNCING AUDIO / WAITING FOR VIDEO...</div>
-    <div class="s" id="syncReason">Buffering</div>
-    <div id="pbarWrap"><div id="pbar"></div></div>
-    <div id="pct">0%</div>
-    <button class="primary" id="unblock">CLICK TO START PLAYBACK</button>
-    <div id="errBox"></div>
+  <div id="tray">
+    <div class="chip c1"    data-v="1">$1</div>
+    <div class="chip c5"    data-v="5">$5</div>
+    <div class="chip c25"   data-v="25">$25</div>
+    <div class="chip c100"  data-v="100">$100</div>
+    <div class="chip c500"  data-v="500">$500</div>
+    <div class="vr"></div>
+    <button id="undoBtn">UNDO</button>
+    <button id="rebetBtn">RE-BET</button>
+    <button class="gold" id="dealBtn">DEAL</button>
+  </div>
+
+  <div id="actions">
+    <div class="hint" id="actHint">YOUR TURN</div>
+    <button id="hitBtn">HIT</button>
+    <button id="standBtn">STAND</button>
+    <button id="dblBtn">DOUBLE</button>
+    <button id="splitBtn">SPLIT</button>
+  </div>
+
+  <div id="chat" class="min">
+    <div id="chatHd"><span>TABLE CHAT</span><span class="spacer"></span><span id="chatToggle">▲</span></div>
+    <div id="chatBody">
+      <div id="chatLog"></div>
+      <input id="chatIn" placeholder="Say something..." maxlength="140" />
+    </div>
+  </div>
+
+  <!-- join -->
+  <div class="ov" id="joinOv"><div class="card-ui">
+    <h1>VELVET ACE</h1>
+    <h2>REAL-TIME MULTIPLAYER BLACKJACK &middot; 6 DECKS &middot; PAYS 3:2</h2>
+    <p>Take a seat. A bot dealer runs the shoe, and anyone else on this URL sits at the
+       same table in real time &mdash; you see their cards, bets and busts as they happen.</p>
+    <label class="f">YOUR NAME</label>
+    <input class="t" id="nameIn" maxlength="12" placeholder="High Roller" />
+    <label class="f">PICK AN AVATAR</label>
+    <div class="avatars" id="avatars"></div>
+    <div class="row">
+      <button class="gold" id="joinBtn" style="flex:1">TAKE A SEAT</button>
+    </div>
+    <div class="note" id="joinNote"></div>
   </div></div>
 
-  <div class="overlay hidden" id="optOv"><div class="card">
+  <!-- options -->
+  <div class="ov hidden" id="optOv"><div class="card-ui">
     <h1>OPTIONS</h1>
-    <h2>SETTINGS SAVE AUTOMATICALLY TO THIS BROWSER</h2>
-
-    <div class="sect">PLAYER</div>
-    <div class="opt">
-      <div class="lbl"><b>Gamer Tag</b><span>Used for every leaderboard submission.</span></div>
-      <input type="text" id="optTag" maxlength="14" placeholder="ANON" />
-    </div>
-
-    <div class="sect">AUDIO</div>
-    <div class="opt">
-      <div class="lbl"><b>Music Volume</b><span>YouTube playback level.</span></div>
-      <input type="range" id="optVol" min="0" max="100" step="1" /><div class="val" id="vVol">75</div>
-    </div>
-    <div class="opt">
-      <div class="lbl"><b>Audio Offset</b><span>If notes feel early, go negative. If late, go positive. This is the single
-        biggest factor in hit accuracy &mdash; run the calibrator below.</span></div>
-      <input type="range" id="optOff" min="-300" max="300" step="5" /><div class="val" id="vOff">0ms</div>
-    </div>
-    <div class="opt">
-      <div class="lbl"><b>Auto-Calibrate</b><span>Plays the track and averages your hit timing to find your true offset.</span></div>
-      <button class="ghost" id="calibBtn">CALIBRATE</button>
-    </div>
-
-    <div class="sect">GAMEPLAY</div>
-    <div class="opt">
-      <div class="lbl"><b>Difficulty</b><span>Changes note density. Each difficulty has its own leaderboard.</span></div>
-      <div class="seg" id="optDiff">
-        <button data-d="0">EASY</button><button data-d="1">NORMAL</button>
-        <button data-d="2">HARD</button><button data-d="3">EXPERT</button>
-      </div>
-    </div>
-    <div class="opt">
-      <div class="lbl"><b>Scroll Speed</b><span>How far ahead notes appear. Higher = faster, more reaction room.</span></div>
-      <input type="range" id="optSpd" min="70" max="220" step="5" /><div class="val" id="vSpd">1.0x</div>
-    </div>
-    <div class="opt">
-      <div class="lbl"><b>Overstrum Penalty</b><span>Hitting a lane with no note there breaks your combo. Turn off for practice.</span></div>
-      <button class="tog" id="optPen"></button>
-    </div>
-
-    <div class="sect">VISUALS</div>
-    <div class="opt">
-      <div class="lbl"><b>Video Brightness</b><span>How much of the YouTube video shows through the highway.</span></div>
-      <input type="range" id="optDim" min="0" max="100" step="5" /><div class="val" id="vDim">20%</div>
-    </div>
-    <div class="opt">
-      <div class="lbl"><b>Screen Shake</b><span>Camera kick on big combos and boost.</span></div>
-      <button class="tog" id="optShake"></button>
-    </div>
-    <div class="opt">
-      <div class="lbl"><b>Particles</b><span>Hit explosions. Disable on weak hardware.</span></div>
-      <button class="tog" id="optPart"></button>
-    </div>
-
+    <h2>SAVED TO THIS BROWSER</h2>
+    <div class="opt"><div class="lbl"><b>Sound Effects</b><span>Card flips, chip clinks, payout chimes.</span></div>
+      <button class="tog" id="sfxTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Bot Players</b><span>Fill empty seats with basic-strategy bots when the table is quiet.</span></div>
+      <button class="tog" id="botsTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Strategy Hints</b><span>Highlight the basic-strategy play on your turn.</span></div>
+      <button class="tog" id="hintTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Fast Deal</b><span>Speed up dealing and dealer animations.</span></div>
+      <button class="tog" id="fastTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Table Name</b><span>Players sharing a table name play together.</span></div>
+      <input class="t" id="roomIn" style="width:150px;flex:none;padding:9px 11px;font-size:13px" maxlength="16" /></div>
     <div class="row">
-      <button class="primary" id="optClose">DONE</button>
-      <button class="ghost" id="optReset">RESET TO DEFAULTS</button>
+      <button class="gold" id="optClose">DONE</button>
+      <button class="danger" id="rebuyBtn">REBUY $1,000</button>
     </div>
-    <div class="note">Charts are procedurally generated from the video ID, not from audio analysis &mdash; the YouTube
-      iframe exposes no audio stream to the page. Notes follow a steady musical grid, so the Audio Offset slider is
-      what makes them line up with what you hear.</div>
+    <div class="note" id="optNote"></div>
   </div></div>
 
-  <div id="logPanel">
-    <div class="hd"><span>ENGINE LOG</span><span>[L] TO TOGGLE</span></div>
-    <div id="logLines"></div>
-  </div>
-
-  <div class="overlay" id="startOv"><div class="card">
-    <h1>NEON HIGHWAY</h1>
-    <h2>SYNTHWAVE RHYTHM // YOUTUBE ENGINE</h2>
-    <p style="font-size:13px;line-height:1.6;color:#c9c1ea;margin:0 0 12px">
-      <b style="color:#22e7ff">Start here:</b> paste a YouTube URL into the input bar at the
-      <b>very top of the screen</b> and press <b>LOAD &amp; PLAY</b> &mdash; or just click one of the
-      preset chips (Neon Drive, Kavinsky, ...) beside it.</p>
-    <p style="font-size:13px;line-height:1.6;color:#c9c1ea">
-      Hit the notes as they cross the strike bar.<br>
-      <span class="kbd">Q</span><span class="kbd">W</span><span class="kbd">E</span><span class="kbd">R</span><span class="kbd">T</span>
-      &nbsp;-&gt; 5 lanes. Chain hits to ramp the multiplier up to <b>4x</b>.<br>
-      <span class="kbd">SPACE</span> fires <b style="color:#ffe14d">OVERDRIVE</b> once the meter passes half &mdash;
-      double multiplier, and the highway loses its mind.<br>
-      <span class="kbd">O</span> options &nbsp;<span class="kbd">L</span> engine log &nbsp;<span class="kbd">ESC</span> pause
-    </p>
-    <p style="font-size:12px;line-height:1.5;color:#8f86b8;margin:0 0 4px">
-      Notes feel off? Open <b>Options &rarr; Audio Offset</b>, or run the auto-calibrator mid-song.
-    </p>
-    <div class="statgrid">
-      <div class="stat"><b>&plusmn;40ms</b><span>PERFECT</span></div>
-      <div class="stat"><b>&plusmn;80ms</b><span>GREAT</span></div>
-      <div class="stat"><b>&plusmn;120ms</b><span>GOOD</span></div>
-      <div class="stat"><b>SEEDED</b><span>SAME CHART GLOBALLY</span></div>
+  <!-- stats -->
+  <div class="ov hidden" id="statsOv"><div class="card-ui">
+    <h1>YOUR SESSION</h1>
+    <h2 id="statsSub">HANDS PLAYED AT THIS TABLE</h2>
+    <div class="grid2">
+      <div class="kv"><b id="sHands">0</b><span>HANDS</span></div>
+      <div class="kv"><b id="sNet">$0</b><span>NET</span></div>
+      <div class="kv"><b id="sWin">0%</b><span>WIN RATE</span></div>
+      <div class="kv"><b id="sBj">0</b><span>BLACKJACKS</span></div>
+      <div class="kv"><b id="sBest">$0</b><span>BIGGEST WIN</span></div>
+      <div class="kv"><b id="sPeak">$0</b><span>PEAK BANK</span></div>
     </div>
-    <div class="row"><button class="primary" id="startBtn">SHOW ME WHERE TO PASTE THE LINK</button></div>
-    <div class="note">Charts are generated deterministically from the YouTube video ID, so every player worldwide
-      gets the identical note map for the same song. Ads and buffering automatically freeze the highway.</div>
-  </div></div>
-
-  <div class="overlay hidden" id="resultOv"><div class="card">
-    <h1 id="rankTxt">TRACK COMPLETE</h1>
-    <h2 id="songTitle"></h2>
-    <div class="statgrid">
-      <div class="stat"><b id="rScore">0</b><span>SCORE</span></div>
-      <div class="stat"><b id="rAcc">0%</b><span>ACCURACY</span></div>
-      <div class="stat"><b id="rCombo">0</b><span>MAX COMBO</span></div>
-      <div class="stat"><b id="rHits">0/0</b><span>NOTES HIT</span></div>
-      <div class="stat"><b id="rBreak">0</b><span>PERFECT / GREAT / GOOD</span></div>
-      <div class="stat"><b id="rOver">0</b><span>OVERSTRUMS</span></div>
-    </div>
-    <input id="tag" type="text" maxlength="14" placeholder="GAMER TAG" style="width:100%" />
-    <div class="row">
-      <button class="primary" id="submitBtn">SUBMIT SCORE</button>
-      <button class="ghost" id="skipBtn">VIEW LEADERBOARD</button>
-      <button class="ghost" id="againBtn">RETRY TRACK</button>
-    </div>
-    <div class="note" id="submitNote"></div>
-  </div></div>
-
-  <div class="overlay hidden" id="lbOv"><div class="card">
-    <h1>GLOBAL TOP 10</h1>
-    <h2 id="lbSong">-</h2>
-    <table><thead><tr><th>#</th><th>GAMER TAG</th><th>SCORE</th><th>ACC</th><th>COMBO</th></tr></thead>
-      <tbody id="lbBody"></tbody></table>
-    <div class="row"><button class="primary" id="lbClose">CLOSE</button></div>
-    <div class="note" id="lbNote"></div>
+    <h2 style="margin:22px 0 8px">TABLE HIGH ROLLERS</h2>
+    <table><thead><tr><th>#</th><th>PLAYER</th><th class="num">BIGGEST WIN</th></tr></thead>
+      <tbody id="hrBody"></tbody></table>
+    <div class="row"><button class="gold" id="statsClose">CLOSE</button></div>
+    <div class="note" id="statsNote"></div>
   </div></div>
 
   <div id="toast"></div>
+  <div id="err"></div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
+"use strict";
 /* =====================================================================
-   1. FIREBASE CONFIG  --  PASTE YOUR FREE CREDENTIALS HERE
+   FIREBASE CONFIG -- REQUIRED FOR MULTIPLAYER
    ---------------------------------------------------------------------
-   How to enable the GLOBAL online leaderboard (takes ~2 minutes, free):
-     1. Go to https://console.firebase.google.com  ->  "Add project".
-     2. Inside the project, open  Build > Realtime Database > Create Database
-        (choose "Start in test mode" for a quick public leaderboard).
-     3. Open  Project settings (gear icon) > Your apps > Web app  </>
-     4. Copy the generated firebaseConfig values into the object below,
-        INCLUDING the "databaseURL" (looks like
-        https://your-project-default-rtdb.firebaseio.com ).
-     5. Save + redeploy this file to GitHub Pages. Done.
+   Without these keys the game runs SOLO: you versus the bot dealer, with
+   optional bot players. Everything works, but nobody else can sit down.
 
-   If you leave the placeholders as they are, the game silently falls back
-   to a local, per-browser leaderboard stored in localStorage.
+   To open the table to the world (free, ~2 minutes):
+     1. https://console.firebase.google.com  ->  "Add project"
+     2. Build > Realtime Database > Create Database > start in TEST MODE
+     3. Project settings (gear) > Your apps > Web  </>
+     4. Paste the values below, including "databaseURL"
+     5. Commit + push. GitHub Pages redeploys automatically.
+
+   Test mode leaves the DB world-writable. Before sharing widely, restrict
+   writes to /tables/$room and cap payload sizes.
    ===================================================================== */
 const firebaseConfig = {
   apiKey:            "YOUR_API_KEY",
@@ -318,1282 +282,1390 @@ const firebaseConfig = {
   appId:             "YOUR_APP_ID"
 };
 
-let db = null, FIREBASE_ON = false;
-(function initFirebase(){
-  const bad = v => !v || /^YOUR_/.test(v) || /YOUR_PROJECT/.test(v);
+let db = null, ONLINE = false;
+(function(){
+  const bad = v => !v || /YOUR_/.test(v);
   if (bad(firebaseConfig.apiKey) || bad(firebaseConfig.databaseURL)) return;
-  try {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.database();
-    FIREBASE_ON = true;
-  } catch (e) { console.warn("Firebase init failed, using localStorage:", e); }
+  try { firebase.initializeApp(firebaseConfig); db = firebase.database(); ONLINE = true; }
+  catch(e){ console.warn("Firebase init failed:", e); }
 })();
 
 /* =====================================================================
-   1b. DIAGNOSTIC LOG + LOADING PROGRESS
+   CONSTANTS + SETTINGS
    ===================================================================== */
-const T0 = performance.now();
-const logLines = [];
-function log(msg, kind){
-  const t = ((performance.now() - T0) / 1000).toFixed(2).padStart(6, " ");
-  logLines.push({ t, msg, kind: kind || "" });
-  if (logLines.length > 200) logLines.shift();
-  const box = document.getElementById("logLines");
-  if (box){
-    box.innerHTML = logLines.map(l =>
-      `<div class="l"><span class="ts">${l.t}s</span> <span class="lg-${l.kind || "info"}">${escapeHtml(l.msg)}</span></div>`
-    ).join("");
-    box.parentElement.scrollTop = box.parentElement.scrollHeight;
-  }
-  console.log("[NEON " + t + "s]", msg);
+const SEATS = 5, DECKS = 6, START_BANK = 1000;
+const MIN_BET = 5, MAX_BET = 2500;
+const T_BET = 14000, T_TURN = 22000, T_PAYOUT = 4200;
+const AVATARS = ["🎩","🦊","🐺","🦁","🐯","🐸","🤠","👑","💎","🃏","🎭","🐲"];
+const SUITS = ["♠","♥","♦","♣"];
+const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+const DEF = { name:"", avatar:0, sfx:true, bots:true, hints:true, fast:false, room:"main",
+              bank:START_BANK, lastBet:0,
+              stats:{hands:0,net:0,wins:0,pushes:0,bj:0,best:0,peak:START_BANK} };
+let S = JSON.parse(JSON.stringify(DEF));
+try { const raw = JSON.parse(localStorage.getItem("va_save") || "{}");
+      S = Object.assign(S, raw); S.stats = Object.assign(DEF.stats, raw.stats || {}); } catch(e){}
+const save = () => { try { localStorage.setItem("va_save", JSON.stringify(S)); } catch(e){} };
+
+const $ = id => document.getElementById(id);
+const fmt = n => (n < 0 ? "-$" : "$") + Math.abs(Math.round(n)).toLocaleString();
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
+const now = () => Date.now();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+let toastT = null;
+function toast(msg, ms){
+  const el = $("toast"); el.textContent = msg; el.style.display = "block";
+  clearTimeout(toastT); toastT = setTimeout(() => el.style.display = "none", ms || 2600);
 }
-let curPhase = 0;
-function setPhase(pct, label){
-  curPhase = Math.max(curPhase, pct);
-  const b = document.getElementById("pbar"), p = document.getElementById("pct");
-  if (b) b.style.width = curPhase + "%";
-  if (p) p.textContent = Math.round(curPhase) + "%" + (label ? "  //  " + label.toUpperCase() : "");
+function showErr(msg){
+  const el = $("err");
+  if (!msg){ el.style.display = "none"; return; }
+  el.textContent = msg; el.style.display = "block";
 }
-function resetPhase(){ curPhase = 0; setPhase(0, "starting"); showError(null); showUnblock(false); }
-function showError(html){
-  const e = document.getElementById("errBox");
-  if (!e) return;
-  if (!html){ e.style.display = "none"; e.innerHTML = ""; return; }
-  e.style.display = "block"; e.innerHTML = html;
+
+/* =====================================================================
+   AUDIO -- synthesised, no asset files
+   ===================================================================== */
+let actx = null;
+function ac(){ if (!actx) { try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e){} } return actx; }
+function blip(freq, dur, type, vol, slideTo){
+  if (!S.sfx) return; const a = ac(); if (!a) return;
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type || "sine"; o.frequency.setValueAtTime(freq, a.currentTime);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, a.currentTime + dur);
+  g.gain.setValueAtTime(0, a.currentTime);
+  g.gain.linearRampToValueAtTime(vol == null ? .18 : vol, a.currentTime + .012);
+  g.gain.exponentialRampToValueAtTime(.0001, a.currentTime + dur);
+  o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + dur + .02);
 }
-function showUnblock(on){
-  const b = document.getElementById("unblock");
-  if (b) b.style.display = on ? "inline-block" : "none";
+function noise(dur, vol, filt){
+  if (!S.sfx) return; const a = ac(); if (!a) return;
+  const n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = filt || 2400; bp.Q.value = .8;
+  const g = a.createGain(); g.gain.value = vol == null ? .28 : vol;
+  src.connect(bp); bp.connect(g); g.connect(a.destination); src.start();
 }
-const YT_ERRORS = {
-  2:   "Invalid video ID (error 2). Check the link you pasted.",
-  5:   "The HTML5 player could not load this video (error 5).",
-  100: "Video not found or removed (error 100).",
-  101: "The uploader has disabled embedding for this video (error 101). Pick another track.",
-  150: "The uploader has disabled embedding for this video (error 150). Pick another track."
+const SFX = {
+  flip:  () => noise(.10, .22, 3200),
+  slide: () => noise(.16, .16, 1500),
+  chip:  () => { noise(.05,.30,5200); blip(1250,.05,"square",.05); },
+  click: () => blip(520,.05,"square",.06),
+  win:   () => { [523,659,784,1047].forEach((f,i)=>setTimeout(()=>blip(f,.34,"triangle",.16),i*72)); },
+  bj:    () => { [523,659,784,1047,1319].forEach((f,i)=>setTimeout(()=>blip(f,.5,"triangle",.2),i*84)); },
+  bust:  () => { blip(180,.42,"sawtooth",.16,60); noise(.28,.14,700); },
+  push:  () => blip(400,.2,"sine",.12),
+  turn:  () => blip(880,.09,"sine",.10)
 };
-const IS_FILE = location.protocol === "file:";
 
 /* =====================================================================
-   2. CONSTANTS
+   CARDS + RULES
+   Cards are integers 0..51: rank = i%13 (0=A), suit = (i/13)|0.
    ===================================================================== */
-const LANES = 5;
-const KEYS  = ["q","w","e","r","t"];
-const KEY_LABEL = ["Q","W","E","R","T"];
-const LANE_COL = [
-  { r: 34,  g: 231, b: 255 },  // Q cyan
-  { r: 255, g: 61,  b: 240 },  // W magenta
-  { r: 255, g: 225, b: 77  },  // E yellow
-  { r: 61,  g: 255, b: 143 },  // R green
-  { r: 255, g: 138, b: 43  }   // T orange
-];
-const W_PERFECT = 0.040, W_GREAT = 0.080, W_GOOD = 0.120;
-const LOOKAHEAD = 1.55;          // base seconds a note is visible (scaled by the Scroll Speed setting)
-const DEPTH     = 7.2;           // perspective strength
-const PRESETS = [
-  { id: "gCYcHz2k5x0", name: "Neon Drive" },
-  { id: "MV_3Dpw-BRY", name: "Kavinsky" },
-  { id: "dQw4w9WgXcQ", name: "Classic" },
-  { id: "wOMwO5T3yT4", name: "Dance Fever" }
-];
+const rankOf = c => c % 13;
+const suitOf = c => (c / 13) | 0;
+const rankTxt = c => RANKS[rankOf(c)];
+const suitTxt = c => SUITS[suitOf(c)];
+const isRed = c => suitOf(c) === 1 || suitOf(c) === 2;
+const cardVal = c => { const r = rankOf(c); return r === 0 ? 11 : Math.min(10, r + 1); };
 
-/* =====================================================================
-   2b. SETTINGS (persisted to localStorage)
-   ===================================================================== */
-const DIFFS = [
-  { name: "EASY",   density: 0.55, chords: 0.00, sub: 0.25 },
-  { name: "NORMAL", density: 0.78, chords: 0.06, sub: 0.45 },
-  { name: "HARD",   density: 1.00, chords: 0.14, sub: 0.62 },
-  { name: "EXPERT", density: 1.22, chords: 0.24, sub: 0.80 }
-];
-const DEFAULTS = {
-  tag: "", volume: 75, offset: 0, diff: 1, speed: 100,
-  penalty: true, dim: 20, shake: true, particles: true
-};
-let S = Object.assign({}, DEFAULTS);
-try { S = Object.assign(S, JSON.parse(localStorage.getItem("nh_settings") || "{}")); } catch(e){}
-function saveSettings(){ try { localStorage.setItem("nh_settings", JSON.stringify(S)); } catch(e){} }
-
-// Offset in seconds, applied to the judging clock.
-function offsetSec(){ return S.offset / 1000; }
-// Scroll speed scales the lookahead window (higher speed = shorter window).
-function lookahead(){ return 1.55 * (100 / S.speed); }
-function diff(){ return DIFFS[S.diff] || DIFFS[1]; }
-
-function applySettings(){
-  try { if (player && player.setVolume) player.setVolume(S.volume); } catch(e){}
-  const veil = document.getElementById("veil");
-  // dim 0 = video fully hidden, 100 = video brightest
-  const a = 0.97 - (S.dim / 100) * 0.62;
-  veil.style.background =
-    "radial-gradient(120% 80% at 50% 8%, rgba(80,0,140,.35), transparent 60%)," +
-    `linear-gradient(180deg, rgba(5,2,14,${(a - .12).toFixed(3)}) 0%, rgba(5,2,14,${(a - .05).toFixed(3)}) 45%, rgba(5,2,14,${a.toFixed(3)}) 100%)`;
-  saveSettings();
+// Best value <= 21 if possible, plus whether an ace is still counted as 11.
+function handValue(cards){
+  let total = 0, aces = 0;
+  for (const c of cards){ const v = cardVal(c); total += v; if (v === 11) aces++; }
+  while (total > 21 && aces > 0){ total -= 10; aces--; }
+  return { total, soft: aces > 0, bust: total > 21 };
 }
+const isBlackjack = h => h.cards.length === 2 && !h.split && handValue(h.cards).total === 21;
+const canSplit = h => h.cards.length === 2 && !h.split &&
+                      Math.min(10, rankOf(h.cards[0]) + 1) === Math.min(10, rankOf(h.cards[1]) + 1);
 
-/* =====================================================================
-   3. DETERMINISTIC SEEDED CHART GENERATOR
-   Seed derives purely from the YouTube video id => every player on earth
-   gets a byte-identical note chart for the same song.
-   ===================================================================== */
-function hashSeed(str){
-  let h = 0x811c9dc5;
-  for (let i = 0; i < str.length; i++){
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 0x01000193) >>> 0;
-  }
-  return h >>> 0;
-}
+// Deterministic shuffle so any client can rebuild the shoe from (seed, index).
 function mulberry32(a){
-  return function(){
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
+  return function(){ a |= 0; a = (a + 0x6D2B79F5) | 0;
     let t = Math.imul(a ^ (a >>> 15), 1 | a);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function buildShoe(seed){
+  const rnd = mulberry32(seed), shoe = [];
+  for (let d = 0; d < DECKS; d++) for (let c = 0; c < 52; c++) shoe.push(c);
+  for (let i = shoe.length - 1; i > 0; i--){         // Fisher-Yates
+    const j = Math.floor(rnd() * (i + 1));
+    [shoe[i], shoe[j]] = [shoe[j], shoe[i]];
+  }
+  return shoe;
+}
+
+// Basic strategy (6 deck, dealer stands soft 17) -> "H","S","D","P"
+function basicStrategy(hand, upVal){
+  const cards = hand.cards, v = handValue(cards), t = v.total;
+  const up = upVal === 11 ? 11 : upVal;
+  if (canSplit(hand)){
+    // aces are rank 0, so they must be mapped to 11 before the pair rules run
+    const pr = rankOf(cards[0]) === 0 ? 11 : Math.min(10, rankOf(cards[0]) + 1);
+    if (pr === 11 || pr === 8) return "P";
+    if (pr === 10 || pr === 5) { /* never split */ }
+    else if (pr === 9) return (up === 7 || up >= 10) ? "S" : "P";
+    else if (pr === 7) return up <= 7 ? "P" : "H";
+    else if (pr === 6) return up <= 6 ? "P" : "H";
+    else if (pr === 4) return (up === 5 || up === 6) ? "P" : "H";
+    else if (pr === 3 || pr === 2) return up <= 7 ? "P" : "H";
+  }
+  if (v.soft){
+    if (t >= 19) return "S";
+    if (t === 18) return up <= 6 ? (cards.length === 2 ? "D" : "S") : (up <= 8 ? "S" : "H");
+    if (t === 17) return (up >= 3 && up <= 6 && cards.length === 2) ? "D" : "H";
+    if (t >= 15) return (up >= 4 && up <= 6 && cards.length === 2) ? "D" : "H";
+    return (up >= 5 && up <= 6 && cards.length === 2) ? "D" : "H";
+  }
+  if (t >= 17) return "S";
+  if (t >= 13) return up <= 6 ? "S" : "H";
+  if (t === 12) return (up >= 4 && up <= 6) ? "S" : "H";
+  if (t === 11) return cards.length === 2 ? "D" : "H";
+  if (t === 10) return (up <= 9 && cards.length === 2) ? "D" : "H";
+  if (t === 9)  return (up >= 3 && up <= 6 && cards.length === 2) ? "D" : "H";
+  return "H";
+}
+/* =====================================================================
+   TABLE STATE
+   One shared object. In online mode the elected HOST mutates it and
+   writes to Firebase; everyone else renders what they receive.
+   ===================================================================== */
+const PHASE = { IDLE:"idle", BETTING:"betting", DEALING:"dealing", INSURANCE:"insurance",
+                PLAYING:"playing", DEALER:"dealer", PAYOUT:"payout" };
+
+function blankSeat(){
+  return { uid:null, name:"", avatar:0, bank:0, bet:0, hands:[], active:0,
+           result:null, bot:false, sitOutRounds:0, joined:0 };
+}
+function newTable(){
+  return {
+    phase: PHASE.IDLE, phaseEnd: 0, round: 0,
+    shoeSeed: (Math.random() * 4294967296) >>> 0, shoeIdx: 0,
+    dealer: { cards: [], hole: true },
+    seats: Array.from({ length: SEATS }, blankSeat),
+    turnSeat: -1, turnHand: 0,
+    host: null, hostTs: 0, msg: ""
   };
 }
-// Build the chart from (videoId, duration). Duration is quantised so a
-// 1-frame difference in getDuration() cannot change anybody's chart.
-function generateChart(videoId, duration, diffIdx){
-  const D    = DIFFS[diffIdx] || DIFFS[1];
-  const dur  = Math.max(20, Math.round(duration));
-  // difficulty is part of the seed so each chart is reproducible per-difficulty
-  const rnd  = mulberry32(hashSeed(videoId + "|" + dur + "|" + D.name));
-  const bpm  = 118 + Math.floor(rnd() * 54);
-  const beat = 60 / bpm;
-  const start = 2.2 + rnd() * 1.5;
-  const end   = dur - 2.0;
-  const notes = [];
+let T = newTable();
+let shoe = buildShoe(T.shoeSeed);
 
-  // Musical structure: 8-bar phrases, each with its own character. Keeping notes
-  // on a strict grid is what makes a procedural chart feel deliberate rather
-  // than random -- the ear locks onto the pulse even when the chart cannot
-  // "hear" the song.
-  const MIN_GAP = 0.085;                 // never generate unhittable stacks
-  let t = start, lastLane = -1, lastT = -9, run = 0, runDir = 1;
-  let bar = 0;
+let myUid = null, mySeat = -1, isHost = true;
+let pendingBet = 0, betStack = [];      // chips placed this betting round
+let lastSync = 0, netRef = null;
 
-  while (t < end){
-    const prog    = (t - start) / Math.max(1, end - start);
-    const phrase  = Math.floor(bar / 8);
-    const inPhrase = bar % 8;
-    // energy arc over the whole song + a lift in the back half of each phrase
-    let energy = 0.58 + 0.32 * Math.sin(prog * Math.PI);
-    if (inPhrase >= 6) energy += 0.14;                    // phrase turnaround
-    if (phrase % 4 === 3) energy += 0.10;                 // every 4th phrase = chorus
-    energy = Math.min(1.05, energy) * D.density;
-
-    // subdivision: quarters, eighths, occasional sixteenth burst at the top end
-    let sub = 1;
-    const r = rnd();
-    if (r < D.sub * energy * 0.72) sub = 0.5;
-    if (D.sub > 0.6 && r < D.sub * energy * 0.16 && inPhrase >= 6) sub = 0.25;
-
-    if (rnd() < energy && t - lastT >= MIN_GAP){
-      let lane;
-      if (run > 0){
-        // continue a stair-step run: reads clearly and feels great to play
-        lane = lastLane + runDir;
-        if (lane < 0 || lane >= LANES){ runDir *= -1; lane = lastLane + runDir; }
-        run--;
-      } else if (rnd() < 0.26 && energy > 0.7){
-        run = 2 + Math.floor(rnd() * 3);
-        runDir = rnd() < 0.5 ? -1 : 1;
-        lane = lastLane < 0 ? Math.floor(rnd() * LANES) : lastLane + runDir;
-        if (lane < 0 || lane >= LANES){ runDir *= -1; lane = lastLane + runDir; }
-      } else {
-        lane = Math.floor(rnd() * LANES);
-        // avoid repeating the same lane too often; it reads as a stutter
-        if (lane === lastLane && rnd() < 0.7) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
-      }
-      lane = Math.max(0, Math.min(LANES - 1, lane));
-      notes.push({ time: +t.toFixed(4), lane, hit: false, judged: false });
-      lastLane = lane; lastT = t;
-
-      // chords land on strong beats only, and always on comfortable spacings
-      if (rnd() < D.chords * energy && bar % 1 < 0.01){
-        const spread = 1 + Math.floor(rnd() * 2);
-        let l2 = lane + (rnd() < 0.5 ? -spread : spread);
-        if (l2 < 0 || l2 >= LANES) l2 = lane - (l2 < 0 ? -spread : spread);
-        if (l2 >= 0 && l2 < LANES && l2 !== lane)
-          notes.push({ time: +t.toFixed(4), lane: l2, hit: false, judged: false });
-      }
-    }
-    t += beat * sub;
-    bar += sub / 4;
+/* ---- dealing helpers (host only) ---- */
+function draw(){
+  if (T.shoeIdx >= shoe.length - 20){        // reshuffle near the cut card
+    T.shoeSeed = (Math.random() * 4294967296) >>> 0;
+    shoe = buildShoe(T.shoeSeed); T.shoeIdx = 0;
+    say("Shuffling a fresh shoe.");
   }
-  notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
-  return { notes, bpm, beat, start, diff: D.name };
+  return shoe[T.shoeIdx++];
 }
+function newHand(bet){ return { cards: [], bet, done: false, split: false, doubled: false, result: null }; }
+function occupied(s){ return !!s.uid; }
+function activeSeats(){ return T.seats.filter(s => occupied(s) && s.hands.length); }
+
+function say(msg){ T.msg = msg; }
 
 /* =====================================================================
-   4. YOUTUBE ENGINE + ANTI-AD / BUFFERING SYNC LOCK
+   HOST ENGINE -- drives every phase transition
    ===================================================================== */
-function parseVideoId(input){
-  const s = (input || "").trim();
-  if (!s) return null;
-  if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
-  const m = s.match(/(?:v=|\/embed\/|youtu\.be\/|\/shorts\/|\/live\/|\/v\/)([A-Za-z0-9_-]{11})/);
-  return m ? m[1] : null;
-}
+function hostTick(){
+  if (!isHost) return;
+  const t = now();
 
-let player = null, ytReady = false, pendingId = null;
-const yt = {
-  id: null,
-  title: "",
-  duration: 0,
-  state: -1,
-  audioTime: 0,        // authoritative song clock (seconds)
-  lastPoll: 0,         // player.getCurrentTime() at last poll
-  lastPollWall: 0,     // performance.now() at last poll
-  stalledSince: 0,
-  locked: true,        // true => notes frozen (ad / buffering / paused)
-  reason: "Waiting for video"
-};
-
-const tag = document.createElement("script");
-tag.src = "https://www.youtube.com/iframe_api";
-tag.onerror = () => {
-  log("FAILED to download the YouTube IFrame API script.", "err");
-  showError("<b>Could not reach youtube.com.</b> The IFrame API script was blocked &mdash; check your network, an ad-blocker, or a content blocker extension.");
-};
-document.head.appendChild(tag);
-log("Booting engine. Firebase: " + (FIREBASE_ON ? "ONLINE" : "local fallback") + ". Origin: " + location.protocol, FIREBASE_ON ? "ok" : "warn");
-if (IS_FILE){
-  log("Running from file:// - the YouTube player will refuse to load here.", "err");
-}
-log("Requesting YouTube IFrame API...");
-setPhase(6, "loading youtube api");
-
-// If the API never arrives, say so instead of spinning forever.
-setTimeout(() => {
-  if (!window.YT || !YT.Player) {
-    log("YouTube IFrame API did not load after 8s.", "err");
-    showError("<b>YouTube API never loaded.</b> Most often an ad-blocker or offline network. Reload once the connection is back.");
+  switch (T.phase){
+    case PHASE.IDLE: {
+      // wait for at least one seated player, then open betting
+      if (T.seats.some(occupied)){
+        T.phase = PHASE.BETTING; T.phaseEnd = t + T_BET; T.round++;
+        T.dealer = { cards: [], hole: true };
+        T.seats.forEach(s => { s.hands = []; s.bet = 0; s.result = null; s.active = 0; });
+        maybeBotBets();
+        say("Place your bets.");
+        push();
+      }
+      break;
+    }
+    case PHASE.BETTING: {
+      const ready = T.seats.filter(s => occupied(s) && s.bet > 0);
+      if (t >= T.phaseEnd || (ready.length > 0 && allBettorsLocked())){
+        if (!ready.length){
+          T.phase = PHASE.IDLE; say("No bets. Waiting for players.");
+          push(); break;
+        }
+        startDeal();
+      }
+      break;
+    }
+    case PHASE.DEALING: {
+      if (t >= T.phaseEnd) finishDeal();
+      break;
+    }
+    case PHASE.PLAYING: {
+      const s = T.seats[T.turnSeat];
+      if (!s || !occupied(s) || !s.hands[T.turnHand]){ advanceTurn(); break; }
+      if (s.bot){
+        if (t >= T.phaseEnd - (T_TURN - (S.fast ? 500 : 1000))) botAct(T.turnSeat);
+      } else if (t >= T.phaseEnd){
+        say((s.name || "Player") + " timed out.");
+        act(T.turnSeat, T.turnHand, "stand");
+      }
+      break;
+    }
+    case PHASE.DEALER: {
+      if (t >= T.phaseEnd) dealerStep();
+      break;
+    }
+    case PHASE.PAYOUT: {
+      if (t >= T.phaseEnd){
+        T.phase = PHASE.IDLE; T.turnSeat = -1;
+        // drop players who have sat out too long
+        T.seats.forEach(s => { if (s.bot && s.bank < MIN_BET) s.bank = 500; });
+        push();
+      }
+      break;
+    }
   }
-}, 8000);
+}
+function allBettorsLocked(){
+  // everyone occupied has either bet or is flagged done; bots always bet instantly
+  return T.seats.filter(occupied).every(s => s.bet > 0 || s.sitOutRounds > 0);
+}
 
-window.onYouTubeIframeAPIReady = function(){
-  log("YouTube IFrame API ready. Constructing player...", "ok");
-  setPhase(18, "creating player");
-  player = new YT.Player("player", {
-    height: "100%", width: "100%", videoId: "",
-    playerVars: {
-      controls: 0, disablekb: 1, modestbranding: 1, rel: 0,
-      iv_load_policy: 3, playsinline: 1, fs: 0, origin: location.origin
-    },
-    events: {
-      onReady: () => {
-        ytReady = true;
-        log("Player ready.", "ok");
-        setPhase(30, "player ready");
-        if (pendingId){ const p = pendingId; pendingId = null; loadVideo(p); }
-      },
-      onStateChange: onPlayerStateChange,
-      onError: e => {
-        const msg = YT_ERRORS[e.data] || ("YouTube player error " + e.data + ".");
-        log("PLAYER ERROR " + e.data + ": " + msg, "err");
-        showError("<b>" + escapeHtml(msg) + "</b>" +
-          (IS_FILE ? "<br>You are opening this file directly (file://). YouTube blocks embeds from file URLs &mdash; serve the folder over http, e.g. <code>npx serve .</code>, or push it to GitHub Pages." : "<br>Try a different video or one of the preset chips."));
-        toast(msg);
-        showLog(true);
+function startDeal(){
+  T.phase = PHASE.DEALING;
+  T.seats.forEach(s => { if (occupied(s) && s.bet > 0) s.hands = [newHand(s.bet)]; });
+  dealQueue = [];
+  const live = T.seats.map((s, i) => ({ s, i })).filter(o => occupied(o.s) && o.s.hands.length);
+  // two passes, player-first, dealer hole card last -- exactly like a real shoe
+  for (let pass = 0; pass < 2; pass++){
+    for (const o of live) dealQueue.push({ seat: o.i, hand: 0 });
+    dealQueue.push({ seat: -1 });
+  }
+  T.phaseEnd = now() + dealQueue.length * dealStep() + 260;
+  say("Dealing.");
+  push();
+  runDealQueue();
+}
+let dealQueue = [], dealTimer = null;
+function dealStep(){ return S.fast ? 150 : 260; }
+function runDealQueue(){
+  clearTimeout(dealTimer);
+  if (!dealQueue.length) return;
+  const step = dealQueue.shift();
+  const card = draw();
+  if (step.seat === -1) T.dealer.cards.push(card);
+  else T.seats[step.seat].hands[step.hand].cards.push(card);
+  const isHole = step.seat === -1 && T.dealer.cards.length === 2;
+  fxDeal(step.seat, step.hand, card, isHole);
+  SFX.slide();
+  push();
+  dealTimer = setTimeout(runDealQueue, dealStep());
+}
+function finishDeal(){
+  const upAce = T.dealer.cards.length && rankOf(T.dealer.cards[0]) === 0;
+  const upTen = T.dealer.cards.length && cardVal(T.dealer.cards[0]) === 10;
+  // Dealer peeks for blackjack on a ten or ace up -- no point playing it out.
+  if (upAce || upTen){
+    const dv = handValue(T.dealer.cards);
+    if (dv.total === 21){
+      T.dealer.hole = false;
+      say("Dealer has blackjack.");
+      return settle();
+    }
+  }
+  // naturals pay immediately, everyone else plays
+  T.phase = PHASE.PLAYING;
+  T.turnSeat = -1;
+  advanceTurn();
+}
+
+function advanceTurn(){
+  // find the next unfinished hand, left to right
+  let seat = T.turnSeat, hand = T.turnHand + 1;
+  if (seat < 0){ seat = 0; hand = 0; }
+  while (seat < SEATS){
+    const s = T.seats[seat];
+    if (occupied(s) && s.hands.length){
+      for (; hand < s.hands.length; hand++){
+        const h = s.hands[hand];
+        if (!h.done && !handValue(h.cards).bust && !isBlackjack(h)){
+          T.turnSeat = seat; T.turnHand = hand;
+          T.phase = PHASE.PLAYING;
+          T.phaseEnd = now() + (s.bot ? (S.fast ? 900 : 1600) : T_TURN);
+          s.active = hand;
+          say((s.name || "Player") + " to act.");
+          if (seat === mySeat) SFX.turn();
+          push();
+          return;
+        }
       }
     }
-  });
-};
-
-const ST_NAME = { "-1": "UNSTARTED", 0: "ENDED", 1: "PLAYING", 2: "PAUSED", 3: "BUFFERING", 5: "CUED" };
-function onPlayerStateChange(e){
-  yt.state = e.data;
-  log("State -> " + (ST_NAME[e.data] || e.data));
-  if (e.data === YT.PlayerState.BUFFERING) setPhase(Math.max(curPhase, 55), "buffering");
-  if (e.data === YT.PlayerState.PLAYING){
-    setPhase(100, "playing");
-    showUnblock(false); showError(null);
-    try {
-      const d = player.getDuration();
-      if (d && Math.abs(d - yt.duration) > 0.5 && game.mode === "loading"){
-        yt.duration = d;
-        beginGame();
-      }
-    } catch (err) {}
+    seat++; hand = 0;
   }
-  if (e.data === YT.PlayerState.ENDED && game.mode === "play") endGame();
+  startDealerPlay();
 }
 
-let loadWaiter = null;
-function loadVideo(id){
-  yt.id = id; yt.duration = 0; yt.audioTime = 0;
-  yt.lastPoll = 0; yt.lastPollWall = performance.now();
-  game.mode = "loading";
-  resetPhase();
-  setSync(true, "Loading track");
-  log("Loading video id: " + id);
+function act(seatIdx, handIdx, action){
+  const s = T.seats[seatIdx]; if (!s) return;
+  const h = s.hands[handIdx]; if (!h || h.done) return;
 
-  if (IS_FILE){
-    showError("<b>Opened as a local file (file://).</b> YouTube refuses to embed on file URLs, so the player shows a configuration error.<br>Serve the folder over http instead &mdash; <code>npx serve .</code> &mdash; or publish to GitHub Pages.");
-    showLog(true);
+  if (action === "hit"){
+    h.cards.push(draw());
+    fxDeal(seatIdx, handIdx, h.cards[h.cards.length - 1], false);
+    SFX.slide();
+    const v = handValue(h.cards);
+    if (v.bust){ h.done = true; h.result = "bust"; fxBust(seatIdx, handIdx); SFX.bust(); say("Bust!"); push(); setTimeout(() => isHost && advanceTurn(), 620); return; }
+    if (v.total === 21){ h.done = true; push(); setTimeout(() => isHost && advanceTurn(), 380); return; }
+    T.phaseEnd = now() + (s.bot ? (S.fast ? 700 : 1200) : T_TURN);
+    push(); return;
   }
-  if (!ytReady){
-    pendingId = id;
-    log("Player not ready yet - queued this video.", "warn");
-    setPhase(12, "waiting for player");
+  if (action === "stand"){ h.done = true; push(); setTimeout(() => isHost && advanceTurn(), 240); return; }
+
+  if (action === "double"){
+    if (h.cards.length !== 2 || s.bank < h.bet) return;
+    s.bank -= h.bet; h.bet *= 2; h.doubled = true;
+    if (seatIdx === mySeat){ S.bank = s.bank; save(); }
+    SFX.chip(); fxChips(seatIdx, 6);
+    h.cards.push(draw());
+    fxDeal(seatIdx, handIdx, h.cards[h.cards.length - 1], false);
+    h.done = true;
+    const v = handValue(h.cards);
+    if (v.bust){ h.result = "bust"; fxBust(seatIdx, handIdx); SFX.bust(); }
+    push(); setTimeout(() => isHost && advanceTurn(), 700); return;
+  }
+  if (action === "split"){
+    if (!canSplit(h) || s.hands.length >= 2 || s.bank < h.bet) return;
+    s.bank -= h.bet;
+    if (seatIdx === mySeat){ S.bank = s.bank; save(); }
+    const moved = h.cards.pop();
+    const nh = newHand(h.bet); nh.cards = [moved]; nh.split = true; h.split = true;
+    s.hands.splice(handIdx + 1, 0, nh);
+    h.cards.push(draw()); nh.cards.push(draw());
+    fxDeal(seatIdx, handIdx, h.cards[1], false);
+    fxDeal(seatIdx, handIdx + 1, nh.cards[1], false);
+    SFX.chip(); say("Split!");
+    push(); return;
+  }
+}
+
+function startDealerPlay(){
+  T.phase = PHASE.DEALER;
+  T.dealer.hole = false;
+  T.turnSeat = -1;
+  SFX.flip();
+  // if every hand busted or is a natural, no need to draw
+  const needsPlay = activeSeats().some(s => s.hands.some(h => !handValue(h.cards).bust && !isBlackjack(h)));
+  T.phaseEnd = now() + (S.fast ? 420 : 800);
+  if (!needsPlay) T.phaseEnd = now() + 260;
+  say("Dealer plays.");
+  push();
+}
+function dealerStep(){
+  const v = handValue(T.dealer.cards);
+  const needsPlay = activeSeats().some(s => s.hands.some(h => !handValue(h.cards).bust && !isBlackjack(h)));
+  if (needsPlay && v.total < 17){          // dealer stands on all 17s, hits soft 16
+    T.dealer.cards.push(draw());
+    fxDeal(-1, 0, T.dealer.cards[T.dealer.cards.length - 1], false);
+    SFX.slide();
+    T.phaseEnd = now() + (S.fast ? 380 : 700);
+    push();
     return;
   }
-
-  setPhase(38, "requesting video");
-  try {
-    player.loadVideoById(id);
-    player.setVolume(75);
-  } catch (e){ log("loadVideoById threw: " + e.message, "err"); }
-  try { yt.title = (player.getVideoData && player.getVideoData().title) || id; } catch(e){ yt.title = id; }
-
-  clearInterval(loadWaiter);
-  let tries = 0;
-  loadWaiter = setInterval(() => {
-    tries++;
-    let d = 0, st = -1, frac = 0;
-    try { d = player.getDuration(); st = player.getPlayerState(); frac = player.getVideoLoadedFraction() || 0; } catch(e){}
-
-    // creep the bar with real buffer progress while we wait on metadata
-    if (curPhase < 70) setPhase(38 + Math.min(30, frac * 60), frac > 0 ? "buffering " + Math.round(frac * 100) + "%" : "contacting youtube");
-
-    if (d > 5 && game.mode === "loading"){
-      yt.duration = d;
-      try { yt.title = player.getVideoData().title || id; } catch(e){}
-      log("Metadata OK - \"" + yt.title + "\", " + d.toFixed(1) + "s", "ok");
-      setPhase(80, "building chart");
-      clearInterval(loadWaiter);
-      beginGame();
-      return;
-    }
-
-    // Autoplay policies block sound-on playback until the user gestures.
-    if (tries === 10 && st !== 1){
-      log("No playback after 2.5s - browser autoplay block is likely.", "warn");
-      showUnblock(true);
-      document.getElementById("syncReason").textContent = "Autoplay blocked - press the button below";
-    }
-    if (tries % 8 === 0) log("Still waiting... state=" + (ST_NAME[st] || st) + " duration=" + d.toFixed(1) + " buffered=" + Math.round(frac * 100) + "%", "warn");
-
-    if (tries > 60){
-      clearInterval(loadWaiter);
-      log("Gave up waiting for metadata after 15s.", "err");
-      showError("<b>The video never started.</b> It may be embed-disabled, region-locked, or blocked by an extension. Try a preset chip or a different link.");
-      showLog(true);
-    }
-  }, 250);
+  if (needsPlay && v.bust){ say("Dealer busts!"); fxDealerBust(); }
+  settle();
 }
 
-function showLog(on){ document.getElementById("logPanel").classList.toggle("on", !!on); }
-document.getElementById("unblock").onclick = () => {
-  log("Manual start pressed.", "info");
-  try { player.playVideo(); player.setVolume(75); } catch(e){ log("playVideo threw: " + e.message, "err"); }
-  showUnblock(false);
-};
+function settle(){
+  const dv = handValue(T.dealer.cards);
+  const dBj = T.dealer.cards.length === 2 && dv.total === 21;
+  T.dealer.hole = false;
 
-/* Frame-by-frame sync guard.
-   The highway only advances when the *video itself* is genuinely playing.
-   Ads keep the player in PLAYING while getCurrentTime() stops advancing, so a
-   stall detector catches them too. */
-function updateClock(now){
-  if (!player || !yt.id || !player.getCurrentTime){ yt.locked = true; return; }
-  let st = -1, ct = 0;
-  try { st = player.getPlayerState(); ct = player.getCurrentTime() || 0; } catch(e){ yt.locked = true; return; }
-  yt.state = st;
+  T.seats.forEach((s, i) => {
+    if (!occupied(s) || !s.hands.length) return;
+    let net = 0, anyBj = false, anyWin = false;
+    s.hands.forEach((h, hi) => {
+      const hv = handValue(h.cards);
+      const bj = isBlackjack(h);
+      let res, pay = 0;
+      if (hv.bust){ res = "bust"; pay = 0; }
+      else if (bj && !dBj){ res = "blackjack"; pay = h.bet * 2.5; anyBj = true; }
+      else if (dBj && !bj){ res = "lose"; pay = 0; }
+      else if (dBj && bj){ res = "push"; pay = h.bet; }
+      else if (dv.bust){ res = "win"; pay = h.bet * 2; }
+      else if (hv.total > dv.total){ res = "win"; pay = h.bet * 2; }
+      else if (hv.total < dv.total){ res = "lose"; pay = 0; }
+      else { res = "push"; pay = h.bet; }
 
-  const S = (window.YT && YT.PlayerState) ? YT.PlayerState : {PLAYING:1,PAUSED:2,BUFFERING:3,ENDED:0,CUED:5};
+      h.result = res;
+      s.bank += pay;
+      net += pay - h.bet;
+      if (res === "win" || res === "blackjack") anyWin = true;
+      if (i === mySeat) recordHand(res, pay - h.bet, hi);
+      fxResult(i, hi, res);
+    });
+    s.result = net > 0 ? "win" : net < 0 ? "lose" : "push";
+    if (i === mySeat){
+      S.bank = s.bank; save();
+      if (anyBj){ SFX.bj(); fxBlackjack(i); }
+      else if (anyWin){ SFX.win(); }
+      else if (net < 0){ /* already thudded on bust */ }
+      else SFX.push();
+    } else if (anyBj) fxBlackjack(i);
+    if (net > 0) fxPayout(i, net);
+  });
 
-  if (st === S.BUFFERING){ lock("Buffering video"); return; }
-  if (st === S.PAUSED)   { lock("Paused"); return; }
-  if (st === S.ENDED)    { lock("Track ended"); return; }
-  if (st !== S.PLAYING)  { lock("Waiting for video"); return; }
+  T.phase = PHASE.PAYOUT;
+  T.phaseEnd = now() + (S.fast ? 2600 : T_PAYOUT);
+  if (!T.msg || T.msg === "Dealer plays.") say(dv.bust ? "Dealer busts!" : "Dealer has " + dv.total + ".");
+  push();
+}
 
-  if (ct !== yt.lastPoll){
-    // real playback progress -> resync the authoritative clock
-    if (Math.abs(ct - yt.audioTime) > 0.25) yt.audioTime = ct;   // hard resync after a seek/ad
-    else yt.audioTime = yt.audioTime * 0.85 + ct * 0.15;         // gentle drift correction
-    yt.lastPoll = ct;
-    yt.lastPollWall = now;
-    yt.stalledSince = 0;
-    if (yt.locked){
-      yt.locked = false; setSync(false); ignoreMissUntil = yt.audioTime + 0.25;
-      if (game.mode === "play") log("Playback resumed at " + yt.audioTime.toFixed(2) + "s - highway live.", "ok");
+/* ---- stats ---- */
+function recordHand(res, net, handIdx){
+  const st = S.stats;
+  st.hands++; st.net += net;
+  if (res === "win" || res === "blackjack") st.wins++;
+  if (res === "push") st.pushes++;
+  if (res === "blackjack") st.bj++;
+  if (net > st.best) st.best = net;
+  if (S.bank > st.peak) st.peak = S.bank;
+  save();
+  if (net > 0 && ONLINE && net >= 100) postHighRoller(net);
+}
+
+/* ---- bots ---- */
+function maybeBotBets(){
+  T.seats.forEach((s, i) => {
+    if (!occupied(s)) return;
+    if (s.bot){
+      const bet = clamp(Math.round((25 + Math.floor(Math.random() * 4) * 25)), MIN_BET, Math.max(MIN_BET, s.bank));
+      s.bet = Math.min(bet, s.bank); s.bank -= s.bet;
     }
-  } else {
-    // currentTime frozen while "PLAYING" => almost certainly an ad or a hitch
-    if (!yt.stalledSince) yt.stalledSince = now;
-    if (now - yt.stalledSince > 420){ lock("Ad break / stream stall"); return; }
-  }
-
-  if (!yt.locked){
-    // interpolate between polls so note motion is smooth & frame-independent
-    yt.audioTime += (now - yt.lastFrame) / 1000;
-  }
+  });
 }
-function lock(reason){
-  if (!yt.locked || yt.reason !== reason){
-    yt.locked = true; yt.reason = reason;
-    setSync(true, reason);
-    if (game.mode === "play"){
-      log("Highway FROZEN: " + reason, "warn");
-      // Never got a single second of audio => the browser is silently refusing
-      // to autoplay with sound. Offer the manual gesture instead of spinning.
-      if (yt.audioTime < 0.05){
-        showUnblock(true);
-        document.getElementById("syncReason").textContent =
-          "Autoplay blocked by the browser - press the button below";
-      }
-      // mid-song the bar reports how much of the stream is buffered ahead
-      let frac = 0; try { frac = player.getVideoLoadedFraction() || 0; } catch(e){}
-      const b = document.getElementById("pbar"), p = document.getElementById("pct");
-      if (b) b.style.width = Math.max(4, frac * 100) + "%";
-      if (p) p.textContent = Math.round(frac * 100) + "%  //  " + reason.toUpperCase();
+function botAct(seatIdx){
+  const s = T.seats[seatIdx], h = s.hands[T.turnHand];
+  if (!h || h.done) return;
+  const up = cardVal(T.dealer.cards[0]);
+  let mv = basicStrategy(h, up);
+  if (mv === "D" && (h.cards.length !== 2 || s.bank < h.bet)) mv = "H";
+  if (mv === "P" && (s.hands.length >= 2 || s.bank < h.bet)) mv = "H";
+  act(seatIdx, T.turnHand, mv === "H" ? "hit" : mv === "S" ? "stand" : mv === "D" ? "double" : "split");
+}
+function fillBots(){
+  if (!S.bots) return;
+  const humans = T.seats.filter(s => occupied(s) && !s.bot).length;
+  if (!humans) return;
+  const names = ["Rex","Nova","Duke","Kira","Ace","Mimi","Zed","Bo"];
+  T.seats.forEach((s, i) => {
+    if (occupied(s)) return;
+    if (Math.random() < 0.55){
+      s.uid = "bot_" + i; s.bot = true;
+      s.name = names[Math.floor(Math.random() * names.length)];
+      s.avatar = Math.floor(Math.random() * AVATARS.length);
+      s.bank = 500 + Math.floor(Math.random() * 1500);
+      s.joined = now();
     }
-  }
+  });
 }
-function setSync(on, reason){
-  const el = document.getElementById("sync");
-  if (on && game.mode !== "menu"){ el.classList.add("on"); document.getElementById("syncReason").textContent = reason || ""; }
-  else el.classList.remove("on");
-}
-
+function clearBots(){ T.seats.forEach(s => { if (s.bot) Object.assign(s, blankSeat()); }); }
 /* =====================================================================
-   5. GAME STATE
+   NETWORK LAYER
+   Model: one elected HOST runs the engine and writes table state. Everyone
+   writes only their own seat + an action queue. The host claims a lease and
+   renews it; if the lease goes stale (host closed the tab), the lowest
+   remaining uid takes over. Shoe state travels as (seed, index) so a new
+   host can rebuild the exact same shoe.
    ===================================================================== */
-const cvs = document.getElementById("game");
-const ctx = cvs.getContext("2d", { alpha: true });
+const ROOM = () => (S.room || "main").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "main";
+const HOST_LEASE = 6000;
+let tableRef = null, actionsRef = null, chatRef = null, presRef = null, hrRef = null;
+let netReady = false, lastPush = 0, pushPending = false;
+
+function setNet(mode, txt){
+  $("netDot").className = "dot " + mode;
+  $("netTxt").textContent = txt;
+}
+
+function connect(){
+  if (!ONLINE){
+    isHost = true; netReady = true;
+    setNet("solo", "Solo vs Dealer");
+    $("joinNote").innerHTML = "<b style='color:#e8c66a'>Solo mode.</b> Firebase keys are not set, so this table is private to you. " +
+      "Add credentials in the script header to let other players sit down.";
+    fillBots();
+    return;
+  }
+  myUid = "u" + Math.random().toString(36).slice(2, 10);
+  const base = "tables/" + ROOM();
+  tableRef   = db.ref(base + "/state");
+  actionsRef = db.ref(base + "/actions");
+  chatRef    = db.ref(base + "/chat");
+  presRef    = db.ref(base + "/presence/" + myUid);
+  hrRef      = db.ref("highrollers");
+
+  db.ref(".info/connected").on("value", snap => {
+    if (!snap.val()){ setNet("", "Reconnecting"); return; }
+    setNet("live", "Live table: " + ROOM());
+    presRef.onDisconnect().remove();
+    presRef.set({ name: S.name || "Player", ts: firebase.database.ServerValue.TIMESTAMP });
+    // free my seat automatically if the tab dies
+    if (mySeat >= 0) db.ref(base + "/state/seats/" + mySeat).onDisconnect().set(blankSeat());
+  });
+
+  tableRef.on("value", snap => {
+    const v = snap.val();
+    netReady = true;
+    if (!v){ if (isHost) push(true); return; }
+    applyRemote(v);
+  });
+
+  actionsRef.on("child_added", snap => {
+    const a = snap.val();
+    snap.ref.remove();
+    if (!isHost || !a) return;
+    if (a.type === "act" && T.phase === PHASE.PLAYING && T.turnSeat === a.seat && T.seats[a.seat].uid === a.uid)
+      act(a.seat, T.turnHand, a.action);
+    if (a.type === "bet" && T.phase === PHASE.BETTING && T.seats[a.seat] && T.seats[a.seat].uid === a.uid){
+      T.seats[a.seat].bet = clamp(a.bet, 0, MAX_BET);
+      T.seats[a.seat].bank = a.bank;
+      push();
+    }
+  });
+
+  chatRef.limitToLast(30).on("child_added", snap => {
+    const m = snap.val(); if (!m) return;
+    addChat(m.name, m.text, m.sys);
+  });
+
+  // host lease: claim if vacant or stale
+  setInterval(() => {
+    if (!ONLINE || !netReady) return;
+    db.ref(base + "/host").transaction(cur => {
+      const t = now();
+      if (!cur || !cur.uid || t - (cur.ts || 0) > HOST_LEASE || cur.uid === myUid)
+        return { uid: myUid, ts: t };
+      return;                                  // someone else holds a fresh lease
+    }, (err, committed, snap) => {
+      const v = snap && snap.val();
+      const wasHost = isHost;
+      isHost = !!(v && v.uid === myUid);
+      if (isHost && !wasHost){ log("Took over as table host."); fillBots(); }
+    });
+  }, 2000);
+}
+
+// Merge remote state. The host ignores inbound state (it is the source of truth)
+// except for seat claims, which any client may write.
+function applyRemote(v){
+  if (isHost){
+    if (Array.isArray(v.seats)){
+      v.seats.forEach((rs, i) => {
+        const ls = T.seats[i];
+        if (rs && rs.uid && !ls.uid && !rs.bot){        // someone sat down
+          Object.assign(ls, rs);
+          say((rs.name || "A player") + " sits down.");
+          push();
+        } else if ((!rs || !rs.uid) && ls.uid && !ls.bot && ls.uid !== myUid){
+          Object.assign(ls, blankSeat());               // someone left
+          push();
+        }
+      });
+    }
+    return;
+  }
+  // pure client: adopt everything, and rebuild the shoe view for animations
+  const prevPhase = T.phase, prevRound = T.round;
+  const prevCards = countCards();
+  T = Object.assign(newTable(), v);
+  T.seats = (v.seats || []).map(s => Object.assign(blankSeat(), s || {}));
+  T.seats.forEach(s => s.hands = (s.hands || []).map(h => Object.assign(newHand(0), h)));
+  T.dealer = Object.assign({ cards: [], hole: true }, v.dealer || {});
+  T.dealer.cards = T.dealer.cards || [];
+  if (countCards() > prevCards) SFX.slide();
+  if (prevPhase !== T.phase) onPhaseChange(prevPhase, T.phase);
+  if (T.round !== prevRound){ /* new round */ }
+}
+function countCards(){
+  let n = (T.dealer.cards || []).length;
+  T.seats.forEach(s => (s.hands || []).forEach(h => n += (h.cards || []).length));
+  return n;
+}
+function onPhaseChange(from, to){
+  if (to === PHASE.PAYOUT){
+    const s = T.seats[mySeat];
+    if (s && s.hands.length){
+      const bj = s.hands.some(h => h.result === "blackjack");
+      if (bj){ SFX.bj(); fxBlackjack(mySeat); }
+      else if (s.result === "win") SFX.win();
+      else if (s.result === "push") SFX.push();
+      const net = s.hands.reduce((a, h) => a + ((h.result === "win" ? h.bet : h.result === "blackjack" ? h.bet * 1.5 : h.result === "push" ? 0 : -h.bet)), 0);
+      S.bank = s.bank; save();
+      s.hands.forEach((h, hi) => { recordHand(h.result, h.result === "win" ? h.bet : h.result === "blackjack" ? h.bet * 1.5 : h.result === "push" ? 0 : -h.bet, hi); fxResult(mySeat, hi, h.result); });
+      if (net > 0) fxPayout(mySeat, net);
+    }
+  }
+  if (to === PHASE.PLAYING && T.turnSeat === mySeat) SFX.turn();
+}
+
+// Throttled write of the whole table (host only).
+function push(force){
+  syncUI();
+  if (!ONLINE || !isHost || !netReady) return;
+  const t = now();
+  if (!force && t - lastPush < 90){
+    if (!pushPending){ pushPending = true; setTimeout(() => { pushPending = false; push(true); }, 100); }
+    return;
+  }
+  lastPush = t;
+  const payload = JSON.parse(JSON.stringify({
+    phase: T.phase, phaseEnd: T.phaseEnd, round: T.round,
+    shoeSeed: T.shoeSeed, shoeIdx: T.shoeIdx,
+    dealer: T.dealer, seats: T.seats, turnSeat: T.turnSeat, turnHand: T.turnHand,
+    msg: T.msg, hostTs: t
+  }));
+  tableRef.set(payload).catch(e => showErr("Sync failed: " + e.message));
+}
+function sendAction(action){
+  if (mySeat < 0) return;
+  if (isHost){ act(mySeat, T.turnHand, action); return; }
+  actionsRef.push({ type: "act", uid: myUid, seat: mySeat, action, ts: now() });
+}
+function sendBet(bet){
+  if (mySeat < 0) return;
+  if (isHost){ T.seats[mySeat].bet = bet; T.seats[mySeat].bank = S.bank; push(); return; }
+  actionsRef.push({ type: "bet", uid: myUid, seat: mySeat, bet, bank: S.bank, ts: now() });
+}
+
+/* ---- chat ---- */
+function addChat(name, text, sys){
+  const log = $("chatLog");
+  const d = document.createElement("div");
+  d.className = "m" + (sys ? " sys" : "");
+  d.innerHTML = sys ? esc(text) : `<span class="who">${esc(name)}</span> ${esc(text)}`;
+  log.appendChild(d);
+  while (log.children.length > 60) log.removeChild(log.firstChild);
+  log.scrollTop = log.scrollHeight;
+}
+function sendChat(text){
+  if (!text.trim()) return;
+  if (ONLINE && chatRef) chatRef.push({ name: S.name || "Player", text: text.slice(0, 140), ts: now() });
+  else addChat(S.name || "You", text);
+}
+function log(msg){ addChat("", msg, true); }
+
+/* ---- high rollers ---- */
+function postHighRoller(net){
+  if (!ONLINE || !hrRef) return;
+  hrRef.push({ name: S.name || "Player", win: Math.round(net), ts: now() }).catch(()=>{});
+}
+function loadHighRollers(){
+  const body = $("hrBody");
+  const local = () => {
+    const best = S.stats.best;
+    body.innerHTML = best > 0
+      ? `<tr><td>1</td><td>${esc(S.name || "You")}</td><td class="num g">${fmt(best)}</td></tr>`
+      : `<tr><td colspan="3" style="color:#9aa3a8">No big wins yet.</td></tr>`;
+  };
+  if (!ONLINE){ local(); $("statsNote").textContent = "Solo mode - only your own results are tracked."; return; }
+  $("statsNote").textContent = "Live global board via Firebase.";
+  hrRef.orderByChild("win").limitToLast(10).once("value", snap => {
+    const rows = []; snap.forEach(c => rows.push(c.val()));
+    rows.sort((a, b) => b.win - a.win);
+    body.innerHTML = rows.length ? rows.map((r, i) =>
+      `<tr><td>${i + 1}</td><td>${esc(r.name)}</td><td class="num g">${fmt(r.win)}</td></tr>`).join("")
+      : `<tr><td colspan="3" style="color:#9aa3a8">No big wins yet.</td></tr>`;
+  }, () => local());
+}
+
+/* ---- seating ---- */
+function takeSeat(){
+  const seatIdx = T.seats.findIndex(s => !occupied(s));
+  if (seatIdx < 0){ toast("Table is full - try again in a moment."); return false; }
+  const seat = T.seats[seatIdx];
+  Object.assign(seat, blankSeat(), {
+    uid: myUid || "local", name: S.name || "Player", avatar: S.avatar,
+    bank: S.bank, joined: now()
+  });
+  mySeat = seatIdx;
+  if (ONLINE && !isHost) db.ref("tables/" + ROOM() + "/state/seats/" + seatIdx).set(seat);
+  if (ONLINE) db.ref("tables/" + ROOM() + "/state/seats/" + seatIdx).onDisconnect().set(blankSeat());
+  log((S.name || "You") + " joined the table.");
+  if (ONLINE && chatRef) chatRef.push({ name: "", text: (S.name || "A player") + " sits down.", sys: true, ts: now() });
+  push();
+  return true;
+}
+function leaveSeat(){
+  if (mySeat < 0) return;
+  const i = mySeat;
+  if (ONLINE) db.ref("tables/" + ROOM() + "/state/seats/" + i).set(blankSeat());
+  Object.assign(T.seats[i], blankSeat());
+  mySeat = -1;
+  push();
+}
+/* =====================================================================
+   RENDERING
+   ===================================================================== */
+const cvs = $("table"), ctx = cvs.getContext("2d");
 let W = 0, H = 0, DPR = 1;
-let ignoreMissUntil = 0;
-
-const game = {
-  mode: "menu",           // menu | loading | play | over
-  chart: null,
-  notes: [],
-  nextIdx: 0,
-  score: 0, combo: 0, maxCombo: 0, mult: 1,
-  hits: 0, total: 0, perfect: 0, great: 0, good: 0, miss: 0,
-  accWeight: 0,
-  shake: 0,
-  laneFlash: [0,0,0,0,0],
-  laneHold:  [false,false,false,false,false],
-  particles: [],
-  splashes: [],
-  scroll: 0,
-  // --- overdrive / boost ---
-  boost: 0,            // 0..1 meter
-  boostOn: false,
-  boostT: 0,           // seconds of boost remaining
-  boostFlash: 0,
-  // --- anti-spam + calibration ---
-  overstrums: 0,
-  deltas: [],          // signed hit errors, used by the calibrator
-  calibrating: false
-};
-const BOOST_DUR = 9.0;          // seconds of overdrive at a full meter
-const BOOST_MIN = 0.5;          // meter needed to activate
-
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
   W = cvs.clientWidth; H = cvs.clientHeight;
-  cvs.width  = Math.floor(W * DPR);
-  cvs.height = Math.floor(H * DPR);
+  cvs.width = W * DPR | 0; cvs.height = H * DPR | 0;
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
 }
 window.addEventListener("resize", resize);
 
-/* ---- 3D projection ---------------------------------------------------
-   dd = normalised depth: 0 at the strike bar (near), 1 at the horizon.
-   Classic 1/(1+z) perspective divide gives correct convergence.        */
-function horizonY(){ return H * 0.30; }
-function strikeY(){  return H * 0.855; }
-function laneHalfW(){ return Math.min(W * 0.40, 520); }
-
-function project(laneX, dd){
-  const s  = 1 / (1 + dd * DEPTH);
-  const hy = horizonY(), sy = strikeY();
-  return { x: W / 2 + laneX * s, y: hy + (sy - hy) * s, s };
+const CW = 62, CH = 88;                     // card size
+function seatPos(i){
+  // five seats along an arc across the lower half of the felt
+  const spread = Math.min(W * 0.86, 1180);
+  const x = W / 2 + (i - (SEATS - 1) / 2) * (spread / SEATS);
+  const dx = (i - (SEATS - 1) / 2) / ((SEATS - 1) / 2);
+  const y = H * 0.605 + Math.abs(dx) * H * 0.055;
+  return { x, y };
 }
-function laneCenterX(lane){
-  const hw = laneHalfW();
-  return (-hw) + (hw * 2) * ((lane + 0.5) / LANES);
+const dealerPos = () => ({ x: W / 2, y: H * 0.235 });
+const shoePos   = () => ({ x: W / 2 + Math.min(W * 0.36, 470), y: H * 0.155 });
+
+/* ---- animation pools ---- */
+let flyers = [], chips = [], bursts = [], floats = [], shake = 0, glowRing = [];
+function fxDeal(seat, hand, card, hole){
+  const from = shoePos();
+  const to = seat === -1 ? cardSlot(-1, 0, (T.dealer.cards.length - 1)) : null;
+  flyers.push({ seat, hand, card, hole, t: 0, dur: S.fast ? 0.20 : 0.34, from,
+                idx: seat === -1 ? T.dealer.cards.length - 1 : (T.seats[seat].hands[hand].cards.length - 1) });
 }
-function laneWidth(){ return (laneHalfW() * 2) / LANES; }
-
-/* =====================================================================
-   6. RENDERING
-   ===================================================================== */
-// Hue cycles hard during overdrive; everything colour-driven reads from this.
-function boostHue(t){ return (t * 0.22) % 360; }
-function boostCol(t, off, a){
-  return `hsla(${(boostHue(t) + (off || 0)) % 360},100%,62%,${a == null ? 1 : a})`;
+function fxChips(seat, n){
+  const p = seatPos(seat);
+  for (let i = 0; i < n; i++)
+    chips.push({ x: p.x + (Math.random() - .5) * 30, y: H + 40, tx: p.x + (Math.random() - .5) * 26,
+                 ty: p.y + 66 + (Math.random() - .5) * 8, t: 0, dur: .45 + Math.random() * .2,
+                 c: ["#ef4444","#22c55e","#e8c66a","#a855f7"][Math.floor(Math.random() * 4)] });
 }
-
-function drawBackdrop(t){
-  // horizon sun glow + retro grid receding into the vanishing point
-  const hy = horizonY();
-  const g = ctx.createRadialGradient(W/2, hy, 0, W/2, hy, Math.max(W, H) * 0.55);
-  if (game.boostOn){
-    const pulse = 0.30 + 0.16 * Math.sin(t * 0.02);
-    g.addColorStop(0, boostCol(t, 0, pulse));
-    g.addColorStop(0.35, boostCol(t, 60, pulse * 0.5));
-  } else {
-    g.addColorStop(0, "rgba(255,61,240,.18)");
-    g.addColorStop(0.35, "rgba(122,27,255,.10)");
-  }
-  g.addColorStop(1, "rgba(0,0,0,0)");
-  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-
-  // full-screen colour wash on activation
-  if (game.boostFlash > 0){
-    ctx.fillStyle = boostCol(t, 0, game.boostFlash * 0.35);
-    ctx.fillRect(0, 0, W, H);
-  }
-
-  ctx.strokeStyle = "rgba(120,80,220,.22)"; ctx.lineWidth = 1;
-  ctx.beginPath();
-  for (let i = -8; i <= 8; i++){
-    const a = project(i * laneHalfW() * 0.55, 0);
-    ctx.moveTo(W/2, hy); ctx.lineTo(a.x, H);
-  }
-  ctx.stroke();
-
-  // horizontal grid ribs scrolling toward the viewer (locked when synced off)
-  ctx.strokeStyle = game.boostOn ? boostCol(t, 120, .40) : "rgba(255,61,240,.16)";
-  ctx.beginPath();
-  for (let i = 0; i < 22; i++){
-    let dd = ((i / 22) + game.scroll) % 1;
-    const p = project(0, dd * 1.6);
-    ctx.moveTo(0, p.y); ctx.lineTo(W, p.y);
-  }
-  ctx.stroke();
-  ctx.strokeStyle = "rgba(34,231,255,.35)";
-  ctx.beginPath(); ctx.moveTo(0, hy); ctx.lineTo(W, hy); ctx.stroke();
+function fxPayout(seat, amount){
+  const p = seatPos(seat);
+  floats.push({ x: p.x, y: p.y + 30, txt: "+" + fmt(amount), col: "#4ade80", t: 0, dur: 1.9, vy: -46 });
+  for (let i = 0; i < 14; i++)
+    chips.push({ x: W / 2 + (Math.random() - .5) * 60, y: H * 0.42, tx: p.x + (Math.random() - .5) * 40,
+                 ty: p.y + 66, t: 0, dur: .5 + Math.random() * .35,
+                 c: ["#ef4444","#22c55e","#e8c66a"][Math.floor(Math.random() * 3)] });
+  SFX.chip();
 }
-
-function drawHighway(t){
-  const hy = horizonY();
-  // deck
-  const far = project(-laneHalfW(), 1), farR = project(laneHalfW(), 1);
-  const nearL = project(-laneHalfW(), 0), nearR = project(laneHalfW(), 0);
-  const deck = ctx.createLinearGradient(0, hy, 0, H);
-  deck.addColorStop(0, "rgba(20,4,44,.10)");
-  deck.addColorStop(1, "rgba(46,8,90,.55)");
-  ctx.beginPath();
-  ctx.moveTo(far.x, far.y); ctx.lineTo(farR.x, farR.y);
-  ctx.lineTo(nearR.x, H); ctx.lineTo(nearL.x, H); ctx.closePath();
-  ctx.fillStyle = deck; ctx.fill();
-
-  // glowing lane dividers
-  for (let i = 0; i <= LANES; i++){
-    const lx = -laneHalfW() + (laneHalfW() * 2) * (i / LANES);
-    const a = project(lx, 1), b = project(lx, 0);
-    const edge = (i === 0 || i === LANES);
-    const c = edge ? LANE_COL[i === 0 ? 0 : LANES - 1] : { r: 150, g: 110, b: 255 };
-    if (game.boostOn){
-      ctx.strokeStyle = boostCol(t, i * 40, edge ? .95 : .55);
-      ctx.shadowColor = boostCol(t, i * 40, .9);
-    } else {
-      ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${edge ? .75 : .30})`;
-      ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.7)`;
-    }
-    ctx.lineWidth = edge ? 2.4 : 1.2;
-    ctx.shadowBlur = game.boostOn ? 26 : (edge ? 18 : 6);
-    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, H); ctx.stroke();
-  }
-  ctx.shadowBlur = 0;
-
-  // lane press flashes
-  for (let i = 0; i < LANES; i++){
-    if (game.laneFlash[i] <= 0 && !game.laneHold[i]) continue;
-    const c = LANE_COL[i], hw = laneWidth() / 2, cx = laneCenterX(i);
-    const a1 = project(cx - hw, 1), a2 = project(cx + hw, 1);
-    const b1 = project(cx - hw, 0), b2 = project(cx + hw, 0);
-    const alpha = Math.max(game.laneFlash[i], game.laneHold[i] ? 0.16 : 0);
-    const gr = ctx.createLinearGradient(0, horizonY(), 0, H);
-    gr.addColorStop(0, `rgba(${c.r},${c.g},${c.b},0)`);
-    gr.addColorStop(1, `rgba(${c.r},${c.g},${c.b},${alpha * .55})`);
-    ctx.fillStyle = gr;
-    ctx.beginPath(); ctx.moveTo(a1.x, a1.y); ctx.lineTo(a2.x, a2.y);
-    ctx.lineTo(b2.x, H); ctx.lineTo(b1.x, H); ctx.closePath(); ctx.fill();
+function fxBust(seat, hand){
+  const p = seat === -1 ? dealerPos() : seatPos(seat);
+  shake = Math.max(shake, .6);
+  floats.push({ x: p.x, y: p.y - 10, txt: "BUST", col: "#f87171", t: 0, dur: 1.5, vy: -30, big: true });
+  for (let i = 0; i < 26; i++)
+    bursts.push({ x: p.x, y: p.y, vx: (Math.random() - .5) * 340, vy: -Math.random() * 260 - 40,
+                  r: 2 + Math.random() * 4, life: .7 + Math.random() * .5, max: 1.2, c: "248,113,113" });
+}
+function fxDealerBust(){ fxBust(-1, 0); }
+function fxBlackjack(seat){
+  const p = seat === -1 ? dealerPos() : seatPos(seat);
+  shake = Math.max(shake, .8);
+  floats.push({ x: p.x, y: p.y - 24, txt: "BLACKJACK", col: "#e8c66a", t: 0, dur: 2.4, vy: -34, big: true, glow: true });
+  glowRing.push({ x: p.x, y: p.y, t: 0, dur: 1.1, col: "232,198,106" });
+  for (let i = 0; i < 70; i++){
+    const a = Math.random() * Math.PI * 2, sp = 90 + Math.random() * 430;
+    bursts.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90,
+                  r: 2 + Math.random() * 5, life: .9 + Math.random() * .9, max: 1.8,
+                  c: Math.random() < .55 ? "232,198,106" : "255,255,255", spin: true });
   }
 }
-
-function drawStrikeBar(t){
-  const sy = strikeY(), hw = laneHalfW();
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,.85)";
-  ctx.lineWidth = 3; ctx.shadowBlur = 26; ctx.shadowColor = "rgba(34,231,255,.9)";
-  ctx.beginPath(); ctx.moveTo(W/2 - hw, sy); ctx.lineTo(W/2 + hw, sy); ctx.stroke();
-  ctx.restore();
-
-  for (let i = 0; i < LANES; i++){
-    const c = LANE_COL[i];
-    const cx = W/2 + laneCenterX(i);
-    const r = laneWidth() * 0.30;
-    const pulse = 1 + game.laneFlash[i] * 0.45;
-    ctx.save();
-    ctx.translate(cx, sy);
-    ctx.scale(pulse, pulse);
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(${c.r},${c.g},${c.b},${0.10 + game.laneFlash[i] * 0.55})`;
-    ctx.shadowBlur = 22 + game.laneFlash[i] * 30;
-    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.9)`;
-    ctx.fill();
-    ctx.lineWidth = 2.5; ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},.95)`; ctx.stroke();
-    ctx.restore();
-
-    ctx.font = `800 ${Math.max(12, r * 0.75)}px Segoe UI, sans-serif`;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillStyle = `rgba(255,255,255,${0.55 + game.laneFlash[i] * 0.45})`;
-    ctx.fillText(KEY_LABEL[i], cx, sy + r * 1.75 + 6);
-  }
+function fxResult(seat, hand, res){
+  if (res === "bust") return;                     // already handled at bust time
+  const p = seatPos(seat);
+  const map = { win:["WIN","#4ade80"], blackjack:["BLACKJACK","#e8c66a"],
+                push:["PUSH","#7dd3fc"], lose:["LOSE","#f87171"] };
+  const m = map[res]; if (!m) return;
+  if (res === "blackjack") return;
+  floats.push({ x: p.x + (hand ? 60 : 0), y: p.y - 6, txt: m[0], col: m[1], t: 0, dur: 1.6, vy: -28 });
+  if (res === "win") glowRing.push({ x: p.x, y: p.y, t: 0, dur: .9, col: "74,222,128" });
 }
 
-function drawNotes(now){
-  const at = yt.audioTime;
-  const LA = lookahead();
-  for (let i = 0; i < game.notes.length; i++){
-    const n = game.notes[i];
-    if (n.hit) continue;
-    const dt = n.time - at;
-    if (dt > LA) break;
-    if (dt < -W_GOOD - 0.15) continue;
-    const dd = Math.max(0, dt / LA);
-    const c = game.boostOn
-      ? hslToRgb((boostHue(now) + n.lane * 40) % 360, 1, 0.62)
-      : LANE_COL[n.lane];
-    const cx = laneCenterX(n.lane);
-    const half = laneWidth() * 0.36;
-    const a = project(cx - half, dd), b = project(cx + half, dd);
-    const thick = Math.max(3, 34 * a.s);
-    const y = a.y;
-    const fade = dt < 0 ? Math.max(0, 1 + dt / (W_GOOD + 0.15)) : 1;
+function cardSlot(seat, hand, idx){
+  if (seat === -1){ const d = dealerPos(); return { x: d.x - 34 + idx * 28, y: d.y }; }
+  const p = seatPos(seat);
+  const s = T.seats[seat];
+  const nHands = s && s.hands.length > 1 ? 2 : 1;
+  const hx = nHands > 1 ? (hand === 0 ? -46 : 46) : 0;
+  return { x: p.x + hx - 18 + idx * 20, y: p.y - idx * 5 };
+}
 
-    ctx.save();
-    ctx.globalAlpha = fade;
-    // glow body
-    const g = ctx.createLinearGradient(a.x, y, b.x, y);
-    g.addColorStop(0, `rgba(${c.r},${c.g},${c.b},.35)`);
-    g.addColorStop(.5, `rgba(255,255,255,.95)`);
-    g.addColorStop(1, `rgba(${c.r},${c.g},${c.b},.35)`);
-    ctx.shadowBlur = 18 * a.s + 6; ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.95)`;
-    ctx.fillStyle = g;
-    roundRect(a.x, y - thick/2, b.x - a.x, thick, Math.min(8, thick/2));
-    ctx.fill();
-    // rim
-    ctx.shadowBlur = 0; ctx.lineWidth = Math.max(1, 2 * a.s);
-    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},.95)`; ctx.stroke();
-    ctx.restore();
-  }
-}
-function hslToRgb(h, s, l){
-  const a = s * Math.min(l, 1 - l);
-  const f = n => {
-    const k = (n + h / 30) % 12;
-    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))));
-  };
-  return { r: f(0), g: f(8), b: f(4) };
-}
-function roundRect(x, y, w, h, r){
+/* ---- drawing primitives ---- */
+function rr(x, y, w, h, r){
   ctx.beginPath();
   ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
+  ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);         ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
 }
-
-function drawParticles(dt){
-  for (let i = game.particles.length - 1; i >= 0; i--){
-    const p = game.particles[i];
-    p.life -= dt;
-    if (p.life <= 0){ game.particles.splice(i, 1); continue; }
-    p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 900 * dt; p.vx *= 0.99;
-    const a = Math.max(0, p.life / p.max);
-    ctx.globalAlpha = a;
-    ctx.fillStyle = `rgb(${p.c.r},${p.c.g},${p.c.b})`;
-    ctx.shadowBlur = 14; ctx.shadowColor = ctx.fillStyle;
-    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a + 0.6, 0, Math.PI * 2); ctx.fill();
-  }
-  ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-}
-function burst(lane, strength){
-  if (!S.particles) return;
-  const c = game.boostOn
-    ? hslToRgb((boostHue(performance.now()) + lane * 40) % 360, 1, 0.62)
-    : LANE_COL[lane];
-  const x = W/2 + laneCenterX(lane), y = strikeY();
-  const n = Math.round((14 + strength * 18) * (game.boostOn ? 1.8 : 1));
-  for (let i = 0; i < n; i++){
-    const ang = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 1.35;
-    const sp  = 130 + Math.random() * 420 * strength;
-    game.particles.push({
-      x, y, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp,
-      r: 1.6 + Math.random() * 3.4, c, life: 0.45 + Math.random() * 0.5,
-      max: 0.95
-    });
-  }
-}
-
-function splash(text, color){
-  game.splashes.push({ text, color, life: 0.75, max: 0.75 });
-}
-function drawSplashes(dt){
-  for (let i = game.splashes.length - 1; i >= 0; i--){
-    const s = game.splashes[i];
-    s.life -= dt;
-    if (s.life <= 0){ game.splashes.splice(i, 1); continue; }
-    const p = 1 - s.life / s.max;
-    const scale = 1 + (1 - Math.pow(1 - p, 3)) * 0.35;
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, s.life * 3);
-    ctx.translate(W/2, strikeY() - H * 0.16 - p * 26);
-    ctx.scale(scale, scale);
-    ctx.font = "900 40px Segoe UI, sans-serif";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.shadowBlur = 28; ctx.shadowColor = s.color;
-    ctx.fillStyle = "#fff"; ctx.fillText(s.text, 0, 0);
-    ctx.lineWidth = 2; ctx.strokeStyle = s.color; ctx.strokeText(s.text, 0, 0);
-    ctx.restore();
-  }
-}
-
-function drawHUD(){
-  const acc = accuracy();
+function drawCard(x, y, card, faceDown, scale, rot){
+  const sc = scale == null ? 1 : scale;
   ctx.save();
-  ctx.textBaseline = "top";
-  // score
-  ctx.textAlign = "left";
-  ctx.font = "900 40px Segoe UI, sans-serif";
-  ctx.fillStyle = "#fff"; ctx.shadowBlur = 18; ctx.shadowColor = "rgba(34,231,255,.8)";
-  ctx.fillText(game.score.toLocaleString(), 22, 68);
-  ctx.shadowBlur = 0;
-  ctx.font = "700 11px Segoe UI, sans-serif"; ctx.fillStyle = "#a89dd0";
-  ctx.fillText("SCORE", 24, 112);
-  ctx.fillText("ACCURACY  " + acc.toFixed(1) + "%", 24, 132);
-  ctx.fillText("MAX COMBO  " + game.maxCombo, 24, 152);
-
-  // multiplier
-  ctx.textAlign = "right";
-  const mc = LANE_COL[Math.min(4, game.mult)] || LANE_COL[0];
-  ctx.font = "900 44px Segoe UI, sans-serif";
-  ctx.shadowBlur = 22; ctx.shadowColor = `rgba(${mc.r},${mc.g},${mc.b},.95)`;
-  ctx.fillStyle = "#fff";
-  ctx.fillText(game.mult + "x", W - 22, 68);
-  ctx.shadowBlur = 0;
-  ctx.font = "700 11px Segoe UI, sans-serif"; ctx.fillStyle = "#a89dd0";
-  ctx.fillText("MULTIPLIER", W - 24, 118);
-
-  // combo counter (center)
-  if (game.combo > 1){
-    ctx.textAlign = "center";
-    const t = Math.min(1, game.combo / 60);
-    ctx.font = `900 ${34 + t * 22}px Segoe UI, sans-serif`;
-    ctx.shadowBlur = 20 + t * 30; ctx.shadowColor = "rgba(255,61,240,.9)";
-    ctx.fillStyle = "#fff";
-    ctx.fillText(game.combo, W/2, 62);
+  ctx.translate(x, y);
+  if (rot) ctx.rotate(rot);
+  ctx.scale(sc, 1);
+  const w = CW, h = CH;
+  ctx.shadowColor = "rgba(0,0,0,.55)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 5;
+  if (faceDown){
+    const g = ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
+    g.addColorStop(0, "#7f1d1d"); g.addColorStop(.5, "#450a0a"); g.addColorStop(1, "#7f1d1d");
+    ctx.fillStyle = g; rr(-w/2, -h/2, w, h, 7); ctx.fill();
     ctx.shadowBlur = 0;
-    ctx.font = "700 11px Segoe UI, sans-serif"; ctx.fillStyle = "#a89dd0";
-    ctx.fillText("COMBO", W/2, 62 + 40 + t * 22);
-  }
-
-  // multiplier progress bar
-  const need = 10, prog = Math.min(1, (game.combo % need) / need);
-  const bw = Math.min(320, W * 0.4), bx = W/2 - bw/2, by = H - 26;
-  ctx.fillStyle = "rgba(255,255,255,.08)";
-  roundRect(bx, by, bw, 7, 4); ctx.fill();
-  const bg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
-  bg.addColorStop(0, "#22e7ff"); bg.addColorStop(1, "#ff3df0");
-  ctx.fillStyle = bg;
-  roundRect(bx, by, Math.max(2, bw * (baseMult() >= 4 ? 1 : prog)), 7, 4); ctx.fill();
-
-  // ---- overdrive meter ----
-  const mw = Math.min(240, W * 0.22), mx = W - 24 - mw, my = 140;
-  const now2 = performance.now();
-  ctx.textAlign = "right";
-  ctx.font = "800 10.5px Segoe UI, sans-serif";
-  ctx.fillStyle = game.boostOn ? boostCol(now2, 0, 1)
-                : game.boost >= BOOST_MIN ? "#ffe14d" : "#8f86b8";
-  ctx.fillText(game.boostOn ? "OVERDRIVE ACTIVE"
-             : game.boost >= BOOST_MIN ? "[SPACE] OVERDRIVE READY" : "OVERDRIVE", W - 24, my - 16);
-  ctx.fillStyle = "rgba(255,255,255,.08)";
-  roundRect(mx, my, mw, 11, 5); ctx.fill();
-  if (game.boost > 0){
-    const mg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
-    if (game.boostOn){ mg.addColorStop(0, boostCol(now2, 0, 1)); mg.addColorStop(1, boostCol(now2, 140, 1)); }
-    else { mg.addColorStop(0, "#ffe14d"); mg.addColorStop(1, "#ff8a2b"); }
-    ctx.fillStyle = mg;
-    ctx.shadowBlur = game.boost >= BOOST_MIN ? 16 : 0;
-    ctx.shadowColor = game.boostOn ? boostCol(now2, 0, 1) : "rgba(255,225,77,.9)";
-    roundRect(mx, my, Math.max(3, mw * game.boost), 11, 5); ctx.fill();
+    ctx.strokeStyle = "rgba(232,198,106,.55)"; ctx.lineWidth = 1.6;
+    rr(-w/2 + 5, -h/2 + 5, w - 10, h - 10, 4); ctx.stroke();
+    ctx.fillStyle = "rgba(232,198,106,.30)";
+    ctx.font = "700 20px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("♠", 0, 0);
+  } else {
+    ctx.fillStyle = "#fbfaf7"; rr(-w/2, -h/2, w, h, 7); ctx.fill();
     ctx.shadowBlur = 0;
-  }
-  // the 50% activation threshold marker
-  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(mx + mw * BOOST_MIN, my - 2); ctx.lineTo(mx + mw * BOOST_MIN, my + 13); ctx.stroke();
-
-  // song progress
-  if (yt.duration > 0){
-    const p = Math.min(1, yt.audioTime / yt.duration);
-    ctx.fillStyle = "rgba(255,255,255,.06)"; ctx.fillRect(0, 0, W, 3);
-    ctx.fillStyle = "rgba(34,231,255,.85)";  ctx.fillRect(0, 0, W * p, 3);
+    ctx.strokeStyle = "rgba(0,0,0,.18)"; ctx.lineWidth = 1; rr(-w/2, -h/2, w, h, 7); ctx.stroke();
+    const col = isRed(card) ? "#c81e3a" : "#12181f";
+    ctx.fillStyle = col;
+    ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.font = "800 15px Georgia, serif";
+    ctx.fillText(rankTxt(card), -w/2 + 6, -h/2 + 5);
+    ctx.font = "700 13px Georgia, serif";
+    ctx.fillText(suitTxt(card), -w/2 + 6, -h/2 + 21);
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "700 30px Georgia, serif";
+    ctx.fillText(suitTxt(card), 0, 2);
+    ctx.save(); ctx.rotate(Math.PI);
+    ctx.textAlign = "left"; ctx.textBaseline = "top";
+    ctx.font = "800 15px Georgia, serif";
+    ctx.fillText(rankTxt(card), -w/2 + 6, -h/2 + 5);
+    ctx.restore();
   }
   ctx.restore();
 }
+function drawChipStack(x, y, amount, small){
+  if (!amount) return;
+  const denoms = [[500,"#a855f7"],[100,"#1e293b"],[25,"#22c55e"],[5,"#ef4444"],[1,"#e2e8f0"]];
+  let rem = amount, stack = [];
+  for (const [v, c] of denoms){ while (rem >= v && stack.length < 12){ stack.push(c); rem -= v; } }
+  const r = small ? 11 : 14;
+  stack.forEach((c, i) => {
+    const yy = y - i * (small ? 3.2 : 4.2);
+    ctx.beginPath(); ctx.ellipse(x, yy, r, r * .42, 0, 0, Math.PI * 2);
+    ctx.fillStyle = c; ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.5)"; ctx.lineWidth = 1; ctx.stroke();
+  });
+  ctx.fillStyle = "#e8c66a"; ctx.font = "800 12px Segoe UI, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  ctx.fillText(fmt(amount), x, y - stack.length * (small ? 3.2 : 4.2) - 8);
+}
 
-/* =====================================================================
-   7. MAIN LOOP
-   ===================================================================== */
-yt.lastFrame = performance.now();
-function frame(now){
-  requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - yt.lastFrame) / 1000);
+function drawFelt(t){
+  // vignette room
+  const bg = ctx.createRadialGradient(W/2, H*0.42, 40, W/2, H*0.42, Math.max(W,H)*0.78);
+  bg.addColorStop(0, "#123a30"); bg.addColorStop(.55, "#0a1f1a"); bg.addColorStop(1, "#05090b");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-  if (game.mode === "play" || game.mode === "loading") updateClock(now);
-  yt.lastFrame = now;
-
-  if (game.mode === "play" && !yt.locked){
-    game.scroll = (game.scroll + dt * (game.boostOn ? 1.6 : 0.35)) % 1;
-    updateBoost(dt);
-    checkMisses();
-    if (yt.duration && yt.audioTime >= yt.duration - 0.4) endGame();
-    if (game.nextIdx >= game.notes.length && yt.audioTime > lastNoteTime() + 2.2) endGame();
+  // table body: a big rounded arc anchored off the bottom
+  const cx = W/2, cy = H * 0.30, rx = Math.min(W * 0.62, 900), ry = Math.min(H * 0.86, 780);
+  ctx.save();
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.clip();
+  const fg = ctx.createRadialGradient(cx, cy + ry * .25, 30, cx, cy + ry * .3, ry);
+  fg.addColorStop(0, "#146b52"); fg.addColorStop(.6, "#0d5240"); fg.addColorStop(1, "#07301f");
+  ctx.fillStyle = fg; ctx.fillRect(0, 0, W, H);
+  // felt speckle
+  ctx.globalAlpha = .05;
+  for (let i = 0; i < 90; i++){
+    ctx.fillStyle = i % 2 ? "#fff" : "#000";
+    ctx.fillRect((i * 137.5) % W, (i * 311.7) % H, 2, 2);
   }
+  ctx.globalAlpha = 1;
+  ctx.restore();
 
-  for (let i = 0; i < LANES; i++) game.laneFlash[i] = Math.max(0, game.laneFlash[i] - dt * 3.4);
-  game.shake = Math.max(0, game.shake - dt * 3.2);
-  game.boostFlash = Math.max(0, game.boostFlash - dt * 1.6);
+  // gold rail
+  ctx.save();
+  ctx.strokeStyle = "rgba(232,198,106,.55)"; ctx.lineWidth = 6;
+  ctx.shadowColor = "rgba(232,198,106,.4)"; ctx.shadowBlur = 22;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.strokeStyle = "rgba(0,0,0,.5)"; ctx.lineWidth = 2; ctx.shadowBlur = 0;
+  ctx.beginPath(); ctx.ellipse(cx, cy, rx - 6, ry - 6, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+
+  // arc legend
+  ctx.save();
+  ctx.fillStyle = "rgba(232,198,106,.30)";
+  ctx.font = "800 15px Georgia, serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("BLACKJACK  PAYS  3  TO  2", cx, H * 0.40);
+  ctx.font = "600 11px Segoe UI, sans-serif"; ctx.fillStyle = "rgba(232,198,106,.20)";
+  ctx.fillText("DEALER MUST DRAW TO 16 AND STAND ON ALL 17s", cx, H * 0.44);
+  ctx.restore();
+
+  // shoe
+  const sp = shoePos();
+  ctx.save();
+  ctx.fillStyle = "#2a1810"; ctx.strokeStyle = "rgba(232,198,106,.4)"; ctx.lineWidth = 2;
+  rr(sp.x - 30, sp.y - 22, 60, 44, 6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = "rgba(232,198,106,.5)"; ctx.font = "700 9px Segoe UI, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("SHOE", sp.x, sp.y + 1);
+  const pen = 1 - T.shoeIdx / (DECKS * 52);
+  ctx.fillStyle = "rgba(255,255,255,.12)"; ctx.fillRect(sp.x - 26, sp.y + 26, 52, 5);
+  ctx.fillStyle = pen < .3 ? "#f87171" : "#4ade80"; ctx.fillRect(sp.x - 26, sp.y + 26, 52 * pen, 5);
+  ctx.restore();
+}
+
+function drawSeats(t){
+  for (let i = 0; i < SEATS; i++){
+    const s = T.seats[i], p = seatPos(i);
+    const mine = i === mySeat;
+    const isTurn = T.phase === PHASE.PLAYING && T.turnSeat === i;
+
+    // bet circle
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(p.x, p.y + 66, 34, 15, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = mine ? "rgba(232,198,106,.75)" : "rgba(255,255,255,.18)";
+    ctx.lineWidth = mine ? 2.2 : 1.4;
+    if (mine){ ctx.shadowColor = "rgba(232,198,106,.5)"; ctx.shadowBlur = 14; }
+    ctx.stroke();
+    ctx.restore();
+
+    if (!occupied(s)){
+      ctx.fillStyle = "rgba(255,255,255,.16)";
+      ctx.font = "700 11px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("OPEN SEAT", p.x, p.y + 66);
+      continue;
+    }
+
+    // turn spotlight
+    if (isTurn){
+      const pulse = .5 + .5 * Math.sin(t / 180);
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(p.x, p.y + 20, 92, 74, 0, 0, Math.PI * 2);
+      const g = ctx.createRadialGradient(p.x, p.y + 20, 8, p.x, p.y + 20, 92);
+      g.addColorStop(0, `rgba(232,198,106,${.16 + pulse * .12})`);
+      g.addColorStop(1, "rgba(232,198,106,0)");
+      ctx.fillStyle = g; ctx.fill();
+      ctx.restore();
+    }
+
+    // cards
+    (s.hands || []).forEach((h, hi) => {
+      const activeHand = isTurn && T.turnHand === hi;
+      (h.cards || []).forEach((c, ci) => {
+        if (isFlying(i, hi, ci)) return;
+        const sl = cardSlot(i, hi, ci);
+        drawCard(sl.x, sl.y, c, false, 1, (ci - 1) * 0.03);
+      });
+      if (!h.cards || !h.cards.length) return;
+      const v = handValue(h.cards);
+      const bj = isBlackjack(h);
+      const sl = cardSlot(i, hi, 0);
+      // hand total badge
+      const bx = sl.x + ((h.cards.length - 1) * 20) / 2, by = p.y + 40;
+      ctx.save();
+      const col = v.bust ? "#f87171" : bj ? "#e8c66a" : activeHand ? "#fff" : "rgba(255,255,255,.82)";
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      rr(bx - 24, by - 11, 48, 22, 11); ctx.fill();
+      ctx.strokeStyle = activeHand ? "rgba(232,198,106,.9)" : "rgba(255,255,255,.2)";
+      ctx.lineWidth = activeHand ? 1.8 : 1; ctx.stroke();
+      ctx.fillStyle = col;
+      ctx.font = "800 13px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(v.bust ? "BUST" : bj ? "BJ" : (v.soft ? "" : "") + v.total, bx, by);
+      ctx.restore();
+      // per-hand bet
+      drawChipStack(bx + (s.hands.length > 1 ? 0 : 0), p.y + 74, h.bet, true);
+    });
+    if (!s.hands.length && s.bet) drawChipStack(p.x, p.y + 74, s.bet, false);
+
+    // name plate
+    ctx.save();
+    const py = p.y + 104;
+    ctx.fillStyle = mine ? "rgba(232,198,106,.14)" : "rgba(0,0,0,.42)";
+    rr(p.x - 62, py - 15, 124, 30, 8); ctx.fill();
+    ctx.strokeStyle = mine ? "rgba(232,198,106,.6)" : "rgba(255,255,255,.12)";
+    ctx.lineWidth = 1; ctx.stroke();
+    ctx.font = "16px serif"; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(AVATARS[s.avatar % AVATARS.length], p.x - 55, py);
+    ctx.fillStyle = mine ? "#e8c66a" : "#dfe7e4";
+    ctx.font = "800 11.5px Segoe UI, sans-serif";
+    ctx.fillText((s.name || "Player").slice(0, 9) + (s.bot ? " •" : ""), p.x - 33, py - 5);
+    ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.font = "700 10px Segoe UI, sans-serif";
+    ctx.fillText(fmt(s.bank), p.x - 33, py + 7);
+    ctx.restore();
+
+    // turn timer ring
+    if (isTurn && T.phaseEnd > t){
+      const total = s.bot ? 1600 : T_TURN;
+      const frac = clamp((T.phaseEnd - now()) / total, 0, 1);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(p.x, py, 22, -Math.PI/2, -Math.PI/2 + frac * Math.PI * 2);
+      ctx.strokeStyle = frac < .3 ? "#f87171" : "#e8c66a"; ctx.lineWidth = 3;
+      ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 10;
+      ctx.stroke(); ctx.restore();
+    }
+  }
+}
+
+function drawDealer(t){
+  const d = dealerPos();
+  (T.dealer.cards || []).forEach((c, i) => {
+    if (isFlying(-1, 0, i)) return;
+    const sl = cardSlot(-1, 0, i);
+    const hidden = i === 1 && T.dealer.hole;
+    drawCard(sl.x, sl.y, c, hidden, 1, 0);
+  });
+  if (T.dealer.cards && T.dealer.cards.length){
+    const shown = T.dealer.hole ? [T.dealer.cards[0]] : T.dealer.cards;
+    const v = handValue(shown);
+    ctx.save();
+    ctx.fillStyle = "rgba(0,0,0,.55)";
+    rr(d.x - 26, d.y - 74, 52, 22, 11); ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = v.bust ? "#f87171" : "#fff";
+    ctx.font = "800 13px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(v.bust ? "BUST" : v.total + (T.dealer.hole ? "+" : ""), d.x, d.y - 63);
+    ctx.restore();
+  }
+  // dealer plate
+  ctx.save();
+  ctx.fillStyle = "rgba(0,0,0,.45)";
+  rr(d.x - 58, d.y - 118, 116, 28, 9); ctx.fill();
+  ctx.strokeStyle = "rgba(232,198,106,.4)"; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = "#e8c66a"; ctx.font = "800 11px Segoe UI, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText("🤖  DEALER", d.x, d.y - 104);
+  ctx.restore();
+}
+
+function isFlying(seat, hand, idx){
+  return flyers.some(f => f.seat === seat && (seat === -1 || f.hand === hand) && f.idx === idx);
+}
+
+function drawFlyers(dt){
+  for (let i = flyers.length - 1; i >= 0; i--){
+    const f = flyers[i];
+    f.t += dt;
+    const p = clamp(f.t / f.dur, 0, 1);
+    const e = 1 - Math.pow(1 - p, 3);
+    const to = cardSlot(f.seat, f.hand, f.idx);
+    const x = f.from.x + (to.x - f.from.x) * e;
+    const y = f.from.y + (to.y - f.from.y) * e;
+    // flip: scaleX crosses zero at the halfway point
+    const faceDown = f.hole ? true : p < .5;
+    const sc = f.hole ? 1 : Math.abs(Math.cos(p * Math.PI));
+    drawCard(x, y, f.card, faceDown, Math.max(.06, sc), (1 - e) * 0.5);
+    if (p >= 1) flyers.splice(i, 1);
+  }
+}
+function drawChipsFx(dt){
+  for (let i = chips.length - 1; i >= 0; i--){
+    const c = chips[i]; c.t += dt;
+    const p = clamp(c.t / c.dur, 0, 1), e = 1 - Math.pow(1 - p, 2.4);
+    const x = c.x + (c.tx - c.x) * e;
+    const y = c.y + (c.ty - c.y) * e - Math.sin(p * Math.PI) * 70;
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(x, y, 11, 5, 0, 0, Math.PI * 2);
+    ctx.fillStyle = c.c; ctx.fill();
+    ctx.strokeStyle = "rgba(255,255,255,.6)"; ctx.lineWidth = 1; ctx.stroke();
+    ctx.restore();
+    if (p >= 1) chips.splice(i, 1);
+  }
+}
+function drawBursts(dt){
+  for (let i = bursts.length - 1; i >= 0; i--){
+    const b = bursts[i]; b.life -= dt;
+    if (b.life <= 0){ bursts.splice(i, 1); continue; }
+    b.x += b.vx * dt; b.y += b.vy * dt; b.vy += 620 * dt; b.vx *= .99;
+    const a = clamp(b.life / b.max, 0, 1);
+    ctx.globalAlpha = a;
+    ctx.fillStyle = `rgb(${b.c})`;
+    if (b.spin){
+      ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.life * 9);
+      ctx.fillRect(-b.r, -b.r * .5, b.r * 2, b.r); ctx.restore();
+    } else {
+      ctx.beginPath(); ctx.arc(b.x, b.y, b.r * a + .5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+function drawFloats(dt){
+  for (let i = floats.length - 1; i >= 0; i--){
+    const f = floats[i]; f.t += dt;
+    const p = f.t / f.dur;
+    if (p >= 1){ floats.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = clamp((1 - p) * 2.2, 0, 1);
+    ctx.translate(f.x, f.y + f.vy * p);
+    const s = f.big ? 1 + (1 - Math.pow(1 - clamp(p * 3, 0, 1), 3)) * .3 : 1;
+    ctx.scale(s, s);
+    ctx.font = f.big ? "900 30px Georgia, serif" : "900 18px Segoe UI, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    if (f.glow){ ctx.shadowColor = f.col; ctx.shadowBlur = 26; }
+    ctx.fillStyle = f.col;
+    ctx.fillText(f.txt, 0, 0);
+    ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.2; ctx.strokeText(f.txt, 0, 0);
+    ctx.restore();
+  }
+}
+function drawRings(dt){
+  for (let i = glowRing.length - 1; i >= 0; i--){
+    const g = glowRing[i]; g.t += dt;
+    const p = g.t / g.dur;
+    if (p >= 1){ glowRing.splice(i, 1); continue; }
+    ctx.save();
+    ctx.globalAlpha = (1 - p) * .8;
+    ctx.strokeStyle = `rgb(${g.col})`; ctx.lineWidth = 3 * (1 - p) + 1;
+    ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 20;
+    ctx.beginPath(); ctx.ellipse(g.x, g.y + 20, 40 + p * 110, 26 + p * 70, 0, 0, Math.PI * 2);
+    ctx.stroke(); ctx.restore();
+  }
+}
+
+function drawBanner(t){
+  let txt = T.msg || "";
+  if (T.phase === PHASE.BETTING){
+    const left = Math.max(0, Math.ceil((T.phaseEnd - now()) / 1000));
+    txt = "PLACE YOUR BETS  ·  " + left + "s";
+  } else if (T.phase === PHASE.IDLE){
+    txt = T.seats.some(occupied) ? "Starting..." : "WAITING FOR PLAYERS";
+  }
+  if (!txt) return;
+  ctx.save();
+  ctx.font = "800 13px Segoe UI, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  const w = ctx.measureText(txt).width + 40;
+  ctx.fillStyle = "rgba(0,0,0,.5)";
+  rr(W/2 - w/2, H * 0.475, w, 32, 16); ctx.fill();
+  ctx.strokeStyle = "rgba(232,198,106,.35)"; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = "#e8c66a";
+  ctx.fillText(txt.toUpperCase(), W/2, H * 0.475 + 16);
+  ctx.restore();
+}
+
+let lastFrame = performance.now();
+function frame(t){
+  requestAnimationFrame(frame);
+  const dt = Math.min(.05, (t - lastFrame) / 1000); lastFrame = t;
+  if (isHost) hostTick();
+  shake = Math.max(0, shake - dt * 2.4);
 
   ctx.clearRect(0, 0, W, H);
   ctx.save();
-  // Overdrive keeps a constant low rumble going on top of the combo shake.
-  if (S.shake && (game.shake > 0 || game.boostOn)){
-    const s = game.shake * (game.combo > 30 ? 9 : 5) + (game.boostOn ? 3.5 : 0);
-    ctx.translate((Math.random() - .5) * s, (Math.random() - .5) * s);
-    if (game.boostOn){
-      ctx.translate(W/2, H/2);
-      ctx.rotate((Math.random() - .5) * 0.006);
-      ctx.translate(-W/2, -H/2);
+  if (shake > 0) ctx.translate((Math.random() - .5) * shake * 12, (Math.random() - .5) * shake * 12);
+  drawFelt(t);
+  drawSeats(t);
+  drawDealer(t);
+  drawFlyers(dt);
+  drawChipsFx(dt);
+  drawRings(dt);
+  drawBursts(dt);
+  drawFloats(dt);
+  drawBanner(t);
+  ctx.restore();
+}
+/* =====================================================================
+   UI WIRING
+   ===================================================================== */
+function syncUI(){
+  $("bankTxt").textContent = fmt(S.bank);
+  const me = mySeat >= 0 ? T.seats[mySeat] : null;
+  const betting = T.phase === PHASE.BETTING && me && !me.bet;
+  const myTurn = T.phase === PHASE.PLAYING && T.turnSeat === mySeat;
+
+  $("tray").classList.toggle("on", !!betting);
+  $("actions").classList.toggle("on", !!myTurn);
+  $("leaveBtn").style.display = mySeat >= 0 ? "" : "none";
+  $("betPill").style.display = pendingBet || (me && me.bet) ? "flex" : "none";
+  $("betTxt").textContent = fmt(pendingBet || (me ? me.bet : 0));
+  $("dealBtn").disabled = pendingBet < MIN_BET;
+  $("undoBtn").disabled = !betStack.length;
+  $("rebetBtn").disabled = !S.lastBet || S.lastBet > S.bank;
+
+  if (myTurn && me){
+    const h = me.hands[T.turnHand];
+    if (h){
+      const two = h.cards.length === 2;
+      $("dblBtn").disabled = !two || S.bank < h.bet;
+      $("splitBtn").disabled = !canSplit(h) || me.hands.length >= 2 || S.bank < h.bet;
+      if (S.hints && T.dealer.cards.length){
+        const mv = basicStrategy(h, cardVal(T.dealer.cards[0]));
+        const nm = { H:"HIT", S:"STAND", D:"DOUBLE", P:"SPLIT" }[mv];
+        $("actHint").textContent = "YOUR TURN  ·  BASIC STRATEGY SAYS " + nm;
+        [["hitBtn","H"],["standBtn","S"],["dblBtn","D"],["splitBtn","P"]].forEach(([id, k]) => {
+          $(id).style.boxShadow = (k === mv && !$(id).disabled) ? "0 0 0 2px #e8c66a, 0 0 20px rgba(232,198,106,.45)" : "";
+        });
+      } else {
+        $("actHint").textContent = "YOUR TURN";
+        ["hitBtn","standBtn","dblBtn","splitBtn"].forEach(id => $(id).style.boxShadow = "");
+      }
     }
   }
-  drawBackdrop(now);
-  drawHighway(now);
-  if (game.mode === "play" || game.mode === "over") drawNotes(now);
-  drawStrikeBar(now);
-  drawParticles(dt);
-  drawSplashes(dt);
-  ctx.restore();
-  if (game.mode === "play" || game.mode === "over") drawHUD();
 }
 
-function lastNoteTime(){ return game.notes.length ? game.notes[game.notes.length - 1].time : 0; }
-
-/* =====================================================================
-   8. SCORING / INPUT
-   ===================================================================== */
-function accuracy(){
-  if (game.total === 0) return 100;
-  return (game.accWeight / game.total) * 100;
+/* ---- betting ---- */
+function addChip(v){
+  const me = mySeat >= 0 ? T.seats[mySeat] : null;
+  if (!me || T.phase !== PHASE.BETTING || me.bet) return;
+  if (pendingBet + v > S.bank){ toast("Not enough in the bank."); return; }
+  if (pendingBet + v > MAX_BET){ toast("Table max is " + fmt(MAX_BET) + "."); return; }
+  pendingBet += v; betStack.push(v);
+  SFX.chip(); fxChips(mySeat, 1);
+  syncUI();
 }
-function baseMult(){ return Math.min(4, 1 + Math.floor(game.combo / 10)); }
-function updateMult(){
-  // Overdrive doubles whatever the combo multiplier currently is (max 8x).
-  game.mult = baseMult() * (game.boostOn ? 2 : 1);
+function undoChip(){
+  if (!betStack.length) return;
+  pendingBet -= betStack.pop();
+  SFX.click(); syncUI();
 }
-function judge(lane, delta){
-  const ad = Math.abs(delta);
-  let base, label, col, weight, strength, fill;
-  if (ad <= W_PERFECT){ base = 300; label = "PERFECT"; col = "#22e7ff"; weight = 1.0;  strength = 1.0;  fill = 0.022; game.perfect++; }
-  else if (ad <= W_GREAT){ base = 200; label = "GREAT"; col = "#ff3df0"; weight = 0.75; strength = 0.7;  fill = 0.014; game.great++; }
-  else { base = 100; label = "GOOD"; col = "#ffe14d"; weight = 0.5;  strength = 0.45; fill = 0.007; game.good++; }
-
-  game.combo++; game.maxCombo = Math.max(game.maxCombo, game.combo);
-  updateMult();
-  game.score += base * game.mult;
-  game.hits++; game.total++; game.accWeight += weight;
-  game.deltas.push(delta);
-  if (!game.boostOn) game.boost = Math.min(1, game.boost + fill);
-  game.laneFlash[lane] = 1;
-  burst(lane, strength);
-  splash(label, col);
-  if (S.shake && game.combo >= 20) game.shake = Math.min(1, 0.25 + game.combo / 220);
-}
-function registerMiss(lane){
-  game.combo = 0; game.miss++; game.total++;
-  updateMult();
-  splash("MISS", "#ff4d5e");
-  if (lane != null) game.laneFlash[lane] = 0.5;
-}
-// Hitting a lane with no note in range. This is what stops button-mashing:
-// without it, spamming all five keys clears any chart.
-function overstrum(lane){
-  game.laneFlash[lane] = 0.35;
-  if (!S.penalty || game.calibrating) return;
-  game.overstrums++;
-  if (game.combo > 0){
-    game.combo = 0;
-    updateMult();
-    splash("OVERSTRUM", "#ff4d5e");
-  }
-  game.score = Math.max(0, game.score - 25);
-  game.boost = Math.max(0, game.boost - 0.05);
+function lockBet(){
+  const me = mySeat >= 0 ? T.seats[mySeat] : null;
+  if (!me || pendingBet < MIN_BET) return;
+  S.bank -= pendingBet; S.lastBet = pendingBet; save();
+  me.bank = S.bank;
+  sendBet(pendingBet);
+  me.bet = pendingBet;
+  pendingBet = 0; betStack = [];
+  SFX.chip();
+  toast("Bet locked in.");
+  syncUI();
 }
 
-function activateBoost(){
-  if (game.mode !== "play" || game.boostOn || game.boost < BOOST_MIN) return;
-  game.boostOn = true;
-  game.boostT = BOOST_DUR * game.boost;
-  game.boostFlash = 1;
-  updateMult();
-  splash("OVERDRIVE", "#ffe14d");
-  if (S.shake) game.shake = 1;
-  for (let i = 0; i < LANES; i++) burst(i, 1.2);
-  log("OVERDRIVE engaged for " + game.boostT.toFixed(1) + "s", "ok");
-}
-function updateBoost(dt){
-  if (!game.boostOn) return;
-  game.boostT -= dt;
-  game.boost = Math.max(0, game.boostT / BOOST_DUR);
-  if (game.boostT <= 0){
-    game.boostOn = false; game.boost = 0; game.boostT = 0;
-    updateMult();
-    splash("OVERDRIVE END", "#8f86b8");
-  }
-}
-// The clock notes are JUDGED against: the audio clock shifted by the player's
-// calibrated offset. Visuals use the raw clock, so the note still meets the bar
-// on screen -- the offset only compensates for audio/display latency.
-function judgeTime(){ return yt.audioTime + offsetSec(); }
+document.querySelectorAll(".chip").forEach(el =>
+  el.addEventListener("click", () => addChip(+el.dataset.v)));
+$("undoBtn").onclick  = undoChip;
+$("dealBtn").onclick  = lockBet;
+$("rebetBtn").onclick = () => {
+  if (!S.lastBet || S.lastBet > S.bank) return;
+  pendingBet = 0; betStack = [];
+  pendingBet = S.lastBet; betStack = [S.lastBet];
+  SFX.chip(); fxChips(mySeat, 3); syncUI();
+};
 
-function checkMisses(){
-  const at = judgeTime();
-  while (game.nextIdx < game.notes.length){
-    const n = game.notes[game.nextIdx];
-    if (n.hit || n.judged){ game.nextIdx++; continue; }
-    if (n.time < at - W_GOOD){
-      n.judged = true;
-      if (at > ignoreMissUntil) registerMiss(n.lane);
-      game.nextIdx++;
-    } else break;
-  }
-}
-function hitLane(lane){
-  if (game.mode !== "play" || yt.locked) return;
-  const at = judgeTime();
-  let best = null, bestAbs = 1e9;
-
-  // Scan from the first note that could still be live. nextIdx only advances
-  // past fully-judged notes, so starting there is safe and keeps this O(few).
-  for (let i = game.nextIdx; i < game.notes.length; i++){
-    const n = game.notes[i];
-    const d = n.time - at;
-    if (d > W_GOOD) break;              // notes are sorted; nothing later is in range
-    if (n.hit || n.judged || n.lane !== lane) continue;
-    const ad = Math.abs(d);
-    if (ad < bestAbs){ bestAbs = ad; best = n; }
-  }
-
-  if (best && bestAbs <= W_GOOD){
-    best.hit = true; best.judged = true;
-    judge(lane, best.time - at);
-  } else {
-    overstrum(lane);
-  }
-}
+$("hitBtn").onclick   = () => { SFX.click(); sendAction("hit"); };
+$("standBtn").onclick = () => { SFX.click(); sendAction("stand"); };
+$("dblBtn").onclick   = () => { SFX.click(); sendAction("double"); };
+$("splitBtn").onclick = () => { SFX.click(); sendAction("split"); };
 
 window.addEventListener("keydown", e => {
-  if (e.target && e.target.tagName === "INPUT") return;
+  if (e.target.tagName === "INPUT") return;
   const k = e.key.toLowerCase();
-  const i = KEYS.indexOf(k);
-  if (i >= 0){
-    e.preventDefault();
-    if (!game.laneHold[i]){ game.laneHold[i] = true; hitLane(i); }
+  const myTurn = T.phase === PHASE.PLAYING && T.turnSeat === mySeat;
+  if (myTurn){
+    if (k === "h") $("hitBtn").click();
+    if (k === "s") $("standBtn").click();
+    if (k === "d" && !$("dblBtn").disabled) $("dblBtn").click();
+    if (k === "p" && !$("splitBtn").disabled) $("splitBtn").click();
   }
-  if (k === " " || e.code === "Space"){ e.preventDefault(); activateBoost(); }
-  if (k === "escape" && game.mode === "play"){ try { player.pauseVideo(); } catch(err){} }
-  if (k === "l"){ document.getElementById("logPanel").classList.toggle("on"); }
-  if (k === "o"){ toggleOptions(); }
+  if (k === "enter" && !$("dealBtn").disabled && $("tray").classList.contains("on")) lockBet();
 });
-window.addEventListener("keyup", e => {
-  const i = KEYS.indexOf(e.key.toLowerCase());
-  if (i >= 0) game.laneHold[i] = false;
+
+/* ---- join ---- */
+const avBox = $("avatars");
+AVATARS.forEach((a, i) => {
+  const d = document.createElement("div");
+  d.className = "av" + (i === S.avatar ? " on" : "");
+  d.textContent = a;
+  d.onclick = () => { S.avatar = i; save();
+    [...avBox.children].forEach((c, j) => c.classList.toggle("on", j === i)); SFX.click(); };
+  avBox.appendChild(d);
 });
-// touch / click lanes (mobile friendly)
-cvs.addEventListener("pointerdown", e => {
-  if (game.mode !== "play") return;
-  const rect = cvs.getBoundingClientRect();
-  const x = e.clientX - rect.left - W/2;
-  const hw = laneHalfW();
-  const lane = Math.floor(((x + hw) / (hw * 2)) * LANES);
-  if (lane >= 0 && lane < LANES) hitLane(lane);
+$("nameIn").value = S.name || "";
+$("joinBtn").onclick = () => {
+  const n = ($("nameIn").value || "").trim().slice(0, 12) || "Player";
+  S.name = n; save();
+  ac();                                  // unlock audio on this user gesture
+  if (!takeSeat()) return;
+  $("joinOv").classList.add("hidden");
+  toast("Seated. " + (ONLINE ? "Others can join at this URL." : "Solo table."));
+  syncUI();
+};
+$("nameIn").addEventListener("keydown", e => { if (e.key === "Enter") $("joinBtn").click(); });
+
+$("leaveBtn").onclick = () => {
+  leaveSeat();
+  $("joinOv").classList.remove("hidden");
+  syncUI();
+};
+
+/* ---- options ---- */
+function syncOpts(){
+  $("sfxTog").classList.toggle("on", S.sfx);
+  $("botsTog").classList.toggle("on", S.bots);
+  $("hintTog").classList.toggle("on", S.hints);
+  $("fastTog").classList.toggle("on", S.fast);
+  $("roomIn").value = S.room;
+  $("optNote").innerHTML = ONLINE
+    ? "Connected to Firebase. Share this URL and pick the same table name to play together."
+    : "<b style='color:#e8c66a'>Solo mode:</b> add Firebase credentials in the script header to open the table to other players.";
+}
+$("optBtn").onclick = () => { $("optOv").classList.remove("hidden"); syncOpts(); };
+$("optClose").onclick = () => $("optOv").classList.add("hidden");
+$("sfxTog").onclick  = () => { S.sfx = !S.sfx; save(); syncOpts(); if (S.sfx) SFX.chip(); };
+$("botsTog").onclick = () => { S.bots = !S.bots; save(); syncOpts(); if (S.bots) fillBots(); else clearBots(); push(); };
+$("hintTog").onclick = () => { S.hints = !S.hints; save(); syncOpts(); syncUI(); };
+$("fastTog").onclick = () => { S.fast = !S.fast; save(); syncOpts(); };
+$("roomIn").onchange = e => {
+  S.room = (e.target.value || "main").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "main";
+  save(); toast("Table changed to '" + S.room + "'. Reloading...");
+  setTimeout(() => location.reload(), 900);
+};
+$("rebuyBtn").onclick = () => {
+  S.bank += START_BANK; save();
+  if (mySeat >= 0) T.seats[mySeat].bank = S.bank;
+  toast("Rebought " + fmt(START_BANK) + "."); syncUI(); push();
+};
+
+/* ---- stats ---- */
+$("statsBtn").onclick = () => {
+  const st = S.stats;
+  $("sHands").textContent = st.hands;
+  $("sNet").textContent = fmt(st.net);
+  $("sNet").className = st.net > 0 ? "g" : st.net < 0 ? "r" : "";
+  const decided = st.hands - st.pushes;
+  $("sWin").textContent = decided > 0 ? Math.round(st.wins / decided * 100) + "%" : "0%";
+  $("sBj").textContent = st.bj;
+  $("sBest").textContent = fmt(st.best);
+  $("sPeak").textContent = fmt(st.peak);
+  loadHighRollers();
+  $("statsOv").classList.remove("hidden");
+};
+$("statsClose").onclick = () => $("statsOv").classList.add("hidden");
+
+/* ---- chat ---- */
+$("chatHd").onclick = () => {
+  const c = $("chat"); c.classList.toggle("min");
+  $("chatToggle").textContent = c.classList.contains("min") ? "▲" : "▼";
+};
+$("chatIn").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.value.trim()){
+    sendChat(e.target.value.trim());
+    e.target.value = "";
+  }
 });
 
 /* =====================================================================
-   9. FLOW: start / begin / end
+   BOOT
    ===================================================================== */
-function startTrack(input){
-  const id = parseVideoId(input);
-  if (!id){ toast("Could not read that YouTube URL or ID."); return; }
-  document.getElementById("startOv").classList.add("hidden");
-  document.getElementById("resultOv").classList.add("hidden");
-  document.getElementById("lbOv").classList.add("hidden");
-  document.getElementById("url").value = id;
-  document.getElementById("url").blur();
-  loadVideo(id);
-}
-
-function beginGame(){
-  clearInterval(loadWaiter);   // both onStateChange and the poller can land here
-  loadWaiter = null;
-  game.chart = generateChart(yt.id, yt.duration, S.diff);
-  game.notes = game.chart.notes;
-  game.nextIdx = 0;
-  game.score = 0; game.combo = 0; game.maxCombo = 0; game.mult = 1;
-  game.hits = 0; game.total = 0; game.perfect = 0; game.great = 0; game.good = 0; game.miss = 0;
-  game.accWeight = 0; game.particles.length = 0; game.splashes.length = 0;
-  game.boost = 0; game.boostOn = false; game.boostT = 0; game.boostFlash = 0;
-  game.overstrums = 0; game.deltas.length = 0;
-  game.mode = "play";
-  applySettings();
-  ignoreMissUntil = 0;
-  setPhase(92, "starting playback");
-  log(`Chart built: ${game.notes.length} notes, ~${game.chart.bpm} BPM, ${game.chart.diff}, offset ${S.offset}ms`, "ok");
-  try { player.playVideo(); } catch(e){ log("playVideo threw: " + e.message, "err"); }
-  toast(`${game.chart.diff}  //  ${game.notes.length} notes  //  ~${game.chart.bpm} BPM  //  [SPACE] = overdrive`);
-}
-
-function endGame(){
-  if (game.mode !== "play") return;
-  game.mode = "over";
-  setSync(false);
-  try { player.pauseVideo(); } catch(e){}
-  const acc = accuracy();
-  const rank = acc >= 97 ? "S RANK" : acc >= 92 ? "A RANK" : acc >= 82 ? "B RANK" : acc >= 70 ? "C RANK" : "TRACK COMPLETE";
-  document.getElementById("rankTxt").textContent = rank;
-  document.getElementById("rScore").textContent = game.score.toLocaleString();
-  document.getElementById("rAcc").textContent = acc.toFixed(1) + "%";
-  document.getElementById("rCombo").textContent = game.maxCombo;
-  document.getElementById("rHits").textContent = game.hits + "/" + game.notes.length;
-  document.getElementById("rBreak").textContent = game.perfect + " / " + game.great + " / " + game.good;
-  document.getElementById("rOver").textContent = game.overstrums;
-  document.getElementById("songTitle").textContent =
-    (yt.title || yt.id) + "  //  " + DIFFS[S.diff].name;
-  document.getElementById("submitNote").textContent = FIREBASE_ON
-    ? "Connected to the global Firebase leaderboard."
-    : "Firebase keys not set - scores save locally in this browser.";
-  const t = document.getElementById("tag");
-  t.value = S.tag || "";
-  document.getElementById("resultOv").classList.remove("hidden");
-}
-
-/* =====================================================================
-   10. LEADERBOARD (Firebase RTDB, localStorage fallback)
-   ===================================================================== */
-// Each difficulty gets its own board -- an EXPERT run and an EASY run are not
-// comparable scores, so they must not share a table.
-function boardId(id, diffName){ return id + "_" + (diffName || DIFFS[S.diff].name); }
-function lbKey(id){ return "nh_lb_" + id; }
-
-function submitScore(){
-  const raw = (document.getElementById("tag").value || "").trim().toUpperCase().slice(0, 14);
-  const name = raw.replace(/[^A-Z0-9 _\-!.]/g, "") || "ANON";
-  S.tag = name; saveSettings();
-  const entry = {
-    username: name,
-    score: game.score,
-    accuracy: +accuracy().toFixed(2),
-    maxCombo: game.maxCombo,
-    youtubeId: yt.id,
-    difficulty: DIFFS[S.diff].name,
-    overstrums: game.overstrums,
-    timestamp: Date.now()
-  };
-  const bid = boardId(yt.id, entry.difficulty);
-  if (FIREBASE_ON){
-    db.ref("scores/" + bid).push(entry)
-      .then(() => { toast("Score posted to the global leaderboard."); openLeaderboard(); })
-      .catch(err => { console.warn(err); saveLocal(entry); toast("Firebase write failed - saved locally."); openLeaderboard(); });
-  } else {
-    saveLocal(entry);
-    toast("Saved to local leaderboard.");
-    openLeaderboard();
-  }
-}
-function saveLocal(entry){
-  const k = lbKey(boardId(entry.youtubeId, entry.difficulty));
-  const arr = JSON.parse(localStorage.getItem(k) || "[]");
-  arr.push(entry);
-  arr.sort((a, b) => b.score - a.score);
-  localStorage.setItem(k, JSON.stringify(arr.slice(0, 50)));
-}
-
-function openLeaderboard(){
-  const id = yt.id || parseVideoId(document.getElementById("url").value);
-  document.getElementById("resultOv").classList.add("hidden");
-  document.getElementById("lbOv").classList.remove("hidden");
-  const bid = boardId(id, DIFFS[S.diff].name);
-  document.getElementById("lbSong").textContent = id
-    ? ((yt.title || "Track") + "  //  " + DIFFS[S.diff].name) : "No track loaded";
-  const body = document.getElementById("lbBody");
-  const note = document.getElementById("lbNote");
-  body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">Loading...</td></tr>`;
-  if (!id){ body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">Load a track first.</td></tr>`; return; }
-
-  if (FIREBASE_ON){
-    note.textContent = "Live global scores via Firebase Realtime Database, " + DIFFS[S.diff].name + " difficulty.";
-    if (lbRef) try { lbRef.off(); } catch(e){}
-    lbRef = db.ref("scores/" + bid).orderByChild("score").limitToLast(10);
-    lbRef.on("value", snap => {
-      const rows = [];
-      snap.forEach(c => rows.push(c.val()));
-      rows.sort((a, b) => b.score - a.score);
-      renderLB(rows);
-    }, err => { console.warn(err); note.textContent = "Firebase read failed - showing local scores."; renderLB(localRows(bid)); });
-  } else {
-    note.textContent = "Firebase not configured - showing this browser's local " + DIFFS[S.diff].name +
-      " scores. See the firebaseConfig block at the top of the script to go global.";
-    renderLB(localRows(bid));
-  }
-}
-let lbRef = null;
-function localRows(bid){
-  return JSON.parse(localStorage.getItem(lbKey(bid)) || "[]").sort((a, b) => b.score - a.score).slice(0, 10);
-}
-function renderLB(rows){
-  const body = document.getElementById("lbBody");
-  if (!rows.length){ body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">No scores yet - be the first.</td></tr>`; return; }
-  body.innerHTML = rows.slice(0, 10).map((r, i) => `
-    <tr style="animation-delay:${i * 45}ms">
-      <td class="${i < 3 ? 'rank' + (i + 1) : ''}">${i + 1}</td>
-      <td class="${i < 3 ? 'rank' + (i + 1) : ''}">${escapeHtml(r.username || "ANON")}</td>
-      <td>${(r.score || 0).toLocaleString()}</td>
-      <td>${(r.accuracy != null ? r.accuracy.toFixed(1) : "-")}%</td>
-      <td>${r.maxCombo || 0}</td>
-    </tr>`).join("");
-}
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
-
-/* =====================================================================
-   11. UI WIRING
-   ===================================================================== */
-let toastTimer = null;
-function toast(msg){
-  const el = document.getElementById("toast");
-  el.textContent = msg; el.style.display = "block";
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.style.display = "none", 3200);
-}
-
-/* ---------- options menu ---------- */
-const $ = id => document.getElementById(id);
-function syncOptionsUI(){
-  $("optTag").value = S.tag;
-  $("optVol").value = S.volume; $("vVol").textContent = S.volume;
-  $("optOff").value = S.offset; $("vOff").textContent = (S.offset > 0 ? "+" : "") + S.offset + "ms";
-  $("optSpd").value = S.speed;  $("vSpd").textContent = (S.speed / 100).toFixed(2) + "x";
-  $("optDim").value = S.dim;    $("vDim").textContent = S.dim + "%";
-  $("optPen").classList.toggle("on", !!S.penalty);
-  $("optShake").classList.toggle("on", !!S.shake);
-  $("optPart").classList.toggle("on", !!S.particles);
-  [...$("optDiff").children].forEach(b => b.classList.toggle("on", +b.dataset.d === S.diff));
-}
-function toggleOptions(force){
-  const ov = $("optOv");
-  const show = force != null ? force : ov.classList.contains("hidden");
-  ov.classList.toggle("hidden", !show);
-  if (show) syncOptionsUI();
-}
-$("optBtn").onclick = () => toggleOptions();
-$("optClose").onclick = () => toggleOptions(false);
-$("optReset").onclick = () => { S = Object.assign({}, DEFAULTS); applySettings(); syncOptionsUI(); toast("Settings reset to defaults."); };
-
-$("optTag").oninput  = e => { S.tag = e.target.value.toUpperCase().slice(0, 14); saveSettings(); };
-$("optVol").oninput  = e => { S.volume = +e.target.value; $("vVol").textContent = S.volume; applySettings(); };
-$("optOff").oninput  = e => { S.offset = +e.target.value; $("vOff").textContent = (S.offset > 0 ? "+" : "") + S.offset + "ms"; saveSettings(); };
-$("optSpd").oninput  = e => { S.speed = +e.target.value; $("vSpd").textContent = (S.speed / 100).toFixed(2) + "x"; saveSettings(); };
-$("optDim").oninput  = e => { S.dim = +e.target.value; $("vDim").textContent = S.dim + "%"; applySettings(); };
-$("optPen").onclick  = () => { S.penalty = !S.penalty; syncOptionsUI(); saveSettings(); };
-$("optShake").onclick= () => { S.shake = !S.shake; syncOptionsUI(); saveSettings(); };
-$("optPart").onclick = () => { S.particles = !S.particles; if (!S.particles) game.particles.length = 0; syncOptionsUI(); saveSettings(); };
-$("optDiff").onclick = e => {
-  const b = e.target.closest("button"); if (!b) return;
-  S.diff = +b.dataset.d; syncOptionsUI(); saveSettings();
-  toast("Difficulty set to " + DIFFS[S.diff].name + " - reload the track to apply.");
-};
-
-/* Auto-calibration: play normally for a stretch, then shift the offset by the
-   median of your hit errors. Median, not mean, so a few wild taps cannot skew it. */
-$("calibBtn").onclick = () => {
-  if (game.mode !== "play"){ toast("Start a track first, then calibrate while it plays."); return; }
-  toggleOptions(false);
-  game.calibrating = true;
-  game.deltas.length = 0;
-  toast("CALIBRATING - play naturally for 20 seconds...");
-  log("Calibration started.", "info");
-  setTimeout(() => {
-    game.calibrating = false;
-    const d = game.deltas.slice().sort((a, b) => a - b);
-    if (d.length < 8){
-      toast("Not enough hits to calibrate. Try again and hit more notes.");
-      log("Calibration aborted: only " + d.length + " samples.", "warn");
-      return;
-    }
-    const median = d[Math.floor(d.length / 2)];
-    // note.time - judgeTime: positive median => you hit early => shift offset down
-    const shift = Math.round(-median * 1000);
-    S.offset = Math.max(-300, Math.min(300, S.offset + shift));
-    applySettings(); syncOptionsUI();
-    toast(`Calibrated: offset ${S.offset > 0 ? "+" : ""}${S.offset}ms (from ${d.length} hits).`);
-    log(`Calibration done: median error ${(median * 1000).toFixed(1)}ms -> offset ${S.offset}ms`, "ok");
-  }, 20000);
-};
-
-const presetBox = document.getElementById("presets");
-PRESETS.forEach(p => {
-  const b = document.createElement("button");
-  b.className = "chip"; b.textContent = p.name;
-  b.onclick = () => startTrack(p.id);
-  presetBox.appendChild(b);
-});
-
-document.getElementById("loadBtn").onclick = () => startTrack(document.getElementById("url").value);
-document.getElementById("url").addEventListener("keydown", e => {
-  if (e.key === "Enter") startTrack(e.target.value);
-});
-document.getElementById("startBtn").onclick = () => {
-  const u = document.getElementById("url");
-  u.focus(); u.classList.add("hint");
-  setTimeout(() => u.classList.remove("hint"), 3600);
-  toast("Paste a YouTube link in the glowing bar at the top, then hit LOAD & PLAY.");
-};
-document.getElementById("lbBtn").onclick = openLeaderboard;
-document.getElementById("logBtn").onclick = () => document.getElementById("logPanel").classList.toggle("on");
-document.getElementById("lbClose").onclick = () => {
-  if (lbRef) { try { lbRef.off(); } catch(e){} lbRef = null; }   // stop the live listener
-  document.getElementById("lbOv").classList.add("hidden");
-  if (game.mode === "menu") document.getElementById("startOv").classList.remove("hidden");
-};
-document.getElementById("submitBtn").onclick = submitScore;
-document.getElementById("skipBtn").onclick = openLeaderboard;
-document.getElementById("againBtn").onclick = () => {
-  document.getElementById("resultOv").classList.add("hidden");
-  try { player.seekTo(0, true); } catch(e){}
-  beginGame();
-};
-document.getElementById("quitBtn").onclick = () => {
-  game.mode = "menu"; setSync(false);
-  try { player.stopVideo(); } catch(e){}
-  document.getElementById("resultOv").classList.add("hidden");
-  document.getElementById("lbOv").classList.add("hidden");
-  document.getElementById("startOv").classList.remove("hidden");
-};
-
 resize();
-applySettings();
-syncOptionsUI();
+connect();
+syncOpts();
+syncUI();
 requestAnimationFrame(frame);
+
+// Solo mode still needs a heartbeat for the engine, and bots need a table.
+if (!ONLINE){
+  log("Solo table. Add Firebase keys to play with others.");
+} else {
+  log("Connecting to table '" + ROOM() + "'...");
+}
+setInterval(() => { if (isHost) { fillBots(); } }, 15000);
+window.addEventListener("beforeunload", () => { if (mySeat >= 0) leaveSeat(); });
 </script>
 </body>
 </html>

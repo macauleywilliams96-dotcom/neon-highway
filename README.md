@@ -1,68 +1,73 @@
-# NEON HIGHWAY
+# VELVET ACE
 
-A single-file HTML5 Canvas rhythm game — Guitar Hero style — with a 3D synthwave
-highway, YouTube-synced note charts, and an optional global Firebase leaderboard.
+A single-file, real-time **multiplayer blackjack** table. A bot dealer runs the
+shoe; anyone who opens the URL can sit down and play at the same table, seeing
+each other's cards, bets and busts live.
 
 **Play:** https://macauleywilliams96-dotcom.github.io/neon-highway/
 
 ---
 
+## Table rules
+
+6-deck shoe · dealer stands on all 17s · blackjack pays **3:2** · double on any
+two cards · split once · reshuffle at the cut card.
+
 ## Controls
 
-| Key | Lane |
-|-----|------|
-| `Q` | Cyan |
-| `W` | Magenta |
-| `E` | Yellow |
-| `R` | Green |
-| `T` | Orange |
+| Key | Action |
+|-----|--------|
+| `H` | Hit |
+| `S` | Stand |
+| `D` | Double |
+| `P` | Split |
+| `Enter` | Lock in your bet |
 
-`L` toggles the engine log. `Esc` pauses. Lanes are also clickable/tappable.
+Chips are click-to-stack with undo and re-bet. Optional basic-strategy hints
+highlight the correct play on your turn.
 
-Hit windows: **PERFECT** ±40 ms · **GREAT** ±80 ms · **GOOD** ±120 ms.
-The multiplier steps up every 10 consecutive hits, to a maximum of 4x.
+## How the multiplayer works
 
-## How it works
+There is no game server — the table runs peer-to-peer over Firebase Realtime
+Database:
 
-- **Seeded charts.** An FNV-1a hash of the YouTube video ID plus the rounded track
-  duration seeds a mulberry32 PRNG. Every player worldwide gets a byte-identical
-  note map for the same song — no server, no chart files.
-- **Absolute-time sync.** Notes are positioned from the player's `getCurrentTime()`
-  rather than frame counts, interpolated between polls with drift correction, so
-  frame-rate dips cannot desync the chart.
-- **Anti-ad guard.** `getPlayerState()` and `getCurrentTime()` are polled every
-  frame. Buffering and pausing freeze the highway; because ads keep the player
-  reporting `PLAYING` while `currentTime` stops advancing, a 420 ms stall detector
-  catches those too. Resuming hard-resyncs the clock and suppresses misses briefly.
-- **3D projection.** A `1/(1+z)` perspective divide over pure 2D canvas, with a
-  dynamic vanishing point, particle bursts and combo-scaled camera shake.
+- **Host election.** One client holds a short lease on `/host` and runs the
+  dealer engine, writing authoritative table state. It renews the lease on a
+  timer; if it goes stale (tab closed), another client takes over within
+  seconds and the game continues.
+- **Shoe as (seed, index).** The shoe is a seeded Fisher–Yates shuffle, so state
+  carries only a seed and a deal index — a few bytes instead of 312 cards, and
+  any new host rebuilds the identical shoe.
+- **Actions, not state.** Non-host players write only to an action queue; the
+  host consumes and applies them. Clients never mutate shared game state
+  directly, which keeps the rules authoritative.
+- **Presence.** `onDisconnect()` frees a seat automatically when a player's tab
+  closes, so seats never leak.
 
-## Requirements
+## Solo mode
 
-The YouTube IFrame API refuses to embed on `file://` URLs — opening `index.html`
-directly shows a "Video player configuration error". Serve it over http(s):
+Without Firebase credentials the game runs **solo against the bot dealer**, with
+optional basic-strategy bot players filling empty seats. Everything works —
+there is simply nowhere for other humans to connect.
 
-```bash
-npx serve .
-```
-
-Or just use the GitHub Pages URL, which works as-is.
-
-## Enabling the global leaderboard
-
-Without Firebase keys the game keeps scores in `localStorage`, per browser. To go
-global (free, ~2 minutes):
+## Enabling multiplayer
 
 1. Create a project at <https://console.firebase.google.com>.
-2. **Build → Realtime Database → Create Database** (test mode is fine to start).
+2. **Build → Realtime Database → Create Database** (test mode to start).
 3. **Project settings → Your apps → Web `</>`** to generate a config.
-4. Paste the values into the `firebaseConfig` object near the top of the `<script>`
-   block in `index.html`, including `databaseURL`.
+4. Paste the values into `firebaseConfig` at the top of the `<script>` block in
+   `index.html`, including `databaseURL`.
 5. Commit and push — Pages redeploys automatically.
 
-Test-mode rules leave the database world-writable. Before sharing widely, tighten
-`scores/$videoId` to validate shape and rate-limit writes.
+Players sharing a **table name** (Options → Table Name) play together, so you
+can run private tables on the same deployment.
 
-## Deploying
+> Test-mode rules leave the database world-writable. Before sharing widely,
+> restrict writes to `/tables/$room` and cap payload sizes.
 
-Push to GitHub, then **Settings → Pages → Source: Deploy from a branch → `main` / `root`**.
+## Notes
+
+- Bankroll and session stats persist in `localStorage`; rebuy from Options.
+- Sound is synthesised with the Web Audio API — no asset files.
+- The previous project at this URL, a synthwave rhythm game, is preserved at the
+  git tag [`rhythm-game-v1`](../../tree/rhythm-game-v1).
