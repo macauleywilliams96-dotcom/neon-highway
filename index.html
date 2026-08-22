@@ -653,6 +653,7 @@ let shoe = buildShoe(T.shoeSeed);
 
 let myUid = null, mySeat = -1, isHost = true;
 let pendingBet = 0, betStack = [];      // chips placed this betting round
+let betSentRound = -1;                  // round whose bet we have already sent
 let lastSync = 0, netRef = null;
 
 /* ---- dealing helpers (host only) ---- */
@@ -1180,6 +1181,7 @@ function connect(){
 // except for seat claims, which any client may write.
 function applyRemote(v){
   if (isHost){
+    syncUI();
     if (Array.isArray(v.seats)){
       v.seats.forEach((rs, i) => {
         const ls = T.seats[i];
@@ -1206,6 +1208,10 @@ function applyRemote(v){
   if (countCards() > prevCards) SFX.slide();
   reconcileBank();
   if (prevPhase !== T.phase) onPhaseChange(prevPhase, T.phase);
+  // A non-host's controls are driven entirely by state arriving from the host.
+  // Without this, the action bar and chip tray never appeared for them: syncUI
+  // only ran inside push(), which a client reaches only when IT does something.
+  syncUI();
   if (T.round !== prevRound){ /* new round */ }
 }
 /* The host's seat record is the authority on my bank. A bet that reached the
@@ -1919,7 +1925,9 @@ function frame(t){
 function syncUI(){
   $("bankTxt").textContent = fmt(S.bank);
   const me = mySeat >= 0 ? T.seats[mySeat] : null;
-  const betting = T.phase === PHASE.BETTING && me && !me.bet;
+  // betSentRound stops the tray flickering back between locking a bet and the
+  // host echoing it, which would otherwise let a client stake twice.
+  const betting = T.phase === PHASE.BETTING && me && !me.bet && betSentRound !== T.round;
   const myTurn = T.phase === PHASE.PLAYING && T.turnSeat === mySeat;
 
   $("tray").classList.toggle("on", !!betting);
@@ -1975,6 +1983,7 @@ function lockBet(){
   if (me.bet){ toast("Bet already placed for this round."); return; }
   S.bank -= pendingBet; S.lastBet = pendingBet; save();
   me.bank = S.bank;
+  betSentRound = T.round;
   sendBet(pendingBet);
   me.bet = pendingBet;
   pendingBet = 0; betStack = [];
@@ -2116,6 +2125,11 @@ requestAnimationFrame(frame);
 // moment the host switched tabs. Timers keep running (throttled, which is fine
 // for a phase machine driven by absolute timestamps).
 setInterval(() => { if (isHost) { hostTick(); pruneSeats(); } }, 120);
+
+// Safety net: the controls must never sit stale waiting on a message that did
+// not arrive. Cheap enough to run continuously, and it makes a missed update
+// cost 300ms rather than the whole round.
+setInterval(syncUI, 300);
 
 // Solo mode still needs a heartbeat for the engine, and bots need a table.
 if (!ONLINE){
