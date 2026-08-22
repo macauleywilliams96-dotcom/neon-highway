@@ -3,7 +3,7 @@
 A single-file HTML5 Canvas rhythm game — Guitar Hero style — with a 3D synthwave
 highway, YouTube-synced note charts, and an optional global Firebase leaderboard.
 
-**Play:** https://USERNAME.github.io/neon-highway/
+**Play:** https://macauleywilliams96-dotcom.github.io/neon-highway/
 
 ---
 
