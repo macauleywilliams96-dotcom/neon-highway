@@ -49,8 +49,9 @@ Database:
 - **Actions, not state.** Non-host players write only to an action queue; the
   host consumes and applies them. Clients never mutate shared game state
   directly, which keeps the rules authoritative.
-- **Presence.** `onDisconnect()` frees a seat automatically when a player's tab
-  closes, so seats never leak.
+- **Presence.** `onDisconnect()` clears the heartbeat when a tab closes, so the
+  host reaps the seat shortly after — without evicting a player whose socket
+  merely went quiet.
 
 ## Solo mode
 
