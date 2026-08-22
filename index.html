@@ -106,6 +106,26 @@
   #logPanel .l{white-space:pre-wrap;word-break:break-word}
   #logPanel .l .ts{color:#5d5486}
   .lg-ok{color:#3dff8f}.lg-warn{color:#ffe14d}.lg-err{color:#ff6b85}.lg-info{color:#22e7ff}
+  /* ---- options modal ---- */
+  .opt{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(160,120,255,.14)}
+  .opt:last-child{border-bottom:none}
+  .opt .lbl{flex:1;min-width:0}
+  .opt .lbl b{display:block;font-size:13px;color:#fff;font-weight:700}
+  .opt .lbl span{font-size:11px;color:#8f86b8;line-height:1.4}
+  .opt input[type=range]{width:150px;flex:none;accent-color:#ff3df0;cursor:pointer}
+  .opt .val{width:62px;flex:none;text-align:right;font-size:12px;font-weight:800;color:#22e7ff;
+    font-family:Consolas,ui-monospace,monospace}
+  .opt input[type=text]{width:160px;flex:none;min-width:0;padding:8px 10px;font-size:12px}
+  .seg{display:flex;gap:5px;flex:none}
+  .seg button{padding:7px 11px;font-size:11px;border-radius:7px}
+  .seg button.on{background:linear-gradient(90deg,#7a1bff,#ff3df0);border-color:transparent;color:#fff}
+  .tog{width:52px;height:28px;flex:none;border-radius:16px;border:1px solid var(--line);
+    background:rgba(255,255,255,.06);position:relative;cursor:pointer;transition:.2s;padding:0}
+  .tog::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;
+    background:#8f86b8;transition:.2s}
+  .tog.on{background:linear-gradient(90deg,#7a1bff,#ff3df0);border-color:transparent}
+  .tog.on::after{left:27px;background:#fff;box-shadow:0 0 10px rgba(255,255,255,.8)}
+  .sect{margin:18px 0 2px;font-size:10.5px;letter-spacing:2px;color:#22e7ff;font-weight:800}
   #toast{position:absolute;z-index:9;left:50%;bottom:26px;transform:translateX(-50%);
     padding:10px 16px;border-radius:10px;background:rgba(20,6,40,.95);border:1px solid var(--line);
     font-size:12.5px;display:none}
@@ -123,6 +143,7 @@
     <button class="primary" id="loadBtn">LOAD &amp; PLAY</button>
     <button class="ghost" id="lbBtn">LEADERBOARD</button>
     <button class="ghost" id="quitBtn">RESTART</button>
+    <button class="ghost" id="optBtn">OPTIONS</button>
     <button class="ghost" id="logBtn">LOG</button>
     <div id="presets"></div>
   </div>
@@ -135,6 +156,71 @@
     <div id="pct">0%</div>
     <button class="primary" id="unblock">CLICK TO START PLAYBACK</button>
     <div id="errBox"></div>
+  </div></div>
+
+  <div class="overlay hidden" id="optOv"><div class="card">
+    <h1>OPTIONS</h1>
+    <h2>SETTINGS SAVE AUTOMATICALLY TO THIS BROWSER</h2>
+
+    <div class="sect">PLAYER</div>
+    <div class="opt">
+      <div class="lbl"><b>Gamer Tag</b><span>Used for every leaderboard submission.</span></div>
+      <input type="text" id="optTag" maxlength="14" placeholder="ANON" />
+    </div>
+
+    <div class="sect">AUDIO</div>
+    <div class="opt">
+      <div class="lbl"><b>Music Volume</b><span>YouTube playback level.</span></div>
+      <input type="range" id="optVol" min="0" max="100" step="1" /><div class="val" id="vVol">75</div>
+    </div>
+    <div class="opt">
+      <div class="lbl"><b>Audio Offset</b><span>If notes feel early, go negative. If late, go positive. This is the single
+        biggest factor in hit accuracy &mdash; run the calibrator below.</span></div>
+      <input type="range" id="optOff" min="-300" max="300" step="5" /><div class="val" id="vOff">0ms</div>
+    </div>
+    <div class="opt">
+      <div class="lbl"><b>Auto-Calibrate</b><span>Plays the track and averages your hit timing to find your true offset.</span></div>
+      <button class="ghost" id="calibBtn">CALIBRATE</button>
+    </div>
+
+    <div class="sect">GAMEPLAY</div>
+    <div class="opt">
+      <div class="lbl"><b>Difficulty</b><span>Changes note density. Each difficulty has its own leaderboard.</span></div>
+      <div class="seg" id="optDiff">
+        <button data-d="0">EASY</button><button data-d="1">NORMAL</button>
+        <button data-d="2">HARD</button><button data-d="3">EXPERT</button>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="lbl"><b>Scroll Speed</b><span>How far ahead notes appear. Higher = faster, more reaction room.</span></div>
+      <input type="range" id="optSpd" min="70" max="220" step="5" /><div class="val" id="vSpd">1.0x</div>
+    </div>
+    <div class="opt">
+      <div class="lbl"><b>Overstrum Penalty</b><span>Hitting a lane with no note there breaks your combo. Turn off for practice.</span></div>
+      <button class="tog" id="optPen"></button>
+    </div>
+
+    <div class="sect">VISUALS</div>
+    <div class="opt">
+      <div class="lbl"><b>Video Brightness</b><span>How much of the YouTube video shows through the highway.</span></div>
+      <input type="range" id="optDim" min="0" max="100" step="5" /><div class="val" id="vDim">20%</div>
+    </div>
+    <div class="opt">
+      <div class="lbl"><b>Screen Shake</b><span>Camera kick on big combos and boost.</span></div>
+      <button class="tog" id="optShake"></button>
+    </div>
+    <div class="opt">
+      <div class="lbl"><b>Particles</b><span>Hit explosions. Disable on weak hardware.</span></div>
+      <button class="tog" id="optPart"></button>
+    </div>
+
+    <div class="row">
+      <button class="primary" id="optClose">DONE</button>
+      <button class="ghost" id="optReset">RESET TO DEFAULTS</button>
+    </div>
+    <div class="note">Charts are procedurally generated from the video ID, not from audio analysis &mdash; the YouTube
+      iframe exposes no audio stream to the page. Notes follow a steady musical grid, so the Audio Offset slider is
+      what makes them line up with what you hear.</div>
   </div></div>
 
   <div id="logPanel">
@@ -152,7 +238,13 @@
     <p style="font-size:13px;line-height:1.6;color:#c9c1ea">
       Hit the notes as they cross the strike bar.<br>
       <span class="kbd">Q</span><span class="kbd">W</span><span class="kbd">E</span><span class="kbd">R</span><span class="kbd">T</span>
-      &nbsp;-&gt; 5 lanes. Chain hits to ramp the multiplier up to <b>4x</b>.
+      &nbsp;-&gt; 5 lanes. Chain hits to ramp the multiplier up to <b>4x</b>.<br>
+      <span class="kbd">SPACE</span> fires <b style="color:#ffe14d">OVERDRIVE</b> once the meter passes half &mdash;
+      double multiplier, and the highway loses its mind.<br>
+      <span class="kbd">O</span> options &nbsp;<span class="kbd">L</span> engine log &nbsp;<span class="kbd">ESC</span> pause
+    </p>
+    <p style="font-size:12px;line-height:1.5;color:#8f86b8;margin:0 0 4px">
+      Notes feel off? Open <b>Options &rarr; Audio Offset</b>, or run the auto-calibrator mid-song.
     </p>
     <div class="statgrid">
       <div class="stat"><b>&plusmn;40ms</b><span>PERFECT</span></div>
@@ -173,6 +265,8 @@
       <div class="stat"><b id="rAcc">0%</b><span>ACCURACY</span></div>
       <div class="stat"><b id="rCombo">0</b><span>MAX COMBO</span></div>
       <div class="stat"><b id="rHits">0/0</b><span>NOTES HIT</span></div>
+      <div class="stat"><b id="rBreak">0</b><span>PERFECT / GREAT / GOOD</span></div>
+      <div class="stat"><b id="rOver">0</b><span>OVERSTRUMS</span></div>
     </div>
     <input id="tag" type="text" maxlength="14" placeholder="GAMER TAG" style="width:100%" />
     <div class="row">
@@ -294,7 +388,7 @@ const LANE_COL = [
   { r: 255, g: 138, b: 43  }   // T orange
 ];
 const W_PERFECT = 0.040, W_GREAT = 0.080, W_GOOD = 0.120;
-const LOOKAHEAD = 1.55;          // seconds a note is visible before the strike bar
+const LOOKAHEAD = 1.55;          // base seconds a note is visible (scaled by the Scroll Speed setting)
 const DEPTH     = 7.2;           // perspective strength
 const PRESETS = [
   { id: "gCYcHz2k5x0", name: "Neon Drive" },
@@ -302,6 +396,40 @@ const PRESETS = [
   { id: "dQw4w9WgXcQ", name: "Classic" },
   { id: "wOMwO5T3yT4", name: "Dance Fever" }
 ];
+
+/* =====================================================================
+   2b. SETTINGS (persisted to localStorage)
+   ===================================================================== */
+const DIFFS = [
+  { name: "EASY",   density: 0.55, chords: 0.00, sub: 0.25 },
+  { name: "NORMAL", density: 0.78, chords: 0.06, sub: 0.45 },
+  { name: "HARD",   density: 1.00, chords: 0.14, sub: 0.62 },
+  { name: "EXPERT", density: 1.22, chords: 0.24, sub: 0.80 }
+];
+const DEFAULTS = {
+  tag: "", volume: 75, offset: 0, diff: 1, speed: 100,
+  penalty: true, dim: 20, shake: true, particles: true
+};
+let S = Object.assign({}, DEFAULTS);
+try { S = Object.assign(S, JSON.parse(localStorage.getItem("nh_settings") || "{}")); } catch(e){}
+function saveSettings(){ try { localStorage.setItem("nh_settings", JSON.stringify(S)); } catch(e){} }
+
+// Offset in seconds, applied to the judging clock.
+function offsetSec(){ return S.offset / 1000; }
+// Scroll speed scales the lookahead window (higher speed = shorter window).
+function lookahead(){ return 1.55 * (100 / S.speed); }
+function diff(){ return DIFFS[S.diff] || DIFFS[1]; }
+
+function applySettings(){
+  try { if (player && player.setVolume) player.setVolume(S.volume); } catch(e){}
+  const veil = document.getElementById("veil");
+  // dim 0 = video fully hidden, 100 = video brightest
+  const a = 0.97 - (S.dim / 100) * 0.62;
+  veil.style.background =
+    "radial-gradient(120% 80% at 50% 8%, rgba(80,0,140,.35), transparent 60%)," +
+    `linear-gradient(180deg, rgba(5,2,14,${(a - .12).toFixed(3)}) 0%, rgba(5,2,14,${(a - .05).toFixed(3)}) 45%, rgba(5,2,14,${a.toFixed(3)}) 100%)`;
+  saveSettings();
+}
 
 /* =====================================================================
    3. DETERMINISTIC SEEDED CHART GENERATOR
@@ -326,41 +454,76 @@ function mulberry32(a){
 }
 // Build the chart from (videoId, duration). Duration is quantised so a
 // 1-frame difference in getDuration() cannot change anybody's chart.
-function generateChart(videoId, duration){
+function generateChart(videoId, duration, diffIdx){
+  const D    = DIFFS[diffIdx] || DIFFS[1];
   const dur  = Math.max(20, Math.round(duration));
-  const rnd  = mulberry32(hashSeed(videoId + "|" + dur));
-  const bpm  = 118 + Math.floor(rnd() * 54);       // 118 - 171 bpm
+  // difficulty is part of the seed so each chart is reproducible per-difficulty
+  const rnd  = mulberry32(hashSeed(videoId + "|" + dur + "|" + D.name));
+  const bpm  = 118 + Math.floor(rnd() * 54);
   const beat = 60 / bpm;
-  const start = 2.2 + rnd() * 1.5;                 // small intro breathing room
+  const start = 2.2 + rnd() * 1.5;
   const end   = dur - 2.0;
   const notes = [];
-  let t = start, lastLane = -1, bar = 0;
+
+  // Musical structure: 8-bar phrases, each with its own character. Keeping notes
+  // on a strict grid is what makes a procedural chart feel deliberate rather
+  // than random -- the ear locks onto the pulse even when the chart cannot
+  // "hear" the song.
+  const MIN_GAP = 0.085;                 // never generate unhittable stacks
+  let t = start, lastLane = -1, lastT = -9, run = 0, runDir = 1;
+  let bar = 0;
 
   while (t < end){
-    // Song sections drive density: verse / build / chorus
-    const prog = (t - start) / Math.max(1, end - start);
-    const section = Math.floor(bar / 4) % 4;
-    let density = 0.55 + 0.30 * Math.sin(prog * Math.PI);   // ramps mid-song
-    if (section === 3) density += 0.22;                     // chorus punch
-    density = Math.min(0.95, density);
+    const prog    = (t - start) / Math.max(1, end - start);
+    const phrase  = Math.floor(bar / 8);
+    const inPhrase = bar % 8;
+    // energy arc over the whole song + a lift in the back half of each phrase
+    let energy = 0.58 + 0.32 * Math.sin(prog * Math.PI);
+    if (inPhrase >= 6) energy += 0.14;                    // phrase turnaround
+    if (phrase % 4 === 3) energy += 0.10;                 // every 4th phrase = chorus
+    energy = Math.min(1.05, energy) * D.density;
 
-    const sub = (rnd() < density * 0.55) ? 0.5 : 1;          // eighths or quarters
-    if (rnd() < density){
-      let lane = Math.floor(rnd() * LANES);
-      if (lane === lastLane && rnd() < 0.72) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
+    // subdivision: quarters, eighths, occasional sixteenth burst at the top end
+    let sub = 1;
+    const r = rnd();
+    if (r < D.sub * energy * 0.72) sub = 0.5;
+    if (D.sub > 0.6 && r < D.sub * energy * 0.16 && inPhrase >= 6) sub = 0.25;
+
+    if (rnd() < energy && t - lastT >= MIN_GAP){
+      let lane;
+      if (run > 0){
+        // continue a stair-step run: reads clearly and feels great to play
+        lane = lastLane + runDir;
+        if (lane < 0 || lane >= LANES){ runDir *= -1; lane = lastLane + runDir; }
+        run--;
+      } else if (rnd() < 0.26 && energy > 0.7){
+        run = 2 + Math.floor(rnd() * 3);
+        runDir = rnd() < 0.5 ? -1 : 1;
+        lane = lastLane < 0 ? Math.floor(rnd() * LANES) : lastLane + runDir;
+        if (lane < 0 || lane >= LANES){ runDir *= -1; lane = lastLane + runDir; }
+      } else {
+        lane = Math.floor(rnd() * LANES);
+        // avoid repeating the same lane too often; it reads as a stutter
+        if (lane === lastLane && rnd() < 0.7) lane = (lane + 1 + Math.floor(rnd() * (LANES - 1))) % LANES;
+      }
+      lane = Math.max(0, Math.min(LANES - 1, lane));
       notes.push({ time: +t.toFixed(4), lane, hit: false, judged: false });
-      lastLane = lane;
-      // occasional chord (2 simultaneous notes) in high-density sections
-      if (density > 0.78 && rnd() < 0.13){
-        const l2 = (lane + 2 + Math.floor(rnd() * 2)) % LANES;
-        notes.push({ time: +t.toFixed(4), lane: l2, hit: false, judged: false });
+      lastLane = lane; lastT = t;
+
+      // chords land on strong beats only, and always on comfortable spacings
+      if (rnd() < D.chords * energy && bar % 1 < 0.01){
+        const spread = 1 + Math.floor(rnd() * 2);
+        let l2 = lane + (rnd() < 0.5 ? -spread : spread);
+        if (l2 < 0 || l2 >= LANES) l2 = lane - (l2 < 0 ? -spread : spread);
+        if (l2 >= 0 && l2 < LANES && l2 !== lane)
+          notes.push({ time: +t.toFixed(4), lane: l2, hit: false, judged: false });
       }
     }
     t += beat * sub;
     bar += sub / 4;
   }
   notes.sort((a, b) => a.time - b.time || a.lane - b.lane);
-  return { notes, bpm, beat, start };
+  return { notes, bpm, beat, start, diff: D.name };
 }
 
 /* =====================================================================
@@ -616,8 +779,19 @@ const game = {
   laneHold:  [false,false,false,false,false],
   particles: [],
   splashes: [],
-  scroll: 0
+  scroll: 0,
+  // --- overdrive / boost ---
+  boost: 0,            // 0..1 meter
+  boostOn: false,
+  boostT: 0,           // seconds of boost remaining
+  boostFlash: 0,
+  // --- anti-spam + calibration ---
+  overstrums: 0,
+  deltas: [],          // signed hit errors, used by the calibrator
+  calibrating: false
 };
+const BOOST_DUR = 9.0;          // seconds of overdrive at a full meter
+const BOOST_MIN = 0.5;          // meter needed to activate
 
 function resize(){
   DPR = Math.min(2, window.devicePixelRatio || 1);
@@ -649,14 +823,32 @@ function laneWidth(){ return (laneHalfW() * 2) / LANES; }
 /* =====================================================================
    6. RENDERING
    ===================================================================== */
+// Hue cycles hard during overdrive; everything colour-driven reads from this.
+function boostHue(t){ return (t * 0.22) % 360; }
+function boostCol(t, off, a){
+  return `hsla(${(boostHue(t) + (off || 0)) % 360},100%,62%,${a == null ? 1 : a})`;
+}
+
 function drawBackdrop(t){
   // horizon sun glow + retro grid receding into the vanishing point
   const hy = horizonY();
   const g = ctx.createRadialGradient(W/2, hy, 0, W/2, hy, Math.max(W, H) * 0.55);
-  g.addColorStop(0, "rgba(255,61,240,.18)");
-  g.addColorStop(0.35, "rgba(122,27,255,.10)");
+  if (game.boostOn){
+    const pulse = 0.30 + 0.16 * Math.sin(t * 0.02);
+    g.addColorStop(0, boostCol(t, 0, pulse));
+    g.addColorStop(0.35, boostCol(t, 60, pulse * 0.5));
+  } else {
+    g.addColorStop(0, "rgba(255,61,240,.18)");
+    g.addColorStop(0.35, "rgba(122,27,255,.10)");
+  }
   g.addColorStop(1, "rgba(0,0,0,0)");
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+  // full-screen colour wash on activation
+  if (game.boostFlash > 0){
+    ctx.fillStyle = boostCol(t, 0, game.boostFlash * 0.35);
+    ctx.fillRect(0, 0, W, H);
+  }
 
   ctx.strokeStyle = "rgba(120,80,220,.22)"; ctx.lineWidth = 1;
   ctx.beginPath();
@@ -667,7 +859,7 @@ function drawBackdrop(t){
   ctx.stroke();
 
   // horizontal grid ribs scrolling toward the viewer (locked when synced off)
-  ctx.strokeStyle = "rgba(255,61,240,.16)";
+  ctx.strokeStyle = game.boostOn ? boostCol(t, 120, .40) : "rgba(255,61,240,.16)";
   ctx.beginPath();
   for (let i = 0; i < 22; i++){
     let dd = ((i / 22) + game.scroll) % 1;
@@ -698,10 +890,15 @@ function drawHighway(t){
     const a = project(lx, 1), b = project(lx, 0);
     const edge = (i === 0 || i === LANES);
     const c = edge ? LANE_COL[i === 0 ? 0 : LANES - 1] : { r: 150, g: 110, b: 255 };
-    ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${edge ? .75 : .30})`;
+    if (game.boostOn){
+      ctx.strokeStyle = boostCol(t, i * 40, edge ? .95 : .55);
+      ctx.shadowColor = boostCol(t, i * 40, .9);
+    } else {
+      ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},${edge ? .75 : .30})`;
+      ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.7)`;
+    }
     ctx.lineWidth = edge ? 2.4 : 1.2;
-    ctx.shadowBlur = edge ? 18 : 6;
-    ctx.shadowColor = `rgba(${c.r},${c.g},${c.b},.7)`;
+    ctx.shadowBlur = game.boostOn ? 26 : (edge ? 18 : 6);
     ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, H); ctx.stroke();
   }
   ctx.shadowBlur = 0;
@@ -753,16 +950,19 @@ function drawStrikeBar(t){
   }
 }
 
-function drawNotes(){
+function drawNotes(now){
   const at = yt.audioTime;
+  const LA = lookahead();
   for (let i = 0; i < game.notes.length; i++){
     const n = game.notes[i];
     if (n.hit) continue;
     const dt = n.time - at;
-    if (dt > LOOKAHEAD) break;
+    if (dt > LA) break;
     if (dt < -W_GOOD - 0.15) continue;
-    const dd = Math.max(0, dt / LOOKAHEAD);
-    const c = LANE_COL[n.lane];
+    const dd = Math.max(0, dt / LA);
+    const c = game.boostOn
+      ? hslToRgb((boostHue(now) + n.lane * 40) % 360, 1, 0.62)
+      : LANE_COL[n.lane];
     const cx = laneCenterX(n.lane);
     const half = laneWidth() * 0.36;
     const a = project(cx - half, dd), b = project(cx + half, dd);
@@ -786,6 +986,14 @@ function drawNotes(){
     ctx.strokeStyle = `rgba(${c.r},${c.g},${c.b},.95)`; ctx.stroke();
     ctx.restore();
   }
+}
+function hslToRgb(h, s, l){
+  const a = s * Math.min(l, 1 - l);
+  const f = n => {
+    const k = (n + h / 30) % 12;
+    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))));
+  };
+  return { r: f(0), g: f(8), b: f(4) };
 }
 function roundRect(x, y, w, h, r){
   ctx.beginPath();
@@ -812,9 +1020,12 @@ function drawParticles(dt){
   ctx.globalAlpha = 1; ctx.shadowBlur = 0;
 }
 function burst(lane, strength){
-  const c = LANE_COL[lane];
+  if (!S.particles) return;
+  const c = game.boostOn
+    ? hslToRgb((boostHue(performance.now()) + lane * 40) % 360, 1, 0.62)
+    : LANE_COL[lane];
   const x = W/2 + laneCenterX(lane), y = strikeY();
-  const n = Math.round(14 + strength * 18);
+  const n = Math.round((14 + strength * 18) * (game.boostOn ? 1.8 : 1));
   for (let i = 0; i < n; i++){
     const ang = -Math.PI/2 + (Math.random() - 0.5) * Math.PI * 1.35;
     const sp  = 130 + Math.random() * 420 * strength;
@@ -896,7 +1107,32 @@ function drawHUD(){
   const bg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
   bg.addColorStop(0, "#22e7ff"); bg.addColorStop(1, "#ff3df0");
   ctx.fillStyle = bg;
-  roundRect(bx, by, Math.max(2, bw * (game.mult >= 4 ? 1 : prog)), 7, 4); ctx.fill();
+  roundRect(bx, by, Math.max(2, bw * (baseMult() >= 4 ? 1 : prog)), 7, 4); ctx.fill();
+
+  // ---- overdrive meter ----
+  const mw = Math.min(240, W * 0.22), mx = W - 24 - mw, my = 140;
+  const now2 = performance.now();
+  ctx.textAlign = "right";
+  ctx.font = "800 10.5px Segoe UI, sans-serif";
+  ctx.fillStyle = game.boostOn ? boostCol(now2, 0, 1)
+                : game.boost >= BOOST_MIN ? "#ffe14d" : "#8f86b8";
+  ctx.fillText(game.boostOn ? "OVERDRIVE ACTIVE"
+             : game.boost >= BOOST_MIN ? "[SPACE] OVERDRIVE READY" : "OVERDRIVE", W - 24, my - 16);
+  ctx.fillStyle = "rgba(255,255,255,.08)";
+  roundRect(mx, my, mw, 11, 5); ctx.fill();
+  if (game.boost > 0){
+    const mg = ctx.createLinearGradient(mx, 0, mx + mw, 0);
+    if (game.boostOn){ mg.addColorStop(0, boostCol(now2, 0, 1)); mg.addColorStop(1, boostCol(now2, 140, 1)); }
+    else { mg.addColorStop(0, "#ffe14d"); mg.addColorStop(1, "#ff8a2b"); }
+    ctx.fillStyle = mg;
+    ctx.shadowBlur = game.boost >= BOOST_MIN ? 16 : 0;
+    ctx.shadowColor = game.boostOn ? boostCol(now2, 0, 1) : "rgba(255,225,77,.9)";
+    roundRect(mx, my, Math.max(3, mw * game.boost), 11, 5); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  // the 50% activation threshold marker
+  ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(mx + mw * BOOST_MIN, my - 2); ctx.lineTo(mx + mw * BOOST_MIN, my + 13); ctx.stroke();
 
   // song progress
   if (yt.duration > 0){
@@ -919,7 +1155,8 @@ function frame(now){
   yt.lastFrame = now;
 
   if (game.mode === "play" && !yt.locked){
-    game.scroll = (game.scroll + dt * 0.35) % 1;
+    game.scroll = (game.scroll + dt * (game.boostOn ? 1.6 : 0.35)) % 1;
+    updateBoost(dt);
     checkMisses();
     if (yt.duration && yt.audioTime >= yt.duration - 0.4) endGame();
     if (game.nextIdx >= game.notes.length && yt.audioTime > lastNoteTime() + 2.2) endGame();
@@ -927,16 +1164,23 @@ function frame(now){
 
   for (let i = 0; i < LANES; i++) game.laneFlash[i] = Math.max(0, game.laneFlash[i] - dt * 3.4);
   game.shake = Math.max(0, game.shake - dt * 3.2);
+  game.boostFlash = Math.max(0, game.boostFlash - dt * 1.6);
 
   ctx.clearRect(0, 0, W, H);
   ctx.save();
-  if (game.shake > 0){
-    const s = game.shake * (game.combo > 30 ? 9 : 5);
+  // Overdrive keeps a constant low rumble going on top of the combo shake.
+  if (S.shake && (game.shake > 0 || game.boostOn)){
+    const s = game.shake * (game.combo > 30 ? 9 : 5) + (game.boostOn ? 3.5 : 0);
     ctx.translate((Math.random() - .5) * s, (Math.random() - .5) * s);
+    if (game.boostOn){
+      ctx.translate(W/2, H/2);
+      ctx.rotate((Math.random() - .5) * 0.006);
+      ctx.translate(-W/2, -H/2);
+    }
   }
   drawBackdrop(now);
   drawHighway(now);
-  if (game.mode === "play" || game.mode === "over") drawNotes();
+  if (game.mode === "play" || game.mode === "over") drawNotes(now);
   drawStrikeBar(now);
   drawParticles(dt);
   drawSplashes(dt);
@@ -953,32 +1197,78 @@ function accuracy(){
   if (game.total === 0) return 100;
   return (game.accWeight / game.total) * 100;
 }
+function baseMult(){ return Math.min(4, 1 + Math.floor(game.combo / 10)); }
 function updateMult(){
-  game.mult = Math.min(4, 1 + Math.floor(game.combo / 10));
+  // Overdrive doubles whatever the combo multiplier currently is (max 8x).
+  game.mult = baseMult() * (game.boostOn ? 2 : 1);
 }
 function judge(lane, delta){
   const ad = Math.abs(delta);
-  let base, label, col, weight, strength;
-  if (ad <= W_PERFECT){ base = 300; label = "PERFECT"; col = "#22e7ff"; weight = 1.0; strength = 1.0; game.perfect++; }
-  else if (ad <= W_GREAT){ base = 200; label = "GREAT"; col = "#ff3df0"; weight = 0.75; strength = 0.7; game.great++; }
-  else { base = 100; label = "GOOD"; col = "#ffe14d"; weight = 0.5; strength = 0.45; game.good++; }
+  let base, label, col, weight, strength, fill;
+  if (ad <= W_PERFECT){ base = 300; label = "PERFECT"; col = "#22e7ff"; weight = 1.0;  strength = 1.0;  fill = 0.022; game.perfect++; }
+  else if (ad <= W_GREAT){ base = 200; label = "GREAT"; col = "#ff3df0"; weight = 0.75; strength = 0.7;  fill = 0.014; game.great++; }
+  else { base = 100; label = "GOOD"; col = "#ffe14d"; weight = 0.5;  strength = 0.45; fill = 0.007; game.good++; }
 
   game.combo++; game.maxCombo = Math.max(game.maxCombo, game.combo);
   updateMult();
   game.score += base * game.mult;
   game.hits++; game.total++; game.accWeight += weight;
+  game.deltas.push(delta);
+  if (!game.boostOn) game.boost = Math.min(1, game.boost + fill);
   game.laneFlash[lane] = 1;
   burst(lane, strength);
   splash(label, col);
-  if (game.combo >= 20) game.shake = Math.min(1, 0.25 + game.combo / 220);
+  if (S.shake && game.combo >= 20) game.shake = Math.min(1, 0.25 + game.combo / 220);
 }
 function registerMiss(lane){
-  game.combo = 0; game.mult = 1; game.miss++; game.total++;
+  game.combo = 0; game.miss++; game.total++;
+  updateMult();
   splash("MISS", "#ff4d5e");
   if (lane != null) game.laneFlash[lane] = 0.5;
 }
+// Hitting a lane with no note in range. This is what stops button-mashing:
+// without it, spamming all five keys clears any chart.
+function overstrum(lane){
+  game.laneFlash[lane] = 0.35;
+  if (!S.penalty || game.calibrating) return;
+  game.overstrums++;
+  if (game.combo > 0){
+    game.combo = 0;
+    updateMult();
+    splash("OVERSTRUM", "#ff4d5e");
+  }
+  game.score = Math.max(0, game.score - 25);
+  game.boost = Math.max(0, game.boost - 0.05);
+}
+
+function activateBoost(){
+  if (game.mode !== "play" || game.boostOn || game.boost < BOOST_MIN) return;
+  game.boostOn = true;
+  game.boostT = BOOST_DUR * game.boost;
+  game.boostFlash = 1;
+  updateMult();
+  splash("OVERDRIVE", "#ffe14d");
+  if (S.shake) game.shake = 1;
+  for (let i = 0; i < LANES; i++) burst(i, 1.2);
+  log("OVERDRIVE engaged for " + game.boostT.toFixed(1) + "s", "ok");
+}
+function updateBoost(dt){
+  if (!game.boostOn) return;
+  game.boostT -= dt;
+  game.boost = Math.max(0, game.boostT / BOOST_DUR);
+  if (game.boostT <= 0){
+    game.boostOn = false; game.boost = 0; game.boostT = 0;
+    updateMult();
+    splash("OVERDRIVE END", "#8f86b8");
+  }
+}
+// The clock notes are JUDGED against: the audio clock shifted by the player's
+// calibrated offset. Visuals use the raw clock, so the note still meets the bar
+// on screen -- the offset only compensates for audio/display latency.
+function judgeTime(){ return yt.audioTime + offsetSec(); }
+
 function checkMisses(){
-  const at = yt.audioTime;
+  const at = judgeTime();
   while (game.nextIdx < game.notes.length){
     const n = game.notes[game.nextIdx];
     if (n.hit || n.judged){ game.nextIdx++; continue; }
@@ -991,20 +1281,25 @@ function checkMisses(){
 }
 function hitLane(lane){
   if (game.mode !== "play" || yt.locked) return;
-  const at = yt.audioTime;
-  let best = null, bestD = 1e9;
+  const at = judgeTime();
+  let best = null, bestAbs = 1e9;
+
+  // Scan from the first note that could still be live. nextIdx only advances
+  // past fully-judged notes, so starting there is safe and keeps this O(few).
   for (let i = game.nextIdx; i < game.notes.length; i++){
     const n = game.notes[i];
     const d = n.time - at;
-    if (d > W_GOOD) break;
+    if (d > W_GOOD) break;              // notes are sorted; nothing later is in range
     if (n.hit || n.judged || n.lane !== lane) continue;
-    if (Math.abs(d) < bestD){ bestD = Math.abs(d); best = n; }
+    const ad = Math.abs(d);
+    if (ad < bestAbs){ bestAbs = ad; best = n; }
   }
-  if (best && bestD <= W_GOOD){
+
+  if (best && bestAbs <= W_GOOD){
     best.hit = true; best.judged = true;
     judge(lane, best.time - at);
   } else {
-    game.laneFlash[lane] = 0.35;   // dry strum, no penalty
+    overstrum(lane);
   }
 }
 
@@ -1016,8 +1311,10 @@ window.addEventListener("keydown", e => {
     e.preventDefault();
     if (!game.laneHold[i]){ game.laneHold[i] = true; hitLane(i); }
   }
+  if (k === " " || e.code === "Space"){ e.preventDefault(); activateBoost(); }
   if (k === "escape" && game.mode === "play"){ try { player.pauseVideo(); } catch(err){} }
   if (k === "l"){ document.getElementById("logPanel").classList.toggle("on"); }
+  if (k === "o"){ toggleOptions(); }
 });
 window.addEventListener("keyup", e => {
   const i = KEYS.indexOf(e.key.toLowerCase());
@@ -1050,18 +1347,21 @@ function startTrack(input){
 function beginGame(){
   clearInterval(loadWaiter);   // both onStateChange and the poller can land here
   loadWaiter = null;
-  game.chart = generateChart(yt.id, yt.duration);
+  game.chart = generateChart(yt.id, yt.duration, S.diff);
   game.notes = game.chart.notes;
   game.nextIdx = 0;
   game.score = 0; game.combo = 0; game.maxCombo = 0; game.mult = 1;
   game.hits = 0; game.total = 0; game.perfect = 0; game.great = 0; game.good = 0; game.miss = 0;
   game.accWeight = 0; game.particles.length = 0; game.splashes.length = 0;
+  game.boost = 0; game.boostOn = false; game.boostT = 0; game.boostFlash = 0;
+  game.overstrums = 0; game.deltas.length = 0;
   game.mode = "play";
+  applySettings();
   ignoreMissUntil = 0;
   setPhase(92, "starting playback");
-  log(`Chart built: ${game.notes.length} notes, ~${game.chart.bpm} BPM, seed 0x${hashSeed(yt.id).toString(16)}`, "ok");
+  log(`Chart built: ${game.notes.length} notes, ~${game.chart.bpm} BPM, ${game.chart.diff}, offset ${S.offset}ms`, "ok");
   try { player.playVideo(); } catch(e){ log("playVideo threw: " + e.message, "err"); }
-  toast(`${game.notes.length} notes  //  ~${game.chart.bpm} BPM  //  seed ${hashSeed(yt.id).toString(16)}`);
+  toast(`${game.chart.diff}  //  ${game.notes.length} notes  //  ~${game.chart.bpm} BPM  //  [SPACE] = overdrive`);
 }
 
 function endGame(){
@@ -1072,37 +1372,47 @@ function endGame(){
   const acc = accuracy();
   const rank = acc >= 97 ? "S RANK" : acc >= 92 ? "A RANK" : acc >= 82 ? "B RANK" : acc >= 70 ? "C RANK" : "TRACK COMPLETE";
   document.getElementById("rankTxt").textContent = rank;
-  document.getElementById("songTitle").textContent = (yt.title || yt.id) + "  //  " + yt.id;
   document.getElementById("rScore").textContent = game.score.toLocaleString();
   document.getElementById("rAcc").textContent = acc.toFixed(1) + "%";
   document.getElementById("rCombo").textContent = game.maxCombo;
   document.getElementById("rHits").textContent = game.hits + "/" + game.notes.length;
+  document.getElementById("rBreak").textContent = game.perfect + " / " + game.great + " / " + game.good;
+  document.getElementById("rOver").textContent = game.overstrums;
+  document.getElementById("songTitle").textContent =
+    (yt.title || yt.id) + "  //  " + DIFFS[S.diff].name;
   document.getElementById("submitNote").textContent = FIREBASE_ON
     ? "Connected to the global Firebase leaderboard."
     : "Firebase keys not set - scores save locally in this browser.";
   const t = document.getElementById("tag");
-  t.value = localStorage.getItem("nh_tag") || "";
+  t.value = S.tag || "";
   document.getElementById("resultOv").classList.remove("hidden");
 }
 
 /* =====================================================================
    10. LEADERBOARD (Firebase RTDB, localStorage fallback)
    ===================================================================== */
+// Each difficulty gets its own board -- an EXPERT run and an EASY run are not
+// comparable scores, so they must not share a table.
+function boardId(id, diffName){ return id + "_" + (diffName || DIFFS[S.diff].name); }
 function lbKey(id){ return "nh_lb_" + id; }
 
 function submitScore(){
-  const name = (document.getElementById("tag").value || "ANON").trim().toUpperCase().slice(0, 14) || "ANON";
-  localStorage.setItem("nh_tag", name);
+  const raw = (document.getElementById("tag").value || "").trim().toUpperCase().slice(0, 14);
+  const name = raw.replace(/[^A-Z0-9 _\-!.]/g, "") || "ANON";
+  S.tag = name; saveSettings();
   const entry = {
     username: name,
     score: game.score,
     accuracy: +accuracy().toFixed(2),
     maxCombo: game.maxCombo,
     youtubeId: yt.id,
+    difficulty: DIFFS[S.diff].name,
+    overstrums: game.overstrums,
     timestamp: Date.now()
   };
+  const bid = boardId(yt.id, entry.difficulty);
   if (FIREBASE_ON){
-    db.ref("scores/" + yt.id).push(entry)
+    db.ref("scores/" + bid).push(entry)
       .then(() => { toast("Score posted to the global leaderboard."); openLeaderboard(); })
       .catch(err => { console.warn(err); saveLocal(entry); toast("Firebase write failed - saved locally."); openLeaderboard(); });
   } else {
@@ -1112,7 +1422,7 @@ function submitScore(){
   }
 }
 function saveLocal(entry){
-  const k = lbKey(entry.youtubeId);
+  const k = lbKey(boardId(entry.youtubeId, entry.difficulty));
   const arr = JSON.parse(localStorage.getItem(k) || "[]");
   arr.push(entry);
   arr.sort((a, b) => b.score - a.score);
@@ -1123,27 +1433,33 @@ function openLeaderboard(){
   const id = yt.id || parseVideoId(document.getElementById("url").value);
   document.getElementById("resultOv").classList.add("hidden");
   document.getElementById("lbOv").classList.remove("hidden");
-  document.getElementById("lbSong").textContent = id ? ((yt.title || "Track") + "  //  " + id) : "No track loaded";
+  const bid = boardId(id, DIFFS[S.diff].name);
+  document.getElementById("lbSong").textContent = id
+    ? ((yt.title || "Track") + "  //  " + DIFFS[S.diff].name) : "No track loaded";
   const body = document.getElementById("lbBody");
   const note = document.getElementById("lbNote");
   body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">Loading...</td></tr>`;
   if (!id){ body.innerHTML = `<tr><td colspan="5" style="color:#8f86b8">Load a track first.</td></tr>`; return; }
 
   if (FIREBASE_ON){
-    note.textContent = "Live global scores via Firebase Realtime Database.";
-    db.ref("scores/" + id).orderByChild("score").limitToLast(10).on("value", snap => {
+    note.textContent = "Live global scores via Firebase Realtime Database, " + DIFFS[S.diff].name + " difficulty.";
+    if (lbRef) try { lbRef.off(); } catch(e){}
+    lbRef = db.ref("scores/" + bid).orderByChild("score").limitToLast(10);
+    lbRef.on("value", snap => {
       const rows = [];
       snap.forEach(c => rows.push(c.val()));
       rows.sort((a, b) => b.score - a.score);
       renderLB(rows);
-    }, err => { console.warn(err); note.textContent = "Firebase read failed - showing local scores."; renderLB(localRows(id)); });
+    }, err => { console.warn(err); note.textContent = "Firebase read failed - showing local scores."; renderLB(localRows(bid)); });
   } else {
-    note.textContent = "Firebase not configured - showing this browser's local scores. See the firebaseConfig block at the top of the script to go global.";
-    renderLB(localRows(id));
+    note.textContent = "Firebase not configured - showing this browser's local " + DIFFS[S.diff].name +
+      " scores. See the firebaseConfig block at the top of the script to go global.";
+    renderLB(localRows(bid));
   }
 }
-function localRows(id){
-  return JSON.parse(localStorage.getItem(lbKey(id)) || "[]").sort((a, b) => b.score - a.score).slice(0, 10);
+let lbRef = null;
+function localRows(bid){
+  return JSON.parse(localStorage.getItem(lbKey(bid)) || "[]").sort((a, b) => b.score - a.score).slice(0, 10);
 }
 function renderLB(rows){
   const body = document.getElementById("lbBody");
@@ -1170,6 +1486,70 @@ function toast(msg){
   toastTimer = setTimeout(() => el.style.display = "none", 3200);
 }
 
+/* ---------- options menu ---------- */
+const $ = id => document.getElementById(id);
+function syncOptionsUI(){
+  $("optTag").value = S.tag;
+  $("optVol").value = S.volume; $("vVol").textContent = S.volume;
+  $("optOff").value = S.offset; $("vOff").textContent = (S.offset > 0 ? "+" : "") + S.offset + "ms";
+  $("optSpd").value = S.speed;  $("vSpd").textContent = (S.speed / 100).toFixed(2) + "x";
+  $("optDim").value = S.dim;    $("vDim").textContent = S.dim + "%";
+  $("optPen").classList.toggle("on", !!S.penalty);
+  $("optShake").classList.toggle("on", !!S.shake);
+  $("optPart").classList.toggle("on", !!S.particles);
+  [...$("optDiff").children].forEach(b => b.classList.toggle("on", +b.dataset.d === S.diff));
+}
+function toggleOptions(force){
+  const ov = $("optOv");
+  const show = force != null ? force : ov.classList.contains("hidden");
+  ov.classList.toggle("hidden", !show);
+  if (show) syncOptionsUI();
+}
+$("optBtn").onclick = () => toggleOptions();
+$("optClose").onclick = () => toggleOptions(false);
+$("optReset").onclick = () => { S = Object.assign({}, DEFAULTS); applySettings(); syncOptionsUI(); toast("Settings reset to defaults."); };
+
+$("optTag").oninput  = e => { S.tag = e.target.value.toUpperCase().slice(0, 14); saveSettings(); };
+$("optVol").oninput  = e => { S.volume = +e.target.value; $("vVol").textContent = S.volume; applySettings(); };
+$("optOff").oninput  = e => { S.offset = +e.target.value; $("vOff").textContent = (S.offset > 0 ? "+" : "") + S.offset + "ms"; saveSettings(); };
+$("optSpd").oninput  = e => { S.speed = +e.target.value; $("vSpd").textContent = (S.speed / 100).toFixed(2) + "x"; saveSettings(); };
+$("optDim").oninput  = e => { S.dim = +e.target.value; $("vDim").textContent = S.dim + "%"; applySettings(); };
+$("optPen").onclick  = () => { S.penalty = !S.penalty; syncOptionsUI(); saveSettings(); };
+$("optShake").onclick= () => { S.shake = !S.shake; syncOptionsUI(); saveSettings(); };
+$("optPart").onclick = () => { S.particles = !S.particles; if (!S.particles) game.particles.length = 0; syncOptionsUI(); saveSettings(); };
+$("optDiff").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  S.diff = +b.dataset.d; syncOptionsUI(); saveSettings();
+  toast("Difficulty set to " + DIFFS[S.diff].name + " - reload the track to apply.");
+};
+
+/* Auto-calibration: play normally for a stretch, then shift the offset by the
+   median of your hit errors. Median, not mean, so a few wild taps cannot skew it. */
+$("calibBtn").onclick = () => {
+  if (game.mode !== "play"){ toast("Start a track first, then calibrate while it plays."); return; }
+  toggleOptions(false);
+  game.calibrating = true;
+  game.deltas.length = 0;
+  toast("CALIBRATING - play naturally for 20 seconds...");
+  log("Calibration started.", "info");
+  setTimeout(() => {
+    game.calibrating = false;
+    const d = game.deltas.slice().sort((a, b) => a - b);
+    if (d.length < 8){
+      toast("Not enough hits to calibrate. Try again and hit more notes.");
+      log("Calibration aborted: only " + d.length + " samples.", "warn");
+      return;
+    }
+    const median = d[Math.floor(d.length / 2)];
+    // note.time - judgeTime: positive median => you hit early => shift offset down
+    const shift = Math.round(-median * 1000);
+    S.offset = Math.max(-300, Math.min(300, S.offset + shift));
+    applySettings(); syncOptionsUI();
+    toast(`Calibrated: offset ${S.offset > 0 ? "+" : ""}${S.offset}ms (from ${d.length} hits).`);
+    log(`Calibration done: median error ${(median * 1000).toFixed(1)}ms -> offset ${S.offset}ms`, "ok");
+  }, 20000);
+};
+
 const presetBox = document.getElementById("presets");
 PRESETS.forEach(p => {
   const b = document.createElement("button");
@@ -1191,6 +1571,7 @@ document.getElementById("startBtn").onclick = () => {
 document.getElementById("lbBtn").onclick = openLeaderboard;
 document.getElementById("logBtn").onclick = () => document.getElementById("logPanel").classList.toggle("on");
 document.getElementById("lbClose").onclick = () => {
+  if (lbRef) { try { lbRef.off(); } catch(e){} lbRef = null; }   // stop the live listener
   document.getElementById("lbOv").classList.add("hidden");
   if (game.mode === "menu") document.getElementById("startOv").classList.remove("hidden");
 };
@@ -1210,6 +1591,8 @@ document.getElementById("quitBtn").onclick = () => {
 };
 
 resize();
+applySettings();
+syncOptionsUI();
 requestAnimationFrame(frame);
 </script>
 </body>
