@@ -801,6 +801,20 @@ const HOST_LEASE = 6000;
 let tableRef = null, actionsRef = null, chatRef = null, presRef = null, hrRef = null;
 let netReady = false, lastPush = 0, pushPending = false;
 
+/* A host is "wedged" when its own phase deadline is well past and no state
+   update has landed since. That is the observable symptom of a host whose
+   timers are throttled or whose page is a zombie, and it is the only signal
+   other clients have -- the lease itself keeps renewing regardless. */
+let lastStateAt = 0;
+const STALL_MS = 9000;
+function stateStalled(){
+  if (isHost || !lastStateAt) return false;
+  const t = now();
+  if (t - lastStateAt < STALL_MS) return false;
+  if (!T.phaseEnd) return false;
+  return t - T.phaseEnd > STALL_MS;
+}
+
 function setNet(mode, txt){
   $("netDot").className = "dot " + mode;
   $("netTxt").textContent = txt;
@@ -834,6 +848,7 @@ function connect(){
   tableRef.on("value", snap => {
     const v = snap.val();
     netReady = true;
+    lastStateAt = now();
     if (!v){ if (isHost) push(true); return; }
     applyRemote(v);
   });
@@ -844,9 +859,14 @@ function connect(){
     if (!isHost || !a) return;
     if (a.type === "act" && T.phase === PHASE.PLAYING && T.turnSeat === a.seat && T.seats[a.seat].uid === a.uid)
       act(a.seat, T.turnHand, a.action);
-    if (a.type === "bet" && T.phase === PHASE.BETTING && T.seats[a.seat] && T.seats[a.seat].uid === a.uid){
-      T.seats[a.seat].bet = clamp(a.bet, 0, MAX_BET);
-      T.seats[a.seat].bank = a.bank;
+    if (a.type === "bet" && T.seats[a.seat] && T.seats[a.seat].uid === a.uid){
+      if (T.phase === PHASE.BETTING && !T.seats[a.seat].bet){
+        T.seats[a.seat].bet = clamp(a.bet, 0, MAX_BET);
+        T.seats[a.seat].bank = a.bank;
+      } else {
+        // arrived too late for this round -- refund rather than pocket the stake
+        T.seats[a.seat].bank = a.bank + clamp(a.bet, 0, MAX_BET);
+      }
       push();
     }
   });
@@ -859,13 +879,18 @@ function connect(){
     addChat(m.name, m.text, m.sys);
   });
 
-  // host lease: claim if vacant or stale
+  // Host lease. Only a SEATED player may host -- a spectator or zombie page
+  // holding the lease would stall the table for everyone. A host that stops
+  // advancing the game (throttled tab, dead page) is forcibly replaced.
   setInterval(() => {
     if (!ONLINE || !netReady) return;
+    if (mySeat < 0 && !isHost) return;
+    const stalled = stateStalled();
     db.ref(base + "/host").transaction(cur => {
       const t = now();
       if (!cur || !cur.uid || t - (cur.ts || 0) > HOST_LEASE || cur.uid === myUid)
         return { uid: myUid, ts: t };
+      if (stalled) return { uid: myUid, ts: t };   // take over from a wedged host
       return;                                  // someone else holds a fresh lease
     }, (err, committed, snap) => {
       const v = snap && snap.val();
@@ -904,8 +929,23 @@ function applyRemote(v){
   T.dealer = Object.assign({ cards: [], hole: true }, v.dealer || {});
   T.dealer.cards = T.dealer.cards || [];
   if (countCards() > prevCards) SFX.slide();
+  reconcileBank();
   if (prevPhase !== T.phase) onPhaseChange(prevPhase, T.phase);
   if (T.round !== prevRound){ /* new round */ }
+}
+/* The host's seat record is the authority on my bank. A bet that reached the
+   host after the betting window closed used to be dropped there while the
+   client had already deducted it -- the stake simply evaporated. Re-syncing
+   between rounds (never mid-bet, where a deducted-but-unapplied bet is a
+   legitimate transient) makes any such divergence self-healing. */
+function reconcileBank(){
+  if (mySeat < 0 || pendingBet) return;
+  const s = T.seats[mySeat];
+  if (!s || s.uid !== myUid) return;
+  if (T.phase !== PHASE.PAYOUT && T.phase !== PHASE.IDLE) return;
+  if (typeof s.bank === "number" && s.bank !== S.bank){
+    S.bank = s.bank; save(); syncUI();
+  }
 }
 function countCards(){
   let n = (T.dealer.cards || []).length;
