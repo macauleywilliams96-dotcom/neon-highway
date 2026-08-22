@@ -1451,7 +1451,6 @@ let lastFrame = performance.now();
 function frame(t){
   requestAnimationFrame(frame);
   const dt = Math.min(.05, (t - lastFrame) / 1000); lastFrame = t;
-  if (isHost) hostTick();
   shake = Math.max(0, shake - dt * 2.4);
 
   ctx.clearRect(0, 0, W, H);
@@ -1656,6 +1655,12 @@ connect();
 syncOpts();
 syncUI();
 requestAnimationFrame(frame);
+
+// The dealer engine runs on a timer, NOT on requestAnimationFrame: browsers
+// pause rAF in hidden tabs, which would freeze the table for every player the
+// moment the host switched tabs. Timers keep running (throttled, which is fine
+// for a phase machine driven by absolute timestamps).
+setInterval(() => { if (isHost) hostTick(); }, 120);
 
 // Solo mode still needs a heartbeat for the engine, and bots need a table.
 if (!ONLINE){
