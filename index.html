@@ -273,19 +273,18 @@
    writes to /tables/$room and cap payload sizes.
    ===================================================================== */
 const firebaseConfig = {
-  apiKey:            "YOUR_API_KEY",
-  authDomain:        "YOUR_PROJECT.firebaseapp.com",
-  databaseURL:       "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-  projectId:         "YOUR_PROJECT",
-  storageBucket:     "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId:             "YOUR_APP_ID"
+  // databaseURL is the ONLY required field -- the Realtime Database needs
+  // nothing else when its rules are public. apiKey/appId matter only for Auth,
+  // Storage and Analytics, none of which this game uses.
+  databaseURL: "https://blackj-ebdf6-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:   "blackj-ebdf6",
+  authDomain:  "blackj-ebdf6.firebaseapp.com"
 };
 
 let db = null, ONLINE = false;
 (function(){
-  const bad = v => !v || /YOUR_/.test(v);
-  if (bad(firebaseConfig.apiKey) || bad(firebaseConfig.databaseURL)) return;
+  const url = firebaseConfig.databaseURL;
+  if (!url || /YOUR_/.test(url)) return;
   try { firebase.initializeApp(firebaseConfig); db = firebase.database(); ONLINE = true; }
   catch(e){ console.warn("Firebase init failed:", e); }
 })();
