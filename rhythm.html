@@ -628,9 +628,54 @@ function analyseAudio(buffer, onProgress){
           if (Math.abs(shift) <= 1) bestLag += shift;
         }
       }
-      let bpm = bestLag ? 60 * fps / bestLag : 120;
-      while (bpm < 85) bpm *= 2;                    // fold into a musical range
-      while (bpm > 190) bpm /= 2;
+      /* Raw autocorrelation picks the strongest periodicity, which is not
+         always the musical tempo -- a 150 BPM track with off-beat hats read
+         as 120. So gather several candidate tempi (the autocorrelation
+         peaks plus their halves, doubles and dotted relatives) and choose
+         the one whose sixteenth grid actually explains the most onsets.
+         That optimises the thing we care about: how well the chart lines
+         up with what you hear. */
+      const candidates = new Set();
+      const addCand = v => {
+        let b = v;
+        while (b < 85) b *= 2;
+        while (b > 190) b /= 2;
+        if (b >= 85 && b <= 190) candidates.add(+b.toFixed(3));
+      };
+      const peaks = [];
+      for (let lag = minLag + 1; lag < maxLag - 1; lag++){
+        let s = 0;
+        for (let i = 0; i + lag < frames; i += 2) s += env[i] * env[i + lag];
+        s /= (frames - lag);
+        peaks.push({ lag, s });
+      }
+      peaks.sort((a, b) => b.s - a.s);
+      peaks.slice(0, 8).forEach(p => {
+        const base = 60 * fps / p.lag;
+        [base, base * 2, base / 2, base * 1.5, base / 1.5, base * (4/3), base * (3/4)].forEach(addCand);
+      });
+      addCand(bestLag ? 60 * fps / bestLag : 120);
+
+      const gridScore = (bpmTry) => {
+        const sub = (60 / bpmTry) / 4;
+        let best = -1, bestP = 0;
+        for (let p = 0; p < 32; p++){
+          const phase = (p / 32) * sub;
+          let hits = 0;
+          for (const o of onsets){
+            const q = Math.abs(((o.t - phase) % sub + sub) % sub);
+            if (Math.min(q, sub - q) < sub * 0.20) hits++;
+          }
+          if (hits > best){ best = hits; bestP = phase; }
+        }
+        // a finer grid trivially explains more, so penalise very fast tempi
+        return { hits: best / Math.pow(bpmTry, 0.35), raw: best, phase: bestP };
+      };
+      let bpm = 120, bestGrid = -1;
+      for (const c of candidates){
+        const g = gridScore(c);
+        if (g.hits > bestGrid){ bestGrid = g.hits; bpm = c; }
+      }
       const beat = 60 / bpm;
 
       // ---- beat phase: try offsets, keep the one onsets agree with most
