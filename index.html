@@ -2531,17 +2531,25 @@ function beginBetting(local){
   if (ONLINE && isHost) betsRef.remove();
   renderMatchup(); onPhase(A.phase); pushState(); syncUI();
 }
+/* The host applies phase changes locally, so its own echo from the
+   database looks like "no change" and never fires onPhase. Every one of
+   these transitions must therefore announce itself directly -- without it
+   the host never rings the bell, never reveals the styles, and above all
+   never settles: no payout and no stats. A solo player is always the host,
+   so it was broken for them every single fight. */
 function beginFight(){
   A.phase = PHASE.FIGHT;
   A.fightSeed = rnd32();           // revealed now -- bets are already locked
   A.startAt = now() + 600;         // small grace so everyone starts together
   A.phaseEnd = A.startAt + MAX_TICKS * TICK_MS;
   pushState();
+  onPhase(A.phase);
 }
 function beginResult(){
   A.phase = PHASE.RESULT;
   A.phaseEnd = now() + T_RESULT;
   pushState();
+  onPhase(A.phase);                // settles the bet -- see beginFight above
 }
 function hostTick(){
   if (!isHost) return;
