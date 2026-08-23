@@ -635,47 +635,41 @@ function analyseAudio(buffer, onProgress){
          the one whose sixteenth grid actually explains the most onsets.
          That optimises the thing we care about: how well the chart lines
          up with what you hear. */
-      const candidates = new Set();
-      const addCand = v => {
-        let b = v;
-        while (b < 85) b *= 2;
-        while (b > 190) b /= 2;
-        if (b >= 85 && b <= 190) candidates.add(+b.toFixed(3));
-      };
-      const peaks = [];
-      for (let lag = minLag + 1; lag < maxLag - 1; lag++){
-        let s = 0;
-        for (let i = 0; i + lag < frames; i += 2) s += env[i] * env[i + lag];
-        s /= (frames - lag);
-        peaks.push({ lag, s });
-      }
-      peaks.sort((a, b) => b.s - a.s);
-      peaks.slice(0, 8).forEach(p => {
-        const base = 60 * fps / p.lag;
-        [base, base * 2, base / 2, base * 1.5, base / 1.5, base * (4/3), base * (3/4)].forEach(addCand);
-      });
-      addCand(bestLag ? 60 * fps / bestLag : 120);
+      /* Harmonic comb, the standard cure for octave errors. Scoring a lag on
+         its own lets a strong sub-pulse win -- an off-beat hat pattern read
+         150 BPM as 120. Adding the autocorrelation at half and double the
+         lag rewards a tempo whose whole harmonic family is present, which
+         is what a real beat looks like.
 
-      const gridScore = (bpmTry) => {
-        const sub = (60 / bpmTry) / 4;
-        let best = -1, bestP = 0;
-        for (let p = 0; p < 32; p++){
-          const phase = (p / 32) * sub;
-          let hits = 0;
-          for (const o of onsets){
-            const q = Math.abs(((o.t - phase) % sub + sub) % sub);
-            if (Math.min(q, sub - q) < sub * 0.20) hits++;
-          }
-          if (hits > best){ best = hits; bestP = phase; }
-        }
-        // a finer grid trivially explains more, so penalise very fast tempi
-        return { hits: best / Math.pow(bpmTry, 0.35), raw: best, phase: bestP };
+         An earlier attempt scored candidates by how many onsets fell near
+         their grid instead. That failed badly (174 read as 88) because a
+         slower tempo has a wider sixteenth and therefore a wider absolute
+         tolerance, so slow tempi win by default. */
+      const acAt = lag => {
+        const L = Math.round(lag);
+        if (L < 2 || L >= frames) return 0;
+        let s = 0;
+        for (let i = 0; i + L < frames; i += 2) s += env[i] * env[i + L];
+        return s / (frames - L);
       };
-      let bpm = 120, bestGrid = -1;
-      for (const c of candidates){
-        const g = gridScore(c);
-        if (g.hits > bestGrid){ bestGrid = g.hits; bpm = c; }
+      let combLag = bestLag, combBest = -1;
+      for (let lag = minLag; lag <= maxLag; lag++){
+        const score = acAt(lag) + 0.55 * acAt(lag * 2) + 0.55 * acAt(lag / 2)
+                                + 0.25 * acAt(lag * 4);
+        if (score > combBest){ combBest = score; combLag = lag; }
       }
+      // sub-frame refinement on the chosen lag
+      {
+        const y0 = acAt(combLag - 1), y1 = acAt(combLag), y2 = acAt(combLag + 1);
+        const den = y0 - 2 * y1 + y2;
+        if (den !== 0){
+          const shift = 0.5 * (y0 - y2) / den;
+          if (Math.abs(shift) <= 1) combLag += shift;
+        }
+      }
+      let bpm = combLag ? 60 * fps / combLag : 120;
+      while (bpm < 85) bpm *= 2;                    // fold into a musical range
+      while (bpm > 190) bpm /= 2;
       const beat = 60 / bpm;
 
       // ---- beat phase: try offsets, keep the one onsets agree with most
