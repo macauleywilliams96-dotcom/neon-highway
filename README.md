@@ -78,3 +78,25 @@ Both preserved and restorable:
 
 - [`blackjack-v1`](../../tree/blackjack-v1) — VELVET ACE, real-time multiplayer blackjack
 - [`rhythm-game-v1`](../../tree/rhythm-game-v1) — NEON HIGHWAY, synthwave rhythm game
+
+## Fighting styles (hidden until the bell)
+
+Every robot is built around one of eight disciplines. The style comes from
+`botSeed`, so the published odds price it in — but viewers only see
+`❓ STYLE SEALED` until the fight starts. You bet the tale of the tape and find
+out what you backed when it starts swinging.
+
+| | Style | Signature |
+|---|---|---|
+| 🥋 | Karate Master | Flurry combos; a parry that stuns whoever swings into it |
+| ⚔ | Saber Duelist | Plasma blade; deflects incoming fire back at the sender |
+| 🧙 | Technomancer | Fireballs, chain lightning, blinks away when cornered |
+| 🔫 | Gunslinger | Three-round bursts from range; hates being crowded |
+| 🥷 | Cyber Ninja | Vanishes, reappears behind you, throws shuriken |
+| 🛡 | Juggernaut | Shield charge and ground slam; slow, enormous, patient |
+| 🪓 | Berserker | Hits harder the closer it gets to the scrapheap |
+| 🩸 | Siphon Unit | Drains hull from everything it hits |
+
+Styles were balanced by a proportional controller run against mass simulation:
+the first pass had Berserker at 73% and Siphon at 26%, and the spread is now
+44–56%.
