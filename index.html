@@ -414,7 +414,9 @@ function buildLevel(){
 
   // ---- goblins without hardhats, patrolling the slabs
   for (const s of slabs){
-    if (s.x1 - s.x0 < 460 || Math.random() < .25) continue;
+    // leave the spawn slab clear -- being headbutted before you have taken a
+    // step is a poor introduction to workplace safety
+    if (s.x0 < 340 || s.x1 - s.x0 < 460 || Math.random() < .25) continue;
     const gx = rnd(s.x0 + 90, s.x1 - 90);
     const g = Bodies.rectangle(gx, GROUND_Y - 40, 26, 34, {
       friction: .05, frictionAir: .02, density: .0016, label: "hazard-goblin",
@@ -667,7 +669,13 @@ function updateGame(dt){
 
   // ---- camera
   const targetX = clamp(player.position.x - W * 0.42, 0, Math.max(0, CFG.worldEnd - W));
-  const targetY = clamp(player.position.y - H * 0.58, -80, 260);
+  /* Anchor the view on the floor line rather than the auditor, so the
+     corridor sits low in frame instead of leaving a screenful of empty
+     brick overhead. Only chase him vertically when he leaves that band --
+     launched by an axe, or down a pit. */
+  let targetY = GROUND_Y - H * 0.76;
+  if (player.position.y < targetY + 110) targetY = player.position.y - 110;
+  if (player.position.y > targetY + H - 150) targetY = player.position.y - H + 150;
   cam.x += (targetX - cam.x) * .12;
   cam.y += (targetY - cam.y) * .10;
   cam.shake = Math.max(0, cam.shake - dt * 2.6);
@@ -728,9 +736,11 @@ function drawBricks(){
       ctx.strokeRect(x + off, y, 62, 38);
     }
   }
-  // floor band
+  // floor band, then solid bedrock down past the bottom of the view
   ctx.fillStyle = "#161b26";
   ctx.fillRect(x0, GROUND_Y, x1 - x0, 60);
+  ctx.fillStyle = "#0a0d14";
+  ctx.fillRect(x0, GROUND_Y + 60, x1 - x0, Math.max(400, H));
   ctx.fillStyle = "#0d1119";
   for (let x = x0; x < x1; x += 48) ctx.fillRect(x, GROUND_Y, 2, 60);
   ctx.strokeStyle = "rgba(120,140,190,.18)";
