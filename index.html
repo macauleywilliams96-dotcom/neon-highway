@@ -1252,8 +1252,17 @@ function addSpark(x, y, n, col, spread, speed){
                   life: .3 + Math.random() * .5, max: .8, col, r: 1 + Math.random() * 2.6 });
   }
 }
+/* Call-outs stack instead of overlapping. A busy exchange fires CRITICAL,
+   VANISHED, FLIPPED IT and three damage numbers within a few frames, and
+   drawn raw they pile into an unreadable smear at one point on screen. */
 function floater(x, y, txt, col, big){
-  floaters.push({ x, y, txt, col, big, t: 0, dur: big ? 1.6 : 1.0 });
+  let lane = 0;
+  for (const f of floaters)
+    if (f.t < .5 && Math.abs(f.x - x) < 110) lane++;
+  // only one headline at a time; later ones drop to the small style
+  if (big && floaters.some(f => f.big && f.t < .3)) big = false;
+  floaters.push({ x: x + (lane % 2 ? 34 : -34) * Math.min(2, lane) * .5,
+                  y: y - lane * 24, txt, col, big, t: 0, dur: big ? 1.6 : 1.0 });
 }
 
 function drawBackdrop(t){
@@ -1965,7 +1974,7 @@ function drawFightHUD(F){
   /* Health bars meet in the middle, fighting-game style. They used to be
      pinned to the screen corners, where they collided with the bet ticket
      and the book panel and clipped the robot names. */
-  const barH = 22, top = 62, gap = 92;
+  const barH = 22, top = 80, gap = 92;   // clear of the 52px app bar + name line
   const barW = Math.min((W - gap) / 2 - 24, 400);
   for (let i = 0; i < 2; i++){
     const b = F.bots[i], right = i === 1;
@@ -2440,7 +2449,7 @@ function frame(t){
     cam.z += (wantZ - cam.z) * .05;
   } else {
     cam.x += (ARENA_W / 2 - cam.x) * .05;
-    cam.z += (clamp(W / (ARENA_W * .75), .5, 1.1) - cam.z) * .05;
+    cam.z += (clamp(W / (ARENA_W * .42), .5, 1.5) - cam.z) * .05;   // frame the contenders
   }
   cam.shake = Math.max(0, cam.shake - dt * 2.6);
   cam.flash = Math.max(0, cam.flash - dt * 3.2);
@@ -2479,7 +2488,7 @@ function frame(t){
 // Between fights, show the two contenders posing at their corners.
 function drawIdleBots(t){
   const mk = (i) => ({
-    def: bots[i], hp: bots[i].maxHp, x: i === 0 ? 300 : ARENA_W - 300, y: 0,
+    def: bots[i], hp: bots[i].maxHp, x: i === 0 ? 460 : ARENA_W - 460, y: 0,
     vx: Math.sin(t / 600 + i) * .6, vy: 0, face: i === 0 ? 1 : -1,
     stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0
   });
