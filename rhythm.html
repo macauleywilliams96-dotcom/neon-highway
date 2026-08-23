@@ -576,7 +576,15 @@ function analyseAudio(buffer, onProgress){
       const fps = rate / HOP;
 
       // ---- adaptive threshold: a peak must beat the local median by a margin
-      const FRAME_LAG = HOP / rate;      // one analysis hop, in seconds
+      /* A frame's timestamp is the START of its analysis window, but the
+         transient that triggered it sits roughly mid-window, so raw onset
+         times run early. Measured against ground-truth click tracks the
+         bias was -21ms, which matches half a 1024-sample window at this
+         rate; adding it back centres notes on the sound.
+         (An earlier attempt SUBTRACTED a hop on the assumption that flux
+         peaks late -- that doubled the error to -44ms, and the signed
+         measurement is what caught it.) */
+      const FRAME_LAG = -(FFT_N / 2) / rate;
       const W = Math.round(fps * 0.35);            // ~350ms window either side
       const onsets = [];
       const sorted = [];
