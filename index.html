@@ -1331,11 +1331,11 @@ function floater(x, y, txt, col, big){
   if (floaters.some(f => f.txt === txt && f.t < .8)) return;
   let lane = 0;
   for (const f of floaters)
-    if (f.t < .5 && Math.abs(f.x - x) < 110) lane++;
+    if (f.t < .5 && Math.abs(f.x - x) < 130) lane += (f.big ? 1.6 : 1);   // headlines need more room
   // only one headline at a time; later ones drop to the small style
   if (big && floaters.some(f => f.big && f.t < .45)) big = false;
   floaters.push({ x: x + (lane % 2 ? 34 : -34) * Math.min(2, lane) * .5,
-                  y: y - lane * 24, txt, col, big, t: 0, dur: big ? 1.6 : 1.0 });
+                  y: y - lane * 30, txt, col, big, t: 0, dur: big ? 1.6 : 1.0 });
 }
 
 function drawBackdrop(t){
@@ -1422,8 +1422,29 @@ function drawFloor(){
 }
 
 // ---- the mech itself, drawn procedurally so it can animate
-function drawBot(b, t){
+function drawBot(b, t, ghost){
   const s = worldToScreen(b.x, b.y);
+
+  /* Speed reads as smear. Anything moving fast -- a ninja teleport, a
+     wheelchair ram, a lunging saber -- leaves afterimages behind it rather
+     than simply teleporting between frames. */
+  if (!ghost && Math.abs(b.vx) > 5.5 && b.hp > 0){
+    const n = Math.min(3, Math.floor(Math.abs(b.vx) / 5));
+    for (let g = n; g >= 1; g--){
+      ctx.save();
+      ctx.globalAlpha = .16 * (1 - g / (n + 1));
+      drawBot({ ...b, x: b.x - b.vx * g * 1.6, vx: 0 }, t, true);
+      ctx.restore();
+    }
+  }
+  // landing dust when a jump or vault touches down
+  if (!ghost && b.y <= 3 && b.vy < -4){
+    const gp = worldToScreen(b.x, 0);
+    for (let i = 0; i < 4; i++)
+      sparks.push({ x: gp.x + (Math.random() - .5) * 30, y: gp.y,
+                    vx: (Math.random() - .5) * 120, vy: -20 - Math.random() * 40,
+                    life: .35, max: .35, col: "120,135,175", r: 2 + Math.random() * 2.5 });
+  }
   const z = cam.z, col = b.def.col;
   const walk = Math.min(1, Math.abs(b.vx) / 4);
   const phase = t / 90;
@@ -1435,7 +1456,15 @@ function drawBot(b, t){
   ctx.translate(s.x, s.y);
   ctx.scale(z, z);
   if (dead){ ctx.rotate(b.def.side === 0 ? -1.35 : 1.35); ctx.translate(0, 26); }
-  else ctx.rotate(lean);
+  else {
+    // getting hit knocks the whole frame back, not just the colour
+    const recoil = b.hitFlash > 0 ? (b.hitFlash / 8) * .16 * -b.face : 0;
+    ctx.rotate(lean + recoil);
+    if (b.hitFlash > 0){
+      const sq = 1 + (b.hitFlash / 8) * .08;
+      ctx.scale(sq, 2 - sq);                      // brief squash on impact
+    }
+  }
   ctx.scale(b.face, 1);
 
   // shadow
