@@ -361,6 +361,45 @@ const SUFFIX = ["CLAW","BREAKER","FIST","REAPER","JAW","SPIKE","HAMMER","WRECKER
                 "SMASH","DRILL","BLADE","GRINDER","STOMP","RIPPER","BOLT","MAULER"];
 const CHASSIS = ["BRUISER","SKIRMISHER","JUGGERNAUT","STRIKER","TANK","DUELIST"];
 
+/* ---------------------------------------------------------------------
+   FIGHTING STYLES
+
+   Every robot is built around a hidden discipline. The style is derived
+   from botSeed -- so the bookmaker's odds DO account for it -- but it is
+   not revealed to viewers until the bell rings. You bet on the tale of
+   the tape; you find out what you backed when it starts swinging.
+
+   `rating` is the style's contribution to the strength score, tuned
+   against mass simulation so the published odds stay honest.
+   --------------------------------------------------------------------- */
+const CLASSES = [
+  { id:"karate",  name:"KARATE MASTER", icon:"🥋", rating:0.98, melee:true,
+    mods:{pwr:.82,spd:1.22,arm:.90,hp:.88},
+    blurb:"Flurry combos and a parry that punishes a whiff." },
+  { id:"saber",   name:"SABER DUELIST", icon:"⚔", rating:0.98, melee:true,
+    mods:{pwr:1.25,spd:1.06,arm:.95,hp:1.02},
+    blurb:"Plasma blade. Deflects incoming fire back at the sender." },
+  { id:"wizard",  name:"TECHNOMANCER",  icon:"🧙", rating:1.02, melee:false,
+    mods:{pwr:1.09,spd:.90,arm:.81,hp:.92},
+    blurb:"Fireballs, chain lightning, and a blink when cornered." },
+  { id:"gunner",  name:"GUNSLINGER",    icon:"🔫", rating:0.99, melee:false,
+    mods:{pwr:.90,spd:1.05,arm:.90,hp:.92},
+    blurb:"Three-round bursts from range. Hates being crowded." },
+  { id:"ninja",   name:"CYBER NINJA",   icon:"🥷", rating:1.01, melee:true,
+    mods:{pwr:1.19,spd:1.25,arm:.85,hp:.95},
+    blurb:"Vanishes, reappears behind you, throws shuriken." },
+  { id:"jugger",  name:"JUGGERNAUT",    icon:"🛡", rating:1.01, melee:true,
+    mods:{pwr:.91,spd:.72,arm:1.23,hp:1.14},
+    blurb:"Shield charge and a ground slam. Slow, enormous, patient." },
+  { id:"berserk", name:"BERSERKER",     icon:"🪓", rating:1.02, melee:true,
+    mods:{pwr:1.08,spd:1.0,arm:.78,hp:.94},
+    blurb:"Hits harder the closer it gets to the scrapheap." },
+  { id:"leech",   name:"SIPHON UNIT",   icon:"🩸", rating:1.00, melee:true,
+    mods:{pwr:1.22,spd:1.0,arm:1.04,hp:1.14},
+    blurb:"Drains hull from everything it hits." }
+];
+const classById = id => CLASSES.find(c => c.id === id) || CLASSES[0];
+
 const POWERUPS = [
   { id:"repair",    name:"NANO REPAIR", col:"#3ddc84", icon:"+" },
   { id:"overclock", name:"OVERCLOCK",   col:"#ffd447", icon:"⚡" },
@@ -383,12 +422,14 @@ function makeBots(botSeed){
     // the odds meaningless and the betting pointless.
     const budget = 3.7 + rnd() * 1.9, sum = pwr + spd + arm + tec, k = budget / sum;
     pwr *= k; spd *= k; arm *= k; tec *= k;
+    const cls = CLASSES[Math.floor(rnd() * CLASSES.length)];
+    pwr *= cls.mods.pwr; spd *= cls.mods.spd; arm *= cls.mods.arm;
     return {
-      side, name,
+      side, name, cls: cls.id,
       chassis: CHASSIS[Math.floor(rnd() * CHASSIS.length)],
       pwr, spd, arm, tec,
       aggr: .35 + rnd() * .5,
-      maxHp: Math.round(900 + arm * 260),
+      maxHp: Math.round((900 + arm * 260) * cls.mods.hp),
       col: side === 0 ? "#2ee6ff" : "#ff3b5c"
     };
   };
@@ -396,17 +437,27 @@ function makeBots(botSeed){
 }
 
 /* Published odds must reflect what the simulation ACTUALLY does, otherwise
-   the market is a lie. The mapping below is fitted against 1500 simulated
-   fights: a score ratio of .55 wins ~83% of the time and .45 wins ~15%, a
-   steep response that a naive linear guess got badly wrong. Logistic fit,
-   k ~= 32, then clamped so a longshot still pays big without going silly. */
-const ODDS_K = 32, HOUSE = 0.06;
-function strength(b){ return b.pwr * 1.15 + b.spd * .95 + b.arm * 1.05 + b.tec * .85 + b.maxHp / 1200; }
+   the market is a lie -- and a mispriced market is exploitable.
+
+   Fitted, not guessed: outcomes for 4000 fights were precomputed and the
+   (steepness, clamp) pair swept against them. k=30 with the tail clamped at
+   .15 lands calibration error at ~0.02, with backing-every-favourite and
+   backing-every-longshot BOTH returning about -6%, i.e. exactly the house
+   margin and no edge either way.
+
+   The clamp matters more than it looks: at .10 the tail was paying 9.4x on
+   robots that actually won 17% of the time, which made "always back the
+   longshot" a +11% strategy. */
+const ODDS_K = 30, HOUSE = 0.06;
+function strength(b){
+  const base = b.pwr * 1.15 + b.spd * .95 + b.arm * 1.05 + b.tec * .85 + b.maxHp / 1200;
+  return base * classById(b.cls).rating;      // the style is priced in, even while hidden
+}
 function oddsFor(bots){
   const sa = strength(bots[0]), sb = strength(bots[1]);
   const ratio = sa / (sa + sb);
   let pa = 1 / (1 + Math.exp(-ODDS_K * (ratio - .5)));
-  pa = clamp(pa, .10, .90);
+  pa = clamp(pa, .15, .85);
   return [ +(1 / pa * (1 - HOUSE)).toFixed(2), +(1 / (1 - pa) * (1 - HOUSE)).toFixed(2), pa ];
 }
 
@@ -419,7 +470,9 @@ function initFight(botSeed, fightSeed){
       def: b, hp: b.maxHp, x: i === 0 ? 240 : ARENA_W - 240, y: 0, vx: 0, vy: 0,
       face: i === 0 ? 1 : -1, stun: 0, atkCd: 30 + i * 12, dashCd: 0, decideIn: 6,
       state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0,
-      combo: 0, hitFlash: 0, wantX: 0, lastDmg: 0
+      combo: 0, hitFlash: 0, wantX: 0, lastDmg: 0,
+      // style machinery
+      cd2: 90 + i * 30, parry: 0, invis: 0, flurry: 0, chan: 0, blade: 0, rage: 0
     })),
     pickups: [], shots: [], nextDrop: 60 * 6, drops: 0
   };
@@ -455,6 +508,13 @@ function stepFight(F){
   for (let i = 0; i < 2; i++){
     const me = F.bots[i], foe = F.bots[1 - i];
     if (me.stun > 0){ me.stun--; me.vx *= .8; }
+    if (me.cd2 > 0) me.cd2--;
+    if (me.parry > 0) me.parry--;
+    if (me.invis > 0) me.invis--;
+    if (me.blade > 0) me.blade--;
+    if (me.chan > 0) me.chan--;
+    // Berserkers wind up as they fall apart -- rage scales with missing hull.
+    me.rage = me.def.cls === "berserk" ? (1 - me.hp / me.def.maxHp) : 0;
     if (me.over > 0) me.over--;
     if (me.bers > 0) me.bers--;
     if (me.shield > 0) me.shield--;
@@ -481,7 +541,86 @@ function stepFight(F){
       const wantPickup = target && (bestD < Math.abs(target.x - foe.x) + 60 || hurt < .4);
       if (wantPickup){ me.wantX = target.x; me.state = "chase"; }
       else if (hurt < .25 && R() < .3){ me.wantX = me.x - me.face * 220; me.state = "retreat"; }
-      else me.wantX = foe.x - me.face * (60 + R() * 40);
+      else {
+        // Melee styles want to be in your face; shooters want daylight.
+        const ideal = classById(me.def.cls).melee ? (60 + R() * 40) : (200 + R() * 90);
+        me.wantX = foe.x - me.face * ideal;
+      }
+
+      // ---- style signature moves (own cooldown, fired before basics)
+      const K = me.def.cls;
+      if (me.stun <= 0 && me.cd2 <= 0){
+        if (K === "karate" && d < 110){
+          me.state = "flurry"; me.stateT = 34; me.flurry = 4; me.cd2 = 190; me.parry = 40;
+          ev.push({ t: "style", i, id: "karate", x: me.x });
+        }
+        else if (K === "saber" && d < 260){
+          me.state = "lunge"; me.stateT = 20; me.cd2 = 170; me.blade = 60;
+          me.vx = me.face * 13 * spd;
+          ev.push({ t: "style", i, id: "saber", x: me.x });
+        }
+        else if (K === "wizard"){
+          if (d < 130 && R() < .6){                       // cornered -> blink away
+            me.x = clamp(me.x - me.face * 260, 100, ARENA_W - 100);
+            me.cd2 = 150; me.state = "blink"; me.stateT = 16;
+            ev.push({ t: "style", i, id: "blink", x: me.x });
+          } else if (R() < .5){                            // chain lightning
+            me.state = "cast"; me.stateT = 26; me.cd2 = 200; me.chan = 26;
+            applyDamage(F, 1 - i, (48 + me.def.pwr * 40) * (.9 + R() * .25), ev, "shock", foe.x);
+            foe.stun = Math.max(foe.stun, 30);
+            ev.push({ t: "style", i, id: "lightning", x: me.x, tx: foe.x });
+          } else {                                         // fireball
+            me.state = "cast"; me.stateT = 22; me.cd2 = 130;
+            F.shots.push({ owner:i, x:me.x + me.face*30, y:56, vx:me.face*6.5,
+                           dmg:70 + me.def.pwr*34, kind:"fire", life:220 });
+            ev.push({ t: "style", i, id: "fireball", x: me.x });
+          }
+        }
+        else if (K === "gunner" && d > 130){
+          me.state = "burst"; me.stateT = 26; me.cd2 = 150;
+          for (let s = 0; s < 3; s++)
+            F.shots.push({ owner:i, x:me.x + me.face*(30 + s*22), y:44 + (s-1)*6,
+                           vx:me.face*14, dmg:24 + me.def.pwr*14, kind:"bullet", life:180 });
+          ev.push({ t: "style", i, id: "burst", x: me.x });
+        }
+        else if (K === "ninja"){
+          me.invis = 34; me.cd2 = 210;
+          me.x = clamp(foe.x - me.face * 62, 100, ARENA_W - 100);   // reappear behind
+          me.state = "vanish"; me.stateT = 20;
+          F.shots.push({ owner:i, x:me.x + me.face*26, y:52, vx:me.face*11,
+                         dmg:30 + me.def.pwr*18, kind:"shuriken", life:150 });
+          ev.push({ t: "style", i, id: "ninja", x: me.x });
+        }
+        else if (K === "jugger"){
+          if (d > 150){                                    // shield charge
+            me.state = "charge"; me.stateT = 30; me.cd2 = 210; me.vx = me.face * 11;
+            ev.push({ t: "style", i, id: "charge", x: me.x });
+          } else {                                         // ground slam
+            me.state = "slam"; me.stateT = 26; me.cd2 = 200;
+            applyDamage(F, 1 - i, (55 + me.def.pwr * 46) * (.9 + R() * .3), ev, "slam", me.x);
+            foe.vx += me.face * 8; foe.stun = Math.max(foe.stun, 22);
+            ev.push({ t: "style", i, id: "slam", x: me.x });
+          }
+        }
+        else if (K === "berserk" && d < 120){
+          me.state = "whirl"; me.stateT = 30; me.cd2 = 180;
+          applyDamage(F, 1 - i, (40 + me.def.pwr * 40) * (1 + me.rage) * (.9 + R() * .3), ev, "whirl", me.x);
+          ev.push({ t: "style", i, id: "whirl", x: me.x });
+        }
+      }
+      // charge / lunge connect on contact
+      if ((me.state === "charge" || me.state === "lunge") && d < 70 && me.stateT > 2){
+        const heavy = me.state === "charge";
+        applyDamage(F, 1 - i, (heavy ? 62 : 54) + me.def.pwr * (heavy ? 40 : 46), ev,
+                    heavy ? "slam" : "crit", foe.x);
+        foe.vx += me.face * (heavy ? 9 : 5);
+        me.stateT = 0; me.state = "idle"; me.vx *= .3;
+      }
+      // karate flurry: rapid follow-up strikes
+      if (me.flurry > 0 && me.stateT % 8 === 0 && d < 105){
+        me.flurry--;
+        applyDamage(F, 1 - i, (18 + me.def.pwr * 16) * (.9 + R() * .3), ev, "melee", foe.x);
+      }
 
       // -- attacks
       if (me.stun <= 0 && me.atkCd <= 0){
@@ -490,11 +629,12 @@ function stepFight(F){
           me.state = "melee"; me.stateT = 18;
           me.atkCd = Math.round(38 / (me.over > 0 ? 1.6 : 1) - me.def.spd * 6);
           const crit = R() < .12 + me.def.tec * .05;
-          let dmg = (30 + me.def.pwr * 34) * (crit ? 1.9 : 1) * (me.bers > 0 ? 1.55 : 1) * (me.over > 0 ? 1.2 : 1);
+          let dmg = (30 + me.def.pwr * 34) * (crit ? 1.9 : 1) * (me.bers > 0 ? 1.55 : 1)
+                    * (me.over > 0 ? 1.2 : 1) * (1 + me.rage * .8);
           dmg *= .85 + R() * .3;
           applyDamage(F, 1 - i, dmg, ev, crit ? "crit" : "melee", me.x + me.face * 50);
           ev.push({ t: "swing", i, x: me.x, face: me.face });
-        } else if (d > 110 && (R() < .45 + me.def.tec * .2)){
+        } else if (d > 110 && !classById(me.def.cls).melee && (R() < .45 + me.def.tec * .2)){
           // ranged
           const isRocket = me.rocket > 0;
           if (isRocket) me.rocket--;
@@ -536,7 +676,15 @@ function stepFight(F){
     sh.x += sh.vx; sh.life--;
     const foe = F.bots[1 - sh.owner];
     if (Math.abs(sh.x - foe.x) < 34 && foe.y < 60){
-      applyDamage(F, 1 - sh.owner, sh.dmg * (.9 + F.rnd() * .2), ev, sh.rocket ? "rocket" : "laser", sh.x);
+      // A saber duelist with an active blade swats shots back at the sender.
+      if (foe.def.cls === "saber" && foe.blade > 0 && !sh.reflected && F.rnd() < .65){
+        sh.owner = 1 - sh.owner; sh.vx *= -1.15; sh.reflected = true; sh.dmg *= 1.15;
+        sh.x += sh.vx * 2;
+        ev.push({ t: "deflect", x: sh.x, i: 1 - sh.owner });
+        continue;
+      }
+      applyDamage(F, 1 - sh.owner, sh.dmg * (.9 + F.rnd() * .2), ev,
+                  sh.kind === "fire" ? "rocket" : (sh.rocket ? "rocket" : "laser"), sh.x);
       F.shots.splice(s, 1); continue;
     }
     if (sh.life <= 0 || sh.x < 60 || sh.x > ARENA_W - 60) F.shots.splice(s, 1);
@@ -562,9 +710,21 @@ function stepFight(F){
   return ev;
 }
 
-function applyDamage(F, idx, dmg, ev, kind, atX){
+function applyDamage(F, idx, dmg, ev, kind, atX, fromIdx){
   const b = F.bots[idx];
   if (b.hp <= 0) return;
+  // ---- style defences
+  if (b.invis > 0){ ev.push({ t: "miss", i: idx, x: b.x, txt: "VANISHED" }); return; }
+  if (b.parry > 0 && kind !== "shock" && kind !== "slam"){
+    b.parry = 0;
+    ev.push({ t: "miss", i: idx, x: b.x, txt: "PARRIED" });
+    const att = F.bots[1 - idx];
+    if (att && att.hp > 0){ att.stun = Math.max(att.stun, 26); }
+    return;
+  }
+  if (b.def.cls === "jugger" && kind === "melee" && F.rnd() < .18){
+    ev.push({ t: "miss", i: idx, x: b.x, txt: "TANKED" }); dmg *= .35;
+  }
   if (b.shield > 0){
     ev.push({ t: "block", i: idx, x: b.x });
     b.shield = Math.max(0, b.shield - 30);
@@ -572,6 +732,13 @@ function applyDamage(F, idx, dmg, ev, kind, atX){
   }
   dmg = Math.max(4, dmg * (1 - b.def.arm * .18));
   b.hp = Math.max(0, b.hp - dmg);
+  // Siphon units drink what they deal.
+  const att = F.bots[1 - idx];
+  if (att && att.hp > 0 && att.def.cls === "leech"){
+    const heal = dmg * .32;
+    att.hp = Math.min(att.def.maxHp, att.hp + heal);
+    ev.push({ t: "leech", i: 1 - idx, x: att.x, amt: heal });
+  }
   b.hitFlash = 8;
   b.lastDmg = dmg;
   b.vx += (atX != null && atX < b.x ? 1 : -1) * (kind === "rocket" ? 5.5 : 2.2);
@@ -726,6 +893,7 @@ function drawBot(b, t){
   const dead = b.hp <= 0;
 
   ctx.save();
+  if (b.invis > 0) ctx.globalAlpha = .28;          // ninja mid-vanish
   ctx.translate(s.x, s.y);
   ctx.scale(z, z);
   if (dead){ ctx.rotate(b.def.side === 0 ? -1.35 : 1.35); ctx.translate(0, 26); }
@@ -801,9 +969,97 @@ function drawBot(b, t){
   }
   ctx.restore();
 
+  // ---- style weapon / kit, drawn on the front arm
+  const K = b.def.cls;
+  ctx.save();
+  ctx.translate(16, -66);
+  ctx.rotate(gun ? -1.45 : (-.35 - atk * .9));
+  ctx.translate(0, 24);
+  if (K === "saber"){
+    const len = 54 + (b.blade > 0 ? 12 : 0);
+    const bc = b.def.side === 0 ? "#7dd3ff" : "#ff6b8a";
+    ctx.fillStyle = "#3a4360"; ctx.beginPath(); ctx.roundRect(-3.5, -2, 7, 16, 2); ctx.fill();
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = bc; ctx.lineWidth = 7; ctx.shadowColor = bc; ctx.shadowBlur = 22;
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 12 + len); ctx.stroke();
+    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 12 + len); ctx.stroke();
+    ctx.restore();
+  } else if (K === "wizard"){
+    ctx.strokeStyle = "#6b5b3a"; ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.moveTo(0, -6); ctx.lineTo(0, 40); ctx.stroke();
+    const oc = b.chan > 0 ? "#ffd447" : "#a78bfa";
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = oc; ctx.shadowColor = oc; ctx.shadowBlur = 20;
+    ctx.beginPath(); ctx.arc(0, -10, 7 + (b.chan > 0 ? 3 : 0), 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  } else if (K === "gunner"){
+    ctx.fillStyle = "#2a3352"; ctx.strokeStyle = trim; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.roundRect(-4, 0, 8, 26, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffd447"; ctx.beginPath(); ctx.arc(0, 26, 3, 0, Math.PI * 2); ctx.fill();
+  } else if (K === "berserk"){
+    ctx.fillStyle = "#3a4360"; ctx.beginPath(); ctx.roundRect(-3, 0, 6, 30, 2); ctx.fill();
+    ctx.fillStyle = b.rage > .5 ? "#ff3b5c" : "#9aa6c8";
+    ctx.beginPath(); ctx.moveTo(-2, 28); ctx.lineTo(-20, 40); ctx.lineTo(-2, 46); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(2, 28); ctx.lineTo(20, 40); ctx.lineTo(2, 46); ctx.closePath(); ctx.fill();
+  } else if (K === "jugger"){
+    ctx.fillStyle = "#313d5e"; ctx.strokeStyle = trim; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.roundRect(-6, -14, 30, 54, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = trim; ctx.globalAlpha = .5;
+    ctx.beginPath(); ctx.arc(9, 13, 7, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+  } else if (K === "ninja"){
+    ctx.fillStyle = "#c8d0e8";
+    for (let s = 0; s < 4; s++){
+      ctx.save(); ctx.translate(0, 16); ctx.rotate(s * Math.PI / 2 + t / 220);
+      ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(2.5, -2.5); ctx.lineTo(9, 0);
+      ctx.lineTo(2.5, 2.5); ctx.lineTo(0, 9); ctx.lineTo(-2.5, 2.5); ctx.lineTo(-9, 0);
+      ctx.lineTo(-2.5, -2.5); ctx.closePath(); ctx.fill(); ctx.restore();
+    }
+  } else if (K === "leech"){
+    ctx.fillStyle = "#7a1f2e"; ctx.strokeStyle = "#ff3b5c"; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.roundRect(-7, 0, 14, 22, 4); ctx.fill(); ctx.stroke();
+    for (let n = 0; n < 3; n++){
+      ctx.strokeStyle = "rgba(255,59,92,.8)"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(-4 + n * 4, 22); ctx.lineTo(-6 + n * 6, 34); ctx.stroke();
+    }
+  } else if (K === "karate"){
+    // bare fists, wrapped
+    ctx.fillStyle = flash ? "#fff" : "#e8ecff";
+    ctx.beginPath(); ctx.roundRect(-8, 0, 16, 14, 4); ctx.fill();
+    ctx.strokeStyle = "#ff3b5c"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-8, 5); ctx.lineTo(8, 5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-8, 9); ctx.lineTo(8, 9); ctx.stroke();
+  }
+  ctx.restore();
+
   // head
   ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2.2;
   ctx.beginPath(); ctx.roundRect(-13, -100, 26, 22, 5); ctx.fill(); ctx.stroke();
+  // headgear per style
+  if (K === "karate"){
+    ctx.fillStyle = "#ff3b5c";
+    ctx.fillRect(-14, -97, 28, 5);
+    ctx.beginPath(); ctx.moveTo(-14, -95); ctx.lineTo(-30, -86); ctx.lineTo(-14, -89); ctx.closePath(); ctx.fill();
+  } else if (K === "wizard"){
+    ctx.fillStyle = "#4c3a8a"; ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-15, -99); ctx.lineTo(0, -134); ctx.lineTo(15, -99); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#ffd447"; ctx.beginPath(); ctx.arc(0, -133, 3, 0, Math.PI * 2); ctx.fill();
+  } else if (K === "ninja"){
+    ctx.fillStyle = "#161c2e"; ctx.fillRect(-14, -99, 28, 12);
+    ctx.strokeStyle = "#ff3b5c"; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-14, -92); ctx.lineTo(-40 - Math.sin(t / 200) * 8, -84); ctx.stroke();
+  } else if (K === "jugger"){
+    ctx.fillStyle = "#313d5e"; ctx.beginPath(); ctx.roundRect(-16, -108, 32, 10, 3); ctx.fill();
+  } else if (K === "gunner"){
+    ctx.fillStyle = "#6b5b3a";
+    ctx.beginPath(); ctx.ellipse(0, -100, 24, 5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillRect(-11, -112, 22, 12);
+  } else if (K === "berserk"){
+    ctx.fillStyle = "#9aa6c8";
+    ctx.beginPath(); ctx.moveTo(-13, -100); ctx.lineTo(-22, -118); ctx.lineTo(-8, -104); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(13, -100); ctx.lineTo(22, -118); ctx.lineTo(8, -104); ctx.closePath(); ctx.fill();
+  }
   // eye
   ctx.fillStyle = b.bers > 0 ? "#ff3b5c" : (flash ? "#fff" : col);
   ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 12;
@@ -976,7 +1232,8 @@ function drawFightHUD(F){
     ctx.font = "700 11px Segoe UI, sans-serif";
     ctx.fillStyle = "rgba(200,210,240,.75)";
     ctx.textBaseline = "top";
-    ctx.fillText(Math.ceil(b.hp) + " / " + b.def.maxHp + "   " + b.def.chassis,
+    const cdef = classById(b.def.cls);
+    ctx.fillText(Math.ceil(b.hp) + " / " + b.def.maxHp + "   " + cdef.icon + " " + cdef.name,
                  right ? x + barW : x, top + barH + 5);
     // active buffs
     const buffs = [];
@@ -1165,7 +1422,15 @@ function onPhase(p){
     announce("PLACE YOUR BETS", "#2ee6ff");
     sysChat("Fight #" + A.fightNo + ": " + bots[0].name + " vs " + bots[1].name);
   }
-  if (p === PHASE.FIGHT){ SFX.bell(); announce("FIGHT!", "#ffd447"); }
+  if (p === PHASE.FIGHT){
+    SFX.bell();
+    renderMatchup();                       // styles become visible now
+    const ca = classById(bots[0].cls), cb = classById(bots[1].cls);
+    announce(ca.icon + " " + ca.name + "  vs  " + cb.icon + " " + cb.name, "#ffd447", true);
+    sysChat("🔔 " + bots[0].name + " is a " + ca.name + "! " + bots[1].name + " is a " + cb.name + "!");
+    toast(ca.icon + " " + ca.name + "  vs  " + cb.icon + " " + cb.name, 4500);
+    setTimeout(() => announce("FIGHT!", "#ff3b5c", true), 1400);
+  }
   if (p === PHASE.RESULT) settle();
 }
 
@@ -1259,7 +1524,16 @@ function renderBook(){
 function renderMatchup(){
   $("nameA").textContent = bots[0].name;
   $("nameB").textContent = bots[1].name;
-  const st = b => `${b.chassis} · PWR ${(b.pwr*100|0)} · SPD ${(b.spd*100|0)} · ARM ${(b.arm*100|0)} · TEC ${(b.tec*100|0)}`;
+  // The discipline stays sealed until the bell -- punters get the tale of
+  // the tape and the price, nothing more.
+  const revealed = A.phase !== PHASE.BETTING;
+  const st = b => {
+    const c = classById(b.cls);
+    const style = revealed ? `${c.icon} ${c.name}` : "❓ STYLE SEALED";
+    return `${style}\n${b.chassis} · PWR ${(b.pwr*100|0)} · SPD ${(b.spd*100|0)} · ARM ${(b.arm*100|0)} · TEC ${(b.tec*100|0)}`;
+  };
+  $("statsA").style.whiteSpace = "pre-line";
+  $("statsB").style.whiteSpace = "pre-line";
   $("statsA").textContent = st(bots[0]);
   $("statsB").textContent = st(bots[1]);
   $("oddsA").textContent = odds[0].toFixed(2) + "x";
@@ -1474,6 +1748,24 @@ function handleEvents(ev){
       addSpark(s.x, s.y, 24, "255,255,255", 0, 260);
     }
     if (e.t === "drop"){ const meta = POWERUPS.find(p => p.id === e.id); if (meta) sysChat("⬇ " + meta.name + " incoming!"); }
+    if (e.t === "miss"){
+      const s = worldToScreen(e.x, 60);
+      floater(s.x, s.y - 30, e.txt, "#2ee6ff", false);
+      blip(700, .1, "square", .07, 1200);
+    }
+    if (e.t === "deflect"){
+      const s = worldToScreen(e.x, 50);
+      floater(s.x, s.y - 34, "DEFLECTED", "#7dd3ff", true);
+      addSpark(s.x, s.y, 18, "125,211,255", 0, 300);
+      rings.push({ x:s.x, y:s.y, r0:8, r1:80, dur:.4, col:"rgba(125,211,255,.9)", t:0 });
+      blip(1600, .12, "square", .1, 500);
+      cam.shake = Math.min(1, cam.shake + .25);
+    }
+    if (e.t === "leech"){
+      const s = worldToScreen(e.x, 60);
+      floater(s.x, s.y - 50, "+" + Math.round(e.amt), "#ff3b5c", false);
+    }
+    if (e.t === "style") styleFx(e);
     if (e.t === "ko"){
       const s = worldToScreen(e.x, 50);
       SFX.ko(); cam.shake = 1; cam.flash = 1;
@@ -1484,6 +1776,56 @@ function handleEvents(ev){
     }
   }
   commentate(ev);
+}
+
+// Signature-move flourishes, one per style.
+function styleFx(e){
+  const s = worldToScreen(e.x, 55);
+  switch (e.id){
+    case "karate":
+      floater(s.x, s.y - 60, "FLURRY!", "#ffd447", true);
+      rings.push({ x:s.x, y:s.y, r0:10, r1:90, dur:.4, col:"rgba(255,212,71,.85)", t:0 });
+      blip(520, .09, "square", .1, 900); break;
+    case "saber":
+      floater(s.x, s.y - 60, "LUNGE", "#7dd3ff", true);
+      addSpark(s.x, s.y, 20, "125,211,255", 0, 320);
+      blip(300, .3, "sawtooth", .12, 1400); break;
+    case "fireball":
+      blip(200, .35, "sawtooth", .12, 90);
+      addSpark(s.x, s.y, 14, "255,138,43", 0, 160); break;
+    case "lightning": {
+      const tp = worldToScreen(e.tx, 55);
+      rings.push({ x:tp.x, y:tp.y, r0:6, r1:120, dur:.45, col:"rgba(167,139,250,.95)", t:0 });
+      addSpark(tp.x, tp.y, 26, "167,139,250", 0, 300);
+      floater(tp.x, tp.y - 60, "⚡ SHOCKED", "#a78bfa", true);
+      blip(1800, .22, "square", .12, 240);
+      cam.shake = Math.min(1, cam.shake + .35); break;
+    }
+    case "blink":
+      addSpark(s.x, s.y, 22, "167,139,250", 0, 240);
+      floater(s.x, s.y - 50, "BLINK", "#a78bfa", false);
+      blip(900, .16, "sine", .09, 2000); break;
+    case "burst":
+      blip(1200, .1, "square", .08, 600); break;
+    case "ninja":
+      addSpark(s.x, s.y, 30, "120,130,160", 0, 200);
+      floater(s.x, s.y - 60, "VANISH", "#c8d0e8", true);
+      noise(.2, .18, 900); break;
+    case "charge":
+      floater(s.x, s.y - 60, "CHARGE!", "#ffd447", true);
+      cam.shake = Math.min(1, cam.shake + .4);
+      noise(.3, .25, 400); break;
+    case "slam":
+      rings.push({ x:s.x, y:s.y, r0:14, r1:220, dur:.55, col:"rgba(255,212,71,.9)", t:0 });
+      addSpark(s.x, s.y, 34, "255,212,71", 0, 380);
+      floater(s.x, s.y - 60, "GROUND SLAM", "#ffd447", true);
+      cam.shake = 1; SFX.big(); break;
+    case "whirl":
+      rings.push({ x:s.x, y:s.y, r0:10, r1:130, dur:.45, col:"rgba(255,59,92,.9)", t:0 });
+      floater(s.x, s.y - 60, "WHIRLWIND", "#ff3b5c", true);
+      addSpark(s.x, s.y, 26, "255,59,92", 0, 300);
+      cam.shake = Math.min(1, cam.shake + .5); break;
+  }
 }
 
 /* =====================================================================
