@@ -586,12 +586,20 @@ function analyseAudio(buffer, onProgress){
         sorted.sort((x, y) => x - y);
         const med = sorted[sorted.length >> 1] || 0;
         const thr = med * 1.6 + 1e-4;
-        if (total[i] > thr && total[i] >= total[i-1] && total[i] > total[i+1]){
+        // must be the local maximum across a proper neighbourhood, not just
+        // bigger than its two neighbours -- otherwise a single drum hit rings
+        // and registers three or four times
+        let isPeak = total[i] > thr;
+        if (isPeak){
+          for (let k = Math.max(0, i - 3); k <= Math.min(frames - 1, i + 3); k++)
+            if (total[k] > total[i]){ isPeak = false; break; }
+        }
+        const minSep = Math.round(fps * 0.055);      // 55ms refractory period
+        if (isPeak && (!onsets.length || i - onsets[onsets.length - 1].frame >= minSep)){
           // which band drove it -- this decides the lane
           const b0 = flux[0][i], b1 = flux[1][i], b2 = flux[2][i];
           const band = b0 >= b1 && b0 >= b2 ? 0 : (b1 >= b2 ? 1 : 2);
-          onsets.push({ t: i / fps, strength: total[i] / (med + 1e-6), band });
-          i += 1;                                   // no double-trigger
+          onsets.push({ t: i / fps, frame: i, strength: total[i] / (med + 1e-6), band });
         }
       }
 
@@ -605,19 +613,39 @@ function analyseAudio(buffer, onProgress){
         s /= (frames - lag);
         if (s > bestScore){ bestScore = s; bestLag = lag; }
       }
+      /* Refine the lag to sub-frame precision. At ~43 analysis frames per
+         second the integer lag is coarse enough to be a percent out, and a
+         percent of tempo error drifts the beat grid by over a second across
+         a three minute track. Parabolic interpolation through the
+         autocorrelation peak fixes that cheaply. */
+      if (bestLag > minLag && bestLag < maxLag){
+        const sc = lag => { let s = 0; for (let i = 0; i + lag < frames; i += 2) s += env[i] * env[i + lag];
+                            return s / (frames - lag); };
+        const y0 = sc(bestLag - 1), y1 = bestScore, y2 = sc(bestLag + 1);
+        const denom = (y0 - 2 * y1 + y2);
+        if (denom !== 0){
+          const shift = 0.5 * (y0 - y2) / denom;
+          if (Math.abs(shift) <= 1) bestLag += shift;
+        }
+      }
       let bpm = bestLag ? 60 * fps / bestLag : 120;
       while (bpm < 85) bpm *= 2;                    // fold into a musical range
       while (bpm > 190) bpm /= 2;
       const beat = 60 / bpm;
 
       // ---- beat phase: try offsets, keep the one onsets agree with most
+      /* Phase is searched against the SIXTEENTH grid, not the beat, because
+         that is the grid notes are actually snapped to -- and because in
+         real music half the hits sit on off-beats, so scoring against beats
+         alone made a perfectly good grid look like a bad one. */
+      const sub16 = beat / 4;
       let bestPhase = 0, bestHits = -1;
-      for (let p = 0; p < 48; p++){
-        const phase = (p / 48) * beat;
+      for (let p = 0; p < 64; p++){
+        const phase = (p / 64) * sub16;
         let hits = 0;
         for (const o of onsets){
-          const q = Math.abs(((o.t - phase) % beat + beat) % beat);
-          if (Math.min(q, beat - q) < beat * 0.11) hits++;
+          const q = Math.abs(((o.t - phase) % sub16 + sub16) % sub16);
+          if (Math.min(q, sub16 - q) < sub16 * 0.22) hits++;
         }
         if (hits > bestHits){ bestHits = hits; bestPhase = phase; }
       }
