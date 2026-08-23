@@ -1256,11 +1256,13 @@ function addSpark(x, y, n, col, spread, speed){
    VANISHED, FLIPPED IT and three damage numbers within a few frames, and
    drawn raw they pile into an unreadable smear at one point on screen. */
 function floater(x, y, txt, col, big){
+  // the same shout twice in half a second is noise, not emphasis
+  if (floaters.some(f => f.txt === txt && f.t < .8)) return;
   let lane = 0;
   for (const f of floaters)
     if (f.t < .5 && Math.abs(f.x - x) < 110) lane++;
   // only one headline at a time; later ones drop to the small style
-  if (big && floaters.some(f => f.big && f.t < .3)) big = false;
+  if (big && floaters.some(f => f.big && f.t < .45)) big = false;
   floaters.push({ x: x + (lane % 2 ? 34 : -34) * Math.min(2, lane) * .5,
                   y: y - lane * 24, txt, col, big, t: 0, dur: big ? 1.6 : 1.0 });
 }
