@@ -405,6 +405,7 @@ const LANE_COL = [
   { r: 61,  g: 255, b: 143 },  // up    green
   { r: 255, g: 138, b: 43  }   // right orange
 ];
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const W_PERFECT = 0.040, W_GREAT = 0.080, W_GOOD = 0.120;
 const LOOKAHEAD = 1.55;          // base seconds a note is visible (scaled by the Scroll Speed setting)
 const DEPTH     = 7.2;           // perspective strength
