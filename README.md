@@ -100,3 +100,22 @@ out what you backed when it starts swinging.
 Styles were balanced by a proportional controller run against mass simulation:
 the first pass had Berserker at 73% and Siphon at 26%, and the spread is now
 44–56%.
+
+### The deep roster
+
+Sixteen more characters the chassis can transform into at the bell:
+
+| | | |
+|---|---|---|
+| 🕶 **Bullet-Dodger** — leans out of the way of gunfire | 👊 **One-Inch Punch** — waits, screams, removes your torso | 📰 **Amnesiac Agent** — rolled-up newspaper, disarms you first |
+| 🦶 **Bigfoot** — roars, throws a log, permanently blurry | 🦽 **Rocket Wheelchair** — no brakes, occasionally meets the wall | 🤸 **Flip Ninja** — has not touched the ground since 2019 |
+| 🪩 **Disco Inferno** — mirror-ball head, reflects fire | 👵 **Nan** — titanium hip, handbag of bricks, boiled sweets | 🤼 **Sumo Unit** — cannot be moved, will not be moved |
+| 🕺 **Breakdancer** — windmills into your shins | 🎈 **Inflatable Man** — flails unpredictably, barely hurts | 🐦 **Pigeon Swarm** — several small robots in a coat |
+| 🥤 **Vending Machine** — dispenses cans, falls on people | 🧔 **Disappointed Dad** — not angry, just disappointed | 🪚 **Chainsaw Juggler** — sometimes drops one on its own foot |
+| 🤍 **Mime** — traps you in a box that does not exist | | |
+
+Balancing 24 characters is not something you eyeball. A proportional controller
+ran them against four independent seed families for nine iterations, and the
+residual mechanical edge that raw stats cannot express is folded into each
+character's odds `rating`. Spread went from **15–78%** on the first pass to
+**45–58%**.
