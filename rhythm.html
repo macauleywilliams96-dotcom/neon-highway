@@ -239,8 +239,8 @@
       preset chips (Neon Drive, Kavinsky, ...) beside it.</p>
     <p style="font-size:13px;line-height:1.6;color:#c9c1ea">
       Hit the notes as they cross the strike bar.<br>
-      <span class="kbd">Q</span><span class="kbd">W</span><span class="kbd">E</span><span class="kbd">R</span><span class="kbd">T</span>
-      &nbsp;-&gt; 5 lanes. Chain hits to ramp the multiplier up to <b>4x</b>.<br>
+      <span class="kbd">&larr;</span><span class="kbd">&darr;</span><span class="kbd">&uarr;</span><span class="kbd">&rarr;</span>
+      &nbsp;-&gt; 4 lanes on the arrow keys. Chain hits to ramp the multiplier up to <b>4x</b>.<br>
       <span class="kbd">SPACE</span> fires <b style="color:#ffe14d">OVERDRIVE</b> once the meter passes half &mdash;
       double multiplier, and the highway loses its mind.<br>
       <span class="kbd">O</span> options &nbsp;<span class="kbd">L</span> engine log &nbsp;<span class="kbd">ESC</span> pause
@@ -392,15 +392,18 @@ const IS_FILE = location.protocol === "file:";
 /* =====================================================================
    2. CONSTANTS
    ===================================================================== */
-const LANES = 5;
-const KEYS  = ["q","w","e","r","t"];
-const KEY_LABEL = ["Q","W","E","R","T"];
+/* Four lanes on the arrow keys. There are only four arrows, and a fifth
+   lane on some far-off key was the awkward part of the old QWERT layout,
+   so the highway drops to four -- which is also the standard for this kind
+   of game and maps cleanly onto the frequency bands the analyser produces. */
+const LANES = 4;
+const KEYS  = ["arrowleft", "arrowdown", "arrowup", "arrowright"];
+const KEY_LABEL = ["◀", "▼", "▲", "▶"];
 const LANE_COL = [
-  { r: 34,  g: 231, b: 255 },  // Q cyan
-  { r: 255, g: 61,  b: 240 },  // W magenta
-  { r: 255, g: 225, b: 77  },  // E yellow
-  { r: 61,  g: 255, b: 143 },  // R green
-  { r: 255, g: 138, b: 43  }   // T orange
+  { r: 34,  g: 231, b: 255 },  // left  cyan
+  { r: 255, g: 61,  b: 240 },  // down  magenta
+  { r: 61,  g: 255, b: 143 },  // up    green
+  { r: 255, g: 138, b: 43  }   // right orange
 ];
 const W_PERFECT = 0.040, W_GREAT = 0.080, W_GOOD = 0.120;
 const LOOKAHEAD = 1.55;          // base seconds a note is visible (scaled by the Scroll Speed setting)
@@ -437,6 +440,8 @@ function diff(){ return DIFFS[S.diff] || DIFFS[1]; }
 
 function applySettings(){
   try { if (player && player.setVolume) player.setVolume(S.volume); } catch(e){}
+  // local file playback obeys the same slider, live while it is dragged
+  if (FILE.gain) FILE.gain.gain.value = clamp(S.volume / 100, 0, 1);
   const veil = document.getElementById("veil");
   // dim 0 = video fully hidden, 100 = video brightest
   const a = 0.97 - (S.dim / 100) * 0.62;
@@ -746,12 +751,12 @@ function chartFromAnalysis(an, diffIdx){
 
     // band -> lane region: lows left, mids centre, highs right
     let lane;
-    if (o.band === 0) lane = Math.random() < .5 ? 0 : 1;
-    else if (o.band === 1) lane = 2;
-    else lane = Math.random() < .5 ? 3 : 4;
+    if (o.band === 0) lane = Math.random() < .65 ? 0 : 1;        // kick side
+    else if (o.band === 1) lane = Math.random() < .5 ? 1 : 2;    // snare / mids
+    else lane = Math.random() < .65 ? 3 : 2;                     // hats side
     // nudge off a repeated lane so it reads as movement
     if (lane === lastLane){
-      const alts = o.band === 0 ? [0,1] : o.band === 1 ? [1,2,3] : [3,4];
+      const alts = o.band === 0 ? [0,1] : o.band === 1 ? [1,2] : [2,3];
       lane = alts[(alts.indexOf(lane) + 1) % alts.length];
     }
     if (t - laneLast[lane] < minGap * 1.35) continue;
@@ -1021,7 +1026,7 @@ document.getElementById("unblock").onclick = () => {
    polled from an iframe, so there is no drift, no ad interruption and no
    buffering guard needed at all.
    ===================================================================== */
-const FILE = { ctx: null, buffer: null, src: null, startedAt: 0, playing: false, name: "" };
+const FILE = { ctx: null, buffer: null, src: null, gain: null, startedAt: 0, playing: false, name: "" };
 let MODE = "yt";                       // "yt" | "file"
 
 function fileCtx(){
@@ -1079,7 +1084,12 @@ function beginGameFromFile(){
   if (FILE.src){ try { FILE.src.stop(); } catch(e){} }
   const src = ac.createBufferSource();
   src.buffer = FILE.buffer;
-  src.connect(ac.destination);
+  /* Route through a gain node so the Options volume slider applies. This
+     used to connect straight to the destination, so local files ignored
+     the setting entirely and always played at full level. */
+  if (!FILE.gain){ FILE.gain = ac.createGain(); FILE.gain.connect(ac.destination); }
+  FILE.gain.gain.value = clamp(S.volume / 100, 0, 1);
+  src.connect(FILE.gain);
   const when = ac.currentTime + 0.12;
   src.start(when);
   FILE.src = src; FILE.startedAt = when; FILE.playing = true;
