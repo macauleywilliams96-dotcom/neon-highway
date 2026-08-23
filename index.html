@@ -69,13 +69,13 @@
     color:#04121a;font-weight:900;padding:11px}
   #placeBtn:disabled{background:rgba(255,255,255,.06);color:var(--dim)}
 
-  #ticket{position:absolute;z-index:10;left:14px;top:64px;padding:11px 14px;border-radius:12px;
+  #ticket{position:absolute;z-index:10;left:14px;top:150px;padding:11px 14px;border-radius:12px;
     background:var(--panel);border:1px solid var(--line);font-size:12px;display:none;
     box-shadow:0 8px 30px rgba(0,0,0,.6)}
   #ticket .h{font-size:9.5px;letter-spacing:2px;color:var(--dim);font-weight:800;margin-bottom:5px}
   #ticket .w{font-weight:900;font-size:14px}
 
-  #bettors{position:absolute;z-index:10;right:14px;top:64px;width:200px;max-height:40vh;overflow:auto;
+  #bettors{position:absolute;z-index:10;right:14px;top:150px;width:200px;max-height:40vh;overflow:auto;
     padding:10px 12px;border-radius:12px;background:var(--panel);border:1px solid var(--line);
     font-size:11.5px;display:none}
   #bettors .h{font-size:9.5px;letter-spacing:2px;color:var(--dim);font-weight:800;margin-bottom:6px}
@@ -218,7 +218,11 @@
     <h1>OPTIONS</h1><h2>SAVED TO THIS BROWSER</h2>
     <div class="opt"><div class="lbl"><b>Sound</b><span>Impacts, lasers, explosions.</span></div>
       <button class="tog" id="sfxTog"></button></div>
-    <div class="opt"><div class="lbl"><b>Commentary</b><span>Ringside announcer calling the fight.</span></div>
+    <div class="opt"><div class="lbl"><b>Music</b><span>Generative synth loop; lifts during the fight.</span></div>
+      <button class="tog" id="musTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Ring Announcer</b><span>Speaks the countdown and the reveal out loud.</span></div>
+      <button class="tog" id="voiTog"></button></div>
+    <div class="opt"><div class="lbl"><b>Commentary</b><span>Ringside announcer calling the fight in chat.</span></div>
       <button class="tog" id="comTog"></button></div>
     <div class="opt"><div class="lbl"><b>Screen Shake</b><span>Camera kick on heavy hits.</span></div>
       <button class="tog" id="shakeTog"></button></div>
@@ -279,7 +283,7 @@ const START_BANK = 1000, MIN_BET = 10;
 const T_BET = 22000, T_RESULT = 9500, MAX_TICKS = 60 * 75;
 const TICK_MS = 1000 / 60;
 
-const DEF = { name:"", sfx:true, com:true, shake:true, room:"arena", bank:START_BANK,
+const DEF = { name:"", sfx:true, com:true, shake:true, music:true, voice:true, room:"arena", bank:START_BANK,
               stats:{bets:0,net:0,wins:0,streak:0,best:0,big:0,peak:START_BANK} };
 let S = JSON.parse(JSON.stringify(DEF));
 try { const raw = JSON.parse(localStorage.getItem("sy_save") || "{}");
@@ -323,8 +327,80 @@ const SFX = {
                 [523,392,330].forEach((f,i)=>setTimeout(()=>blip(f,.5,"square",.11),i*130)); },
   bell: () => { [880,1174].forEach((f,i)=>setTimeout(()=>blip(f,.35,"triangle",.15),i*160)); },
   cash: () => { [659,880,1174].forEach((f,i)=>setTimeout(()=>blip(f,.3,"triangle",.13),i*80)); },
-  shield:()=> blip(440,.3,"sine",.10,880)
+  shield:()=> blip(440,.3,"sine",.10,880),
+  count:(n)=>{ blip(n===0?1320:660, n===0?.5:.18, "square", .16, n===0?1980:undefined); }
 };
+
+/* ---- ring announcer: real speech where the browser offers it ---- */
+function speak(txt, rate, pitch){
+  if (!S.voice || !window.speechSynthesis) return;
+  try {
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(txt);
+    u.rate = rate || 1.05; u.pitch = pitch == null ? .7 : pitch; u.volume = .9;
+    speechSynthesis.speak(u);
+  } catch(e){}
+}
+
+/* =====================================================================
+   MUSIC -- a small generative loop, scheduled ahead of the audio clock so
+   it does not stutter when the main thread is busy drawing a fight.
+   ===================================================================== */
+const MUSIC = {
+  on:false, step:0, next:0, timer:null, mode:"bet",
+  bass:[0,0,3,3,5,5,3,3,-2,-2,0,0,5,5,3,3],
+  arp:[12,15,19,15,17,19,22,19,12,15,19,24,22,19,15,12]
+};
+function noteHz(semi){ return 55 * Math.pow(2, semi / 12); }
+function musicTick(){
+  const a = ac(); if (!a || !MUSIC.on) return;
+  const spb = MUSIC.mode === "fight" ? .115 : .16;      // fight runs hotter
+  while (MUSIC.next < a.currentTime + .25){
+    const s = MUSIC.step % 16, tAt = Math.max(MUSIC.next, a.currentTime + .01);
+    const vol = MUSIC.mode === "fight" ? .5 : .32;
+    // kick
+    if (s % 4 === 0) schedTone(a, tAt, 110, .18, "sine", .55 * vol, 42);
+    // snare-ish
+    if (s % 8 === 4) schedNoise(a, tAt, .12, .30 * vol, 2600);
+    // bass
+    schedTone(a, tAt, noteHz(24 + MUSIC.bass[s]), spb * .9, "sawtooth", .22 * vol);
+    // arp, only in fight mode
+    if (MUSIC.mode === "fight" && s % 2 === 0)
+      schedTone(a, tAt, noteHz(36 + MUSIC.arp[s]), spb * .8, "square", .10 * vol);
+    if (MUSIC.mode === "bet" && s % 4 === 2)
+      schedTone(a, tAt, noteHz(36 + MUSIC.arp[s]), spb * 1.4, "triangle", .07 * vol);
+    MUSIC.next = tAt + spb;
+    MUSIC.step++;
+  }
+}
+function schedTone(a, at, f, dur, type, vol, slideTo){
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, at);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, at + dur);
+  g.gain.setValueAtTime(0, at);
+  g.gain.linearRampToValueAtTime(vol, at + .008);
+  g.gain.exponentialRampToValueAtTime(.0001, at + dur);
+  o.connect(g); g.connect(a.destination); o.start(at); o.stop(at + dur + .02);
+}
+function schedNoise(a, at, dur, vol, filt){
+  const n = Math.floor(a.sampleRate * dur), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / n, 2.2);
+  const src = a.createBufferSource(); src.buffer = b;
+  const bp = a.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = filt;
+  const g = a.createGain(); g.gain.value = vol;
+  src.connect(bp); bp.connect(g); g.connect(a.destination); src.start(at);
+}
+function musicStart(){
+  if (!S.music) return;
+  const a = ac(); if (!a) return;
+  if (a.state === "suspended") a.resume();
+  if (MUSIC.on) return;
+  MUSIC.on = true; MUSIC.next = a.currentTime + .1;
+  clearInterval(MUSIC.timer);
+  MUSIC.timer = setInterval(musicTick, 60);
+}
+function musicStop(){ MUSIC.on = false; clearInterval(MUSIC.timer); }
+function musicMode(m){ MUSIC.mode = m; }
 /* =====================================================================
    DETERMINISTIC SIMULATION
 
@@ -373,79 +449,79 @@ const CHASSIS = ["BRUISER","SKIRMISHER","JUGGERNAUT","STRIKER","TANK","DUELIST"]
    against mass simulation so the published odds stay honest.
    --------------------------------------------------------------------- */
 const CLASSES = [
-  { id:"karate",  name:"KARATE MASTER", icon:"🥋", rating:0.977, melee:true,
-    mods:{pwr:.829,spd:1.249,arm:.905,hp:.887},
+  { id:"karate",  name:"KARATE MASTER", icon:"🥋", rating:1.012, melee:true,
+    mods:{pwr:0.910,spd:1.277,arm:0.953,hp:0.951},
     blurb:"Flurry combos and a parry that punishes a whiff." },
-  { id:"saber",   name:"SABER DUELIST", icon:"⚔", rating:0.972, melee:true,
-    mods:{pwr:1.241,spd:1.046,arm:.951,hp:1.019},
+  { id:"saber",   name:"SABER DUELIST", icon:"⚔", rating:0.991, melee:true,
+    mods:{pwr:1.221,spd:1.043,arm:0.944,hp:1.008},
     blurb:"Plasma blade. Deflects incoming fire back at the sender." },
-  { id:"wizard",  name:"TECHNOMANCER",  icon:"🧙", rating:1.013, melee:false,
-    mods:{pwr:1.198,spd:.906,arm:.852,hp:.985},
+  { id:"wizard",  name:"TECHNOMANCER",  icon:"🧙", rating:0.970, melee:false,
+    mods:{pwr:0.968,spd:0.866,arm:0.762,hp:0.844},
     blurb:"Fireballs, chain lightning, and a blink when cornered." },
-  { id:"gunner",  name:"GUNSLINGER",    icon:"🔫", rating:0.997, melee:false,
-    mods:{pwr:.978,spd:1.072,arm:.940,hp:.976},
+  { id:"gunner",  name:"GUNSLINGER",    icon:"🔫", rating:1.000, melee:false,
+    mods:{pwr:0.775,spd:1.020,arm:0.832,hp:0.824},
     blurb:"Three-round bursts from range. Hates being crowded." },
-  { id:"ninja",   name:"CYBER NINJA",   icon:"🥷", rating:1.044, melee:true,
-    mods:{pwr:1.215,spd:1.272,arm:.860,hp:.966},
+  { id:"ninja",   name:"CYBER NINJA",   icon:"🥷", rating:1.007, melee:true,
+    mods:{pwr:1.249,spd:1.281,arm:0.874,hp:0.987},
     blurb:"Vanishes, reappears behind you, throws shuriken." },
-  { id:"jugger",  name:"JUGGERNAUT",    icon:"🛡", rating:1.007, melee:true,
-    mods:{pwr:.884,spd:.714,arm:1.214,hp:1.119},
+  { id:"jugger",  name:"JUGGERNAUT",    icon:"🛡", rating:0.991, melee:true,
+    mods:{pwr:0.930,spd:0.723,arm:1.248,hp:1.162},
     blurb:"Shield charge and a ground slam. Slow, enormous, patient." },
-  { id:"berserk", name:"BERSERKER",     icon:"🪓", rating:1.001, melee:true,
-    mods:{pwr:1.072,spd:1.001,arm:.779,hp:.937},
+  { id:"berserk", name:"BERSERKER",     icon:"🪓", rating:1.029, melee:true,
+    mods:{pwr:1.152,spd:1.018,arm:0.810,hp:0.989},
     blurb:"Hits harder the closer it gets to the scrapheap." },
-  { id:"leech",   name:"SIPHON UNIT",   icon:"🩸", rating:0.971, melee:true,
-    mods:{pwr:1.143,spd:.983,arm:1.009,hp:1.091},
+  { id:"leech",   name:"SIPHON UNIT",   icon:"🩸", rating:0.977, melee:true,
+    mods:{pwr:1.244,spd:1.002,arm:1.056,hp:1.162},
     blurb:"Drains hull from everything it hits." },
 
   // ---- the deep roster. Homages, not likenesses.
-  { id:"dodger",   name:"BULLET-DODGER",  icon:"🕶", rating:1.007, melee:false,
-    mods:{pwr:.939,spd:1.148,arm:.825,hp:.910}, dodgeProj:.62,
+  { id:"dodger",   name:"BULLET-DODGER",  icon:"🕶", rating:1.005, melee:false,
+    mods:{pwr:0.714,spd:1.082,arm:0.715,hp:0.746}, dodgeProj:.62,
     blurb:"Leans out of the way of things. Annoyingly." },
-  { id:"inchpunch",name:"ONE-INCH PUNCH", icon:"👊", rating:0.966, melee:true,
-    mods:{pwr:1.058,spd:1.158,arm:.865,hp:.898},
+  { id:"inchpunch",name:"ONE-INCH PUNCH", icon:"👊", rating:0.996, melee:true,
+    mods:{pwr:1.165,spd:1.184,arm:0.912,hp:0.965},
     blurb:"Waits. Screams. Removes your torso." },
-  { id:"agent",    name:"AMNESIAC AGENT", icon:"📰", rating:1.034, melee:true,
-    mods:{pwr:1.000,spd:1.082,arm:.931,hp:.969},
+  { id:"agent",    name:"AMNESIAC AGENT", icon:"📰", rating:1.017, melee:true,
+    mods:{pwr:1.035,spd:1.091,arm:0.949,hp:0.994},
     blurb:"Kills you with a rolled-up newspaper. Disarms you first." },
   { id:"bigfoot",  name:"BIGFOOT",        icon:"🦶", rating:1.021, melee:true,
-    mods:{pwr:.973,spd:.822,arm:1.064,hp:1.073}, noKnock:true,
+    mods:{pwr:1.035,spd:0.834,arm:1.101,hp:1.124}, noKnock:true,
     blurb:"Roars, throws a log, remains blurry at all times." },
-  { id:"wheelie",  name:"ROCKET WHEELCHAIR", icon:"🦽", rating:0.975, melee:true,
-    mods:{pwr:1.470,spd:1.516,arm:.931,hp:1.108},
+  { id:"wheelie",  name:"ROCKET WHEELCHAIR", icon:"🦽", rating:1.014, melee:true,
+    mods:{pwr:1.555,spd:1.536,arm:0.960,hp:1.155},
     blurb:"No brakes. Occasionally meets the wall." },
-  { id:"flipper",  name:"FLIP NINJA",     icon:"🤸", rating:1.000, melee:true,
-    mods:{pwr:.961,spd:1.290,arm:.836,hp:.897}, dodgeProj:.35,
+  { id:"flipper",  name:"FLIP NINJA",     icon:"🤸", rating:0.979, melee:true,
+    mods:{pwr:0.973,spd:1.294,arm:0.842,hp:0.905}, dodgeProj:.35,
     blurb:"Has not touched the ground since 2019." },
-  { id:"disco",    name:"DISCO INFERNO",  icon:"🪩", rating:1.008, melee:false,
-    mods:{pwr:1.053,spd:1.029,arm:1.003,hp:1.077},
+  { id:"disco",    name:"DISCO INFERNO",  icon:"🪩", rating:1.019, melee:false,
+    mods:{pwr:0.880,spd:0.990,arm:0.913,hp:0.946},
     blurb:"Mirror-ball head. Reflects fire. Confuses everyone." },
-  { id:"granny",   name:"NAN",            icon:"👵", rating:0.995, melee:true,
-    mods:{pwr:.910,spd:.662,arm:1.192,hp:1.102}, noKnock:true,
+  { id:"granny",   name:"NAN",            icon:"👵", rating:0.984, melee:true,
+    mods:{pwr:0.931,spd:0.666,arm:1.208,hp:1.122}, noKnock:true,
     blurb:"Titanium hip. Handbag of bricks. Throws boiled sweets." },
-  { id:"sumo",     name:"SUMO UNIT",      icon:"🤼", rating:0.969, melee:true,
-    mods:{pwr:.930,spd:.750,arm:1.127,hp:1.080}, noKnock:true,
+  { id:"sumo",     name:"SUMO UNIT",      icon:"🤼", rating:1.027, melee:true,
+    mods:{pwr:0.998,spd:0.762,arm:1.171,hp:1.138}, noKnock:true,
     blurb:"Cannot be moved. Will not be moved." },
-  { id:"breaker",  name:"BREAKDANCER",    icon:"🕺", rating:0.994, melee:true,
-    mods:{pwr:1.055,spd:1.223,arm:.926,hp:1.041},
+  { id:"breaker",  name:"BREAKDANCER",    icon:"🕺", rating:1.002, melee:true,
+    mods:{pwr:1.097,spd:1.235,arm:0.946,hp:1.072},
     blurb:"Windmills into your shins. Sweeps the leg." },
-  { id:"tubeman",  name:"INFLATABLE MAN", icon:"🎈", rating:1.025, melee:true,
-    mods:{pwr:.755,spd:1.236,arm:.878,hp:1.012}, dodgeProj:.45,
+  { id:"tubeman",  name:"INFLATABLE MAN", icon:"🎈", rating:1.034, melee:true,
+    mods:{pwr:0.805,spd:1.254,arm:0.909,hp:1.061}, dodgeProj:.45,
     blurb:"Flails unpredictably. Impossible to read. Barely hurts." },
-  { id:"pigeons",  name:"PIGEON SWARM",   icon:"🐦", rating:0.971, melee:true,
-    mods:{pwr:.832,spd:1.305,arm:.792,hp:.936}, dodgeProj:.4,
+  { id:"pigeons",  name:"PIGEON SWARM",   icon:"🐦", rating:0.982, melee:true,
+    mods:{pwr:0.866,spd:1.317,arm:0.809,hp:0.964}, dodgeProj:.4,
     blurb:"Technically several small robots in a coat." },
-  { id:"vending",  name:"VENDING MACHINE",icon:"🥤", rating:1.040, melee:true,
-    mods:{pwr:.926,spd:.562,arm:1.194,hp:1.090}, noKnock:true,
+  { id:"vending",  name:"VENDING MACHINE",icon:"🥤", rating:0.974, melee:true,
+    mods:{pwr:0.930,spd:0.564,arm:1.200,hp:1.096}, noKnock:true,
     blurb:"Dispenses cans. Falls on people. Keeps your change." },
-  { id:"dad",      name:"DISAPPOINTED DAD", icon:"🧔", rating:1.001, melee:true,
-    mods:{pwr:1.036,spd:.959,arm:1.044,hp:1.091},
+  { id:"dad",      name:"DISAPPOINTED DAD", icon:"🧔", rating:0.990, melee:true,
+    mods:{pwr:1.126,spd:0.978,arm:1.093,hp:1.161},
     blurb:"Not angry. Just disappointed. Brought the BBQ tongs." },
-  { id:"chainsaw", name:"CHAINSAW JUGGLER", icon:"🪚", rating:1.027, melee:false,
-    mods:{pwr:1.315,spd:.999,arm:.874,hp:.986},
+  { id:"chainsaw", name:"CHAINSAW JUGGLER", icon:"🪚", rating:0.972, melee:false,
+    mods:{pwr:1.078,spd:0.958,arm:0.788,hp:0.854},
     blurb:"Throws them. Sometimes drops one on its own foot." },
-  { id:"mime",     name:"MIME",           icon:"🤍", rating:0.980, melee:true,
-    mods:{pwr:1.089,spd:1.087,arm:1.022,hp:1.104},
+  { id:"mime",     name:"MIME",           icon:"🤍", rating:1.000, melee:true,
+    mods:{pwr:1.106,spd:1.092,arm:1.033,hp:1.119},
     blurb:"Traps you in a box that does not exist. You cannot leave." }
 ];
 const classById = id => CLASSES.find(c => c.id === id) || CLASSES[0];
@@ -489,16 +565,19 @@ function makeBots(botSeed){
 /* Published odds must reflect what the simulation ACTUALLY does, otherwise
    the market is a lie -- and a mispriced market is exploitable.
 
-   Fitted, not guessed: outcomes for 4000 fights were precomputed and the
-   (steepness, clamp) pair swept against them. k=30 with the tail clamped at
-   .15 lands calibration error at ~0.02, with backing-every-favourite and
+   Fitted, not guessed: outcomes for thousands of fights are precomputed and the
+   (steepness, clamp) pair swept against them. Re-fitted whenever the fight
+   changes: adding corner escapes, arena hazards and per-character balancing
+   all weakened the link between visible stats and outcome, which flattened
+   the curve and forced k down from 30 to 18. k=18 clamped at
+   .20 lands calibration error at ~0.01, with backing-every-favourite and
    backing-every-longshot BOTH returning about -6%, i.e. exactly the house
    margin and no edge either way.
 
    The clamp matters more than it looks: at .10 the tail was paying 9.4x on
    robots that actually won 17% of the time, which made "always back the
    longshot" a +11% strategy. */
-const ODDS_K = 30, HOUSE = 0.06;
+const ODDS_K = 18, HOUSE = 0.06;
 function strength(b){
   const base = b.pwr * 1.15 + b.spd * .95 + b.arm * 1.05 + b.tec * .85 + b.maxHp / 1200;
   return base * classById(b.cls).rating;      // the style is priced in, even while hidden
@@ -507,7 +586,7 @@ function oddsFor(bots){
   const sa = strength(bots[0]), sb = strength(bots[1]);
   const ratio = sa / (sa + sb);
   let pa = 1 / (1 + Math.exp(-ODDS_K * (ratio - .5)));
-  pa = clamp(pa, .15, .85);
+  pa = clamp(pa, .20, .80);
   return [ +(1 / pa * (1 - HOUSE)).toFixed(2), +(1 / (1 - pa) * (1 - HOUSE)).toFixed(2), pa ];
 }
 
@@ -522,11 +601,96 @@ function initFight(botSeed, fightSeed){
       state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0,
       combo: 0, hitFlash: 0, wantX: 0, lastDmg: 0,
       // style machinery
-      cd2: 90 + i * 30, parry: 0, invis: 0, flurry: 0, chan: 0, blade: 0, rage: 0
+      cd2: 90 + i * 30, parry: 0, invis: 0, flurry: 0, chan: 0, blade: 0, rage: 0,
+      escCd: 0, spin: 0, pinned: 0
     })),
-    pickups: [], shots: [], nextDrop: 60 * 6, drops: 0
+    pickups: [], shots: [], nextDrop: 60 * 6, drops: 0,
+    hazard: hazardFor(botSeed), hzT: 0, hzX: 0, hzOn: false
   };
   return F;
+}
+
+/* ---------------------------------------------------------------------
+   TRAP FIGHTS
+   Roughly a third of cards are run in a rigged arena. The hazard comes
+   from botSeed, so it is known BEFORE betting -- it is information you
+   are supposed to price in, since a sweeping blade punishes the slow and
+   an electrified floor punishes whoever stands still.
+   --------------------------------------------------------------------- */
+const HAZARDS = [
+  { id:"saw",    name:"SWEEPING SAWBLADE", icon:"⚙", col:"#c8d0e8" },
+  { id:"zap",    name:"ELECTRIFIED FLOOR", icon:"⚡", col:"#ffd447" },
+  { id:"crush",  name:"FALLING GIRDERS",   icon:"🏗", col:"#ff8a2b" },
+  { id:"flames", name:"FLAME VENTS",       icon:"🔥", col:"#ff3b5c" }
+];
+function hazardFor(botSeed){
+  const r = mulberry32((botSeed ^ 0x5bf03635) >>> 0);
+  r(); r();
+  return r() < .34 ? HAZARDS[Math.floor(r() * HAZARDS.length)].id : null;
+}
+function stepHazard(F, ev){
+  if (!F.hazard) return;
+  const H = F.hazard;
+  F.hzT++;
+  if (H === "saw"){
+    // a blade tracks back and forth across the floor
+    const period = 420;
+    const p = (F.hzT % period) / period;
+    F.hzX = 140 + (ARENA_W - 280) * (p < .5 ? p * 2 : 2 - p * 2);
+    F.hzOn = true;
+    for (let i = 0; i < 2; i++){
+      const b = F.bots[i];
+      if (b.hp > 0 && Math.abs(b.x - F.hzX) < 40 && b.y < 30 && F.hzT % 12 === 0){
+        applyDamage(F, i, 26 + F.rnd() * 12, ev, "saw", b.x);
+        ev.push({ t: "hazard", id: H, x: b.x });
+      }
+    }
+  } else if (H === "zap"){
+    // panels energise in bursts; standing still is punished
+    const cycle = F.hzT % 300;
+    F.hzOn = cycle > 220;
+    if (F.hzOn && F.hzT % 10 === 0){
+      for (let i = 0; i < 2; i++){
+        const b = F.bots[i];
+        if (b.hp > 0 && b.y < 20 && Math.abs(b.vx) < 1.2){
+          applyDamage(F, i, 22 + F.rnd() * 10, ev, "shock", b.x);
+          b.stun = Math.max(b.stun, 8);
+          ev.push({ t: "hazard", id: H, x: b.x });
+        }
+      }
+    }
+  } else if (H === "crush"){
+    // girders drop on a schedule, aimed near a random bot
+    if (F.hzT % 260 === 0){
+      const tgt = F.bots[F.rnd() < .5 ? 0 : 1];
+      F.hzX = clamp(tgt.x + (F.rnd() - .5) * 120, 120, ARENA_W - 120);
+      ev.push({ t: "warn", x: F.hzX });
+    }
+    if (F.hzT % 260 === 90){
+      for (let i = 0; i < 2; i++){
+        const b = F.bots[i];
+        if (b.hp > 0 && Math.abs(b.x - F.hzX) < 62 && b.y < 40){
+          applyDamage(F, i, 70 + F.rnd() * 30, ev, "rocket", b.x);
+          b.stun = Math.max(b.stun, 30);
+        }
+      }
+      ev.push({ t: "hazard", id: H, x: F.hzX });
+    }
+  } else if (H === "flames"){
+    // vents along the floor fire in sequence
+    const cycle = F.hzT % 240;
+    F.hzOn = cycle < 70;
+    F.hzX = 200 + ((Math.floor(F.hzT / 240) * 317) % (ARENA_W - 400));
+    if (F.hzOn && F.hzT % 12 === 0){
+      for (let i = 0; i < 2; i++){
+        const b = F.bots[i];
+        if (b.hp > 0 && Math.abs(b.x - F.hzX) < 70 && b.y < 60){
+          applyDamage(F, i, 20 + F.rnd() * 14, ev, "flame", b.x);
+          ev.push({ t: "hazard", id: H, x: b.x });
+        }
+      }
+    }
+  }
 }
 
 const dist = (a, b) => Math.abs(a.x - b.x);
@@ -538,6 +702,7 @@ function stepFight(F){
   const ev = [];
   if (F.over) { F.tick++; return ev; }
   const R = F.rnd;
+  stepHazard(F, ev);
 
   // ---- power-up drops
   if (F.tick >= F.nextDrop && F.pickups.length < 2 && F.drops < 14){
@@ -573,7 +738,27 @@ function stepFight(F){
     if (me.hitFlash > 0) me.hitFlash--;
     if (me.stateT > 0) me.stateT--; else if (me.state !== "idle") me.state = "idle";
 
+    if (me.escCd > 0) me.escCd--;
+    if (me.spin > 0) me.spin--;
     me.face = foe.x > me.x ? 1 : -1;
+
+    /* Cornered? Get out. Without this, a bot backed into the wall just ate
+       hits until it died, which is a dull fight to watch and worse to have
+       money on. Being pinned builds up, then it vaults clean over the
+       attacker and the fight resets to open floor. */
+    const wallDist = Math.min(me.x - 90, (ARENA_W - 90) - me.x);
+    if (wallDist < 150 && dist(me, foe) < 165 && me.hp > 0){
+      me.pinned++;
+      if (me.pinned > 40 && me.escCd <= 0 && me.stun <= 0){
+        me.pinned = 0; me.escCd = 260;
+        me.state = "escape"; me.stateT = 26; me.invis = 16; me.vy = 12;
+        // vault over them, landing on the open side of the arena
+        me.x = clamp(foe.x + (me.x < ARENA_W / 2 ? 110 : -110), 100, ARENA_W - 100);
+        me.vx = 0;
+        ev.push({ t: "escape", i, x: me.x });
+      }
+    } else if (me.pinned > 0) me.pinned--;
+
     const spd = me.def.spd * (me.over > 0 ? 1.55 : 1) * (me.bers > 0 ? 1.2 : 1);
     const d = dist(me, foe);
 
@@ -607,10 +792,19 @@ function stepFight(F){
           me.state = "flurry"; me.stateT = 34; me.flurry = 4; me.cd2 = 190; me.parry = 40;
           ev.push({ t: "style", i, id: "karate", x: me.x });
         }
-        else if (K === "saber" && d < 260){
-          me.state = "lunge"; me.stateT = 20; me.cd2 = 170; me.blade = 60;
-          me.vx = me.face * 13 * spd;
-          ev.push({ t: "style", i, id: "saber", x: me.x });
+        else if (K === "saber"){
+          if (d < 120 && R() < .55){
+            // spinning blade flurry -- the blade never stops moving
+            me.state = "saberspin"; me.stateT = 46; me.cd2 = 200;
+            me.blade = 90; me.spin = 46;
+            for (let s = 0; s < 3; s++)
+              hit(F, 1 - i, (26 + me.def.pwr * 24) * (.9 + R() * .3), "melee", ev, foe.x);
+            ev.push({ t: "style", i, id: "saberspin", x: me.x });
+          } else if (d < 280){
+            me.state = "lunge"; me.stateT = 20; me.cd2 = 170; me.blade = 70; me.spin = 20;
+            me.vx = me.face * 13 * spd;
+            ev.push({ t: "style", i, id: "saber", x: me.x });
+          }
         }
         else if (K === "wizard"){
           if (d < 130 && R() < .6){                       // cornered -> blink away
@@ -1232,11 +1426,32 @@ function drawBot(b, t){
     const len = 54 + (b.blade > 0 ? 12 : 0);
     const bc = b.def.side === 0 ? "#7dd3ff" : "#ff6b8a";
     ctx.fillStyle = "#3a4360"; ctx.beginPath(); ctx.roundRect(-3.5, -2, 7, 16, 2); ctx.fill();
+    // The blade is never still: a lazy flourish at rest, a full twirl when
+    // spinning, with motion-trail ghosts behind the leading edge.
+    const spinning = b.spin > 0;
+    const rate = spinning ? 26 : 260;
+    const base = t / rate;
     ctx.save(); ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = bc; ctx.lineWidth = 7; ctx.shadowColor = bc; ctx.shadowBlur = 22;
-    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 12 + len); ctx.stroke();
-    ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5; ctx.shadowBlur = 10;
-    ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 12 + len); ctx.stroke();
+    const ghosts = spinning ? 7 : 3;
+    for (let g = ghosts; g >= 0; g--){
+      const a = base - g * (spinning ? .30 : .12);
+      const alpha = (1 - g / (ghosts + 1)) * (spinning ? .95 : .5);
+      ctx.save();
+      ctx.rotate(spinning ? a : Math.sin(a) * .55);
+      ctx.strokeStyle = bc; ctx.globalAlpha = alpha;
+      ctx.lineWidth = 7 - g * .5; ctx.shadowColor = bc; ctx.shadowBlur = 22;
+      ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 12 + len); ctx.stroke();
+      if (g === 0){
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 2.5; ctx.shadowBlur = 10; ctx.globalAlpha = 1;
+        ctx.beginPath(); ctx.moveTo(0, 12); ctx.lineTo(0, 12 + len); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // sweeping arc while spinning
+    if (spinning){
+      ctx.globalAlpha = .35; ctx.strokeStyle = bc; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.arc(0, 12, len * .8, base - 2.2, base); ctx.stroke();
+    }
     ctx.restore();
   } else if (K === "wizard"){
     ctx.strokeStyle = "#6b5b3a"; ctx.lineWidth = 5;
@@ -1590,6 +1805,68 @@ function drawPersona(K, b, t, s, z, flash){
   ctx.restore();
 }
 
+function drawHazard(F, t){
+  if (!F.hazard) return;
+  const H = F.hazard, gy = H_GROUND();
+  if (H === "saw"){
+    const p = worldToScreen(F.hzX, 0), z = cam.z;
+    ctx.save();
+    ctx.translate(p.x, p.y - 6 * z);
+    ctx.rotate(t / 45);
+    ctx.fillStyle = "#c8d0e8"; ctx.shadowColor = "#fff"; ctx.shadowBlur = 14;
+    for (let n = 0; n < 12; n++){
+      ctx.rotate(Math.PI / 6);
+      ctx.beginPath(); ctx.moveTo(-5 * z, 0); ctx.lineTo(0, -34 * z); ctx.lineTo(5 * z, 0);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(0, 0, 14 * z, 0, Math.PI * 2); ctx.fillStyle = "#8791b5"; ctx.fill();
+    ctx.restore();
+    addSpark(p.x, p.y, 1, "200,208,232", 0, 120);
+  } else if (H === "zap" && F.hzOn){
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (let n = 0; n < 9; n++){
+      const wx = 150 + n * ((ARENA_W - 300) / 8);
+      const a = worldToScreen(wx, 0), b2 = worldToScreen(wx, 120);
+      ctx.strokeStyle = `rgba(255,212,71,${.35 + Math.random() * .5})`;
+      ctx.lineWidth = 2 + Math.random() * 2;
+      ctx.beginPath(); ctx.moveTo(a.x, a.y);
+      for (let s = 1; s <= 4; s++)
+        ctx.lineTo(a.x + (Math.random() - .5) * 22, a.y - (a.y - b2.y) * (s / 4));
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (H === "crush"){
+    const phase = F.hzT % 260;
+    if (phase > 0 && phase < 90){
+      const p = worldToScreen(F.hzX, 0);
+      const warn = phase / 90;
+      ctx.save();
+      ctx.strokeStyle = `rgba(255,138,43,${.4 + Math.sin(t / 60) * .35})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(p.x, p.y, 60 * cam.z, 16 * cam.z, 0, 0, Math.PI * 2); ctx.stroke();
+      // the girder itself, falling
+      const gy2 = p.y - (1 - warn) * H * 0.9;
+      ctx.fillStyle = "#8a5a2b"; ctx.strokeStyle = "#ff8a2b"; ctx.lineWidth = 2;
+      ctx.fillRect(p.x - 55 * cam.z, gy2 - 14 * cam.z, 110 * cam.z, 22 * cam.z);
+      ctx.strokeRect(p.x - 55 * cam.z, gy2 - 14 * cam.z, 110 * cam.z, 22 * cam.z);
+      ctx.restore();
+    }
+  } else if (H === "flames" && F.hzOn){
+    const p = worldToScreen(F.hzX, 0);
+    ctx.save(); ctx.globalCompositeOperation = "lighter";
+    for (let n = 0; n < 16; n++){
+      const fy = p.y - Math.random() * 120 * cam.z;
+      const a = 1 - (p.y - fy) / (120 * cam.z);
+      ctx.fillStyle = `rgba(255,${100 + Math.random() * 120 | 0},43,${a * .6})`;
+      ctx.beginPath();
+      ctx.arc(p.x + (Math.random() - .5) * 80 * cam.z, fy, (6 + Math.random() * 12) * cam.z, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+}
+const H_GROUND = () => H * .80;
+
 function drawPickups(F, t){
   for (const p of F.pickups){
     const meta = POWERUPS.find(x => x.id === p.id) || POWERUPS[0];
@@ -1685,10 +1962,14 @@ function drawFx(dt){
 
 // ---- health bars + fight HUD
 function drawFightHUD(F){
-  const pad = 16, barW = Math.min(W * .36, 420), barH = 22, top = 66;
+  /* Health bars meet in the middle, fighting-game style. They used to be
+     pinned to the screen corners, where they collided with the bet ticket
+     and the book panel and clipped the robot names. */
+  const barH = 22, top = 62, gap = 92;
+  const barW = Math.min((W - gap) / 2 - 24, 400);
   for (let i = 0; i < 2; i++){
     const b = F.bots[i], right = i === 1;
-    const x = right ? W - pad - barW : pad;
+    const x = right ? W / 2 + gap / 2 : W / 2 - gap / 2 - barW;
     const frac = clamp(b.hp / b.def.maxHp, 0, 1);
     ctx.save();
     ctx.fillStyle = "rgba(6,9,18,.85)";
@@ -1702,17 +1983,20 @@ function drawFightHUD(F){
     ctx.beginPath();
     ctx.roundRect(right ? x + barW - 3 - fw : x + 3, top + 3, fw, barH - 6, 4); ctx.fill();
     ctx.shadowBlur = 0;
-    // name + hp
+    // name + hp, anchored to the INNER edge so long names run outward
+    const inner = right ? x : x + barW;
     ctx.font = "900 14px Segoe UI, sans-serif";
-    ctx.textAlign = right ? "right" : "left"; ctx.textBaseline = "bottom";
+    ctx.textAlign = right ? "left" : "right"; ctx.textBaseline = "bottom";
     ctx.fillStyle = "#fff";
-    ctx.fillText(b.def.name, right ? x + barW : x, top - 5);
+    ctx.fillText(b.def.name, inner, top - 5);
     ctx.font = "700 11px Segoe UI, sans-serif";
     ctx.fillStyle = "rgba(200,210,240,.75)";
     ctx.textBaseline = "top";
     const cdef = classById(b.def.cls);
-    ctx.fillText(Math.ceil(b.hp) + " / " + b.def.maxHp + "   " + cdef.icon + " " + cdef.name,
-                 right ? x + barW : x, top + barH + 5);
+    ctx.fillText(Math.ceil(b.hp) + " / " + b.def.maxHp, inner, top + barH + 5);
+    ctx.fillStyle = "#ffd447";
+    ctx.font = "800 11px Segoe UI, sans-serif";
+    ctx.fillText(cdef.icon + " " + cdef.name, inner, top + barH + 19);
     // active buffs
     const buffs = [];
     if (b.over > 0) buffs.push(["OVERCLOCK", "#ffd447"]);
@@ -1723,7 +2007,7 @@ function drawFightHUD(F){
     buffs.forEach((bf, k) => {
       ctx.font = "800 10px Segoe UI, sans-serif";
       ctx.fillStyle = bf[1];
-      ctx.fillText(bf[0], right ? x + barW : x, top + barH + 22 + k * 13);
+      ctx.fillText(bf[0], inner, top + barH + 33 + k * 13);
     });
     ctx.restore();
   }
@@ -1897,11 +2181,20 @@ function hostTick(){
 function onPhase(p){
   if (p === PHASE.BETTING){
     settledThisFight = false;
+    lastCount = -1;
+    musicMode("bet");
     announce("PLACE YOUR BETS", "#2ee6ff");
     sysChat("Fight #" + A.fightNo + ": " + bots[0].name + " vs " + bots[1].name);
+    const hz = HAZARDS.find(h => h.id === hazardFor(A.botSeed));
+    if (hz){
+      sysChat("⚠ TRAP FIGHT — " + hz.icon + " " + hz.name + " is armed!");
+      toast("⚠ TRAP FIGHT: " + hz.name, 5000);
+      speak("Trap fight. " + hz.name);
+    }
   }
   if (p === PHASE.FIGHT){
     SFX.bell();
+    musicMode("fight");
     renderMatchup();                       // styles become visible now
     const ca = classById(bots[0].cls), cb = classById(bots[1].cls);
     // The transform: chassis splits open and the persona steps out.
@@ -1918,6 +2211,7 @@ function onPhase(p){
     setTimeout(() => { blip(900, .4, "square", .12, 1800); SFX.pick(); }, 260);
     announce(ca.icon + " " + ca.name + "  vs  " + cb.icon + " " + cb.name, "#ffd447", true);
     sysChat("🔔 TRANSFORM! " + bots[0].name + " is a " + ca.name + " — " + bots[1].name + " is a " + cb.name + "!");
+    speak(ca.name + " versus " + cb.name);
     toast(ca.icon + " " + ca.name + "  vs  " + cb.icon + " " + cb.name, 4500);
     setTimeout(() => announce("FIGHT!", "#ff3b5c", true), 1400);
   }
@@ -2116,6 +2410,7 @@ function frame(t){
   let dt = Math.min(.05, (t - lastFrame) / 1000); lastFrame = t;
 
   if (isHost) hostTick();
+  tickCountdown();
 
   // advance the sim to wall-clock, catching up if we dropped frames
   if (A.phase === PHASE.FIGHT && A.fightSeed){
@@ -2159,6 +2454,7 @@ function frame(t){
   drawBackdrop(t);
   drawFloor();
   if (F){
+    drawHazard(F, t);
     drawPickups(F, t);
     // draw the further bot first so overlaps read correctly
     const order = F.bots[0].x <= F.bots[1].x ? [0, 1] : [1, 0];
@@ -2176,6 +2472,7 @@ function frame(t){
   }
   if (F) drawFightHUD(F);
   drawPhaseBanner(t);
+  drawCountdown(dt);
   requestAnimationFrame; // no-op
 }
 
@@ -2187,6 +2484,45 @@ function drawIdleBots(t){
     stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0
   });
   drawBot(mk(0), t); drawBot(mk(1), t);
+}
+
+/* Countdown into the bell: big numbers on the canvas, a beep per second and
+   a spoken call, all driven off the same phaseEnd every client shares. */
+let lastCount = -1;
+function tickCountdown(){
+  if (A.phase !== PHASE.BETTING){ if (lastCount !== -1) lastCount = -1; return; }
+  const left = Math.ceil((A.phaseEnd - now()) / 1000);
+  if (left === lastCount || left > 3 || left < 0) return;
+  lastCount = left;
+  if (left > 0){
+    SFX.count(left);
+    speak(String(left), 1.3, .8);
+    countBig = { n: String(left), t: 1 };
+  } else {
+    SFX.count(0); SFX.bell();
+    speak("FIGHT!", 1.0, .5);
+    countBig = { n: "FIGHT!", t: 1.4 };
+  }
+}
+let countBig = null;
+function drawCountdown(dt){
+  if (!countBig) return;
+  countBig.t -= dt * 1.5;
+  if (countBig.t <= 0){ countBig = null; return; }
+  const p = 1 - countBig.t;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, countBig.t * 2);
+  ctx.translate(W / 2, H * .42);
+  const sc = 1 + p * 1.6;
+  ctx.scale(sc, sc);
+  ctx.font = "900 78px Segoe UI, sans-serif";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.lineWidth = 6; ctx.strokeStyle = "rgba(0,0,0,.6)";
+  ctx.strokeText(countBig.n, 0, 0);
+  ctx.fillStyle = countBig.n === "FIGHT!" ? "#ff3b5c" : "#ffd447";
+  ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 40;
+  ctx.fillText(countBig.n, 0, 0);
+  ctx.restore();
 }
 
 function drawPhaseBanner(t){
@@ -2257,6 +2593,23 @@ function handleEvents(ev){
       floater(s.x, s.y - 50, "+" + Math.round(e.amt), "#ff3b5c", false);
     }
     if (e.t === "style") styleFx(e);
+    if (e.t === "escape"){
+      const s = worldToScreen(e.x, 60);
+      floater(s.x, s.y - 64, "ESCAPE!", "#3ddc84", true);
+      addSpark(s.x, s.y, 20, "61,220,132", 0, 260);
+      rings.push({ x:s.x, y:s.y, r0:10, r1:90, dur:.4, col:"rgba(61,220,132,.85)", t:0 });
+      blip(700, .18, "sine", .09, 1500);
+    }
+    if (e.t === "hazard"){
+      const s = worldToScreen(e.x, 40);
+      addSpark(s.x, s.y, 12, e.id === "zap" ? "255,212,71" : "255,138,43", 0, 240);
+      cam.shake = Math.min(1, cam.shake + .2);
+    }
+    if (e.t === "warn"){
+      const s = worldToScreen(e.x, 0);
+      floater(s.x, s.y - 90, "LOOK OUT", "#ff8a2b", true);
+      blip(440, .2, "square", .09);
+    }
     if (e.t === "ko"){
       const s = worldToScreen(e.x, 50);
       SFX.ko(); cam.shake = 1; cam.flash = 1;
@@ -2397,6 +2750,14 @@ function styleFx(e){
       rings.push({ x:s.x, y:s.y - 40, r0:40, r1:20, dur:.8, col:"rgba(255,255,255,.7)", t:0 }); break;
     case "wall":
       floater(s.x, s.y - 62, "INVISIBLE WALL", "#ffffff", true); break;
+    case "saberspin":
+      floater(s.x, s.y - 66, "BLADE STORM", "#7dd3ff", true);
+      for (let n = 0; n < 3; n++)
+        rings.push({ x:s.x, y:s.y - 30, r0:16 + n*10, r1:90, dur:.4 + n*.12,
+                     col:"rgba(125,211,255,.8)", t:0 });
+      addSpark(s.x, s.y - 20, 24, "125,211,255", 0, 280);
+      blip(260, .35, "sawtooth", .12, 1700);
+      cam.shake = Math.min(1, cam.shake + .4); break;
   }
 }
 
@@ -2438,7 +2799,7 @@ $("placeBtn").onclick = placeBet;
 
 $("joinBtn").onclick = () => {
   S.name = ($("nameIn").value || "").trim().slice(0, 12) || "Punter";
-  save(); ac();
+  save(); ac(); musicStart();          // audio needs this user gesture to unlock
   $("joinOv").classList.add("hidden");
   if (ONLINE) postRich();
   syncUI();
@@ -2448,6 +2809,8 @@ $("nameIn").addEventListener("keydown", e => { if (e.key === "Enter") $("joinBtn
 function syncOpts(){
   $("sfxTog").classList.toggle("on", S.sfx);
   $("comTog").classList.toggle("on", S.com);
+  $("musTog").classList.toggle("on", S.music);
+  $("voiTog").classList.toggle("on", S.voice);
   $("shakeTog").classList.toggle("on", S.shake);
   $("roomIn").value = S.room;
   $("optNote").innerHTML = ONLINE
@@ -2458,6 +2821,8 @@ $("optBtn").onclick = () => { $("optOv").classList.remove("hidden"); syncOpts();
 $("optClose").onclick = () => $("optOv").classList.add("hidden");
 $("sfxTog").onclick = () => { S.sfx = !S.sfx; save(); syncOpts(); if (S.sfx) SFX.pick(); };
 $("comTog").onclick = () => { S.com = !S.com; save(); syncOpts(); };
+$("musTog").onclick = () => { S.music = !S.music; save(); syncOpts(); if (S.music) musicStart(); else musicStop(); };
+$("voiTog").onclick = () => { S.voice = !S.voice; save(); syncOpts(); if (S.voice) speak("Ring announcer online"); };
 $("shakeTog").onclick = () => { S.shake = !S.shake; save(); syncOpts(); };
 $("roomIn").onchange = e => {
   S.room = (e.target.value || "arena").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 16) || "arena";
