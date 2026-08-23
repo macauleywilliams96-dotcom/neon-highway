@@ -306,190 +306,167 @@ const RATINGS = [
 function ratingFor(v){ let r = RATINGS[0]; for (const x of RATINGS) if (v >= x.min) r = x; return r; }
 
 /* =====================================================================
-   AUDIO
+   AUDIO — real recorded samples, not synthesis.
 
-   No sample files are fetched -- everything is synthesised, but designed
-   per sound rather than thrown together from sine beeps. Each effect is
-   modelled on what actually makes the noise: a citation stamp is a wooden
-   thunk (bandpassed noise burst plus a low body thump), a torch-lit
-   corridor gets a drone and drips, an electric conduit is a jittered
-   sawtooth, a mimic is two hardwood knocks in quick succession.
+   Every clip in /audio is CC0 (public domain): sound effects from Kenney's
+   RPG / Impact / Interface / Casino packs, and a looping dungeon ambience
+   bed from OpenGameArt. See audio/CREDITS.md.
 
-   Everything runs through a convolution reverb built from a synthesised
-   decaying-noise impulse, which is what makes it sound like a stone
-   corridor instead of a browser tab.
+   Decoded once into AudioBuffers and played through a Web Audio graph so
+   overlapping hits do not cut each other off the way <audio> elements do.
+   A gentle convolution reverb sits on a send bus to place everything in a
+   stone corridor, and the ambience runs on its own looping source.
    ===================================================================== */
-const AUDIO = { ctx: null, master: null, conv: null, ready: false, muted: false, amb: null };
+const SOUNDS = {
+  step:     ["audio/step1.ogg", "audio/step2.ogg", "audio/step3.ogg", "audio/step4.ogg"],
+  jump:     ["audio/jump.ogg"],
+  land:     ["audio/land.ogg"],
+  stamp:    ["audio/stamp.ogg"],
+  confirm:  ["audio/confirm.ogg"],
+  deny:     ["audio/deny.ogg"],
+  cash:     ["audio/cash.ogg", "audio/cash2.ogg"],
+  chips:    ["audio/chips.ogg"],
+  whoosh:   ["audio/whoosh.ogg"],
+  axehit:   ["audio/axehit.ogg"],
+  crunch:   ["audio/crunch.ogg"],
+  pit:      ["audio/pit.ogg"],
+  chomp:    ["audio/chomp.ogg"],
+  creak:    ["audio/creak.ogg"],
+  barrel:   ["audio/barrel.ogg"],
+  zap:      ["audio/zap.ogg"],
+  slip:     ["audio/slip.ogg"],
+  shiftend: ["audio/shiftend.ogg"]
+};
+
+const AUDIO = {
+  ctx: null, master: null, sfxBus: null, ambGain: null, conv: null,
+  ready: false, muted: false, buffers: {}, ambSrc: null, ambBuf: null
+};
 
 function audioInit(){
   if (AUDIO.ready) return;
   const AC = window.AudioContext || window.webkitAudioContext;
   if (!AC) return;
   const ac = new AC();
-  const master = ac.createGain(); master.gain.value = .85;
+  AUDIO.ctx = ac;
+
+  const master = ac.createGain(); master.gain.value = 0.9;
   master.connect(ac.destination);
 
-  // stone-room impulse response: exponentially decaying noise
-  const len = Math.floor(ac.sampleRate * 2.1);
+  const sfxBus = ac.createGain(); sfxBus.gain.value = 0.85;
+  sfxBus.connect(master);
+
+  // A short synthetic impulse is enough to seat dry one-shots in the same
+  // room as the ambience bed; the samples themselves are already dry.
+  const len = Math.floor(ac.sampleRate * 1.5);
   const ir = ac.createBuffer(2, len, ac.sampleRate);
   for (let ch = 0; ch < 2; ch++){
     const d = ir.getChannelData(ch);
-    for (let i = 0; i < len; i++){
-      const t = i / len;
-      d[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.7);
-    }
+    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2);
   }
   const conv = ac.createConvolver(); conv.buffer = ir;
-  const wet = ac.createGain(); wet.gain.value = .26;
+  const wet = ac.createGain(); wet.gain.value = 0.20;
   conv.connect(wet); wet.connect(master);
 
-  AUDIO.ctx = ac; AUDIO.master = master; AUDIO.conv = conv; AUDIO.ready = true;
+  const ambGain = ac.createGain(); ambGain.gain.value = 0.0;   // faded in on load
+  ambGain.connect(master);
+
+  AUDIO.master = master; AUDIO.sfxBus = sfxBus; AUDIO.conv = conv; AUDIO.ambGain = ambGain;
+  AUDIO.ready = true;
   if (ac.state === "suspended") ac.resume();
-  startAmbience();
-}
-function audioOn(){ return AUDIO.ready && !AUDIO.muted; }
-function out(node, wetAmt){
-  node.connect(AUDIO.master);
-  if (wetAmt !== 0){
-    const g = AUDIO.ctx.createGain(); g.gain.value = wetAmt == null ? .5 : wetAmt;
-    node.connect(g); g.connect(AUDIO.conv);
-  }
-}
-function noiseBuf(dur, shape){
-  const ac = AUDIO.ctx, n = Math.floor(ac.sampleRate * dur);
-  const b = ac.createBuffer(1, n, ac.sampleRate), d = b.getChannelData(0);
-  for (let i = 0; i < n; i++){
-    const t = i / n;
-    d[i] = (Math.random() * 2 - 1) * (shape ? shape(t) : Math.pow(1 - t, 2));
-  }
-  return b;
-}
-// filtered noise burst -- the backbone of impacts, footsteps and stamps
-function hitNoise(dur, freq, q, vol, type, wet, sweepTo){
-  if (!audioOn()) return;
-  const ac = AUDIO.ctx, t0 = ac.currentTime;
-  const src = ac.createBufferSource(); src.buffer = noiseBuf(dur);
-  const f = ac.createBiquadFilter(); f.type = type || "bandpass";
-  f.frequency.setValueAtTime(freq, t0);
-  if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, t0 + dur);
-  f.Q.value = q == null ? 1 : q;
-  const g = ac.createGain(); g.gain.value = vol == null ? .3 : vol;
-  src.connect(f); f.connect(g); out(g, wet);
-  src.start(t0);
-}
-// pitched body -- the "thump" under a hit, or a bell partial
-function tone(freq, dur, type, vol, wet, slideTo, delay){
-  if (!audioOn()) return;
-  const ac = AUDIO.ctx, t0 = ac.currentTime + (delay || 0);
-  const o = ac.createOscillator(), g = ac.createGain();
-  o.type = type || "sine";
-  o.frequency.setValueAtTime(freq, t0);
-  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t0 + dur);
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(vol == null ? .2 : vol, t0 + .008);
-  g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
-  o.connect(g); out(g, wet);
-  o.start(t0); o.stop(t0 + dur + .03);
+
+  loadAllSounds();
 }
 
+async function fetchBuffer(url){
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(url + " -> " + res.status);
+  const arr = await res.arrayBuffer();
+  return await AUDIO.ctx.decodeAudioData(arr);
+}
+
+async function loadAllSounds(){
+  const jobs = [];
+  for (const key in SOUNDS){
+    AUDIO.buffers[key] = [];
+    SOUNDS[key].forEach((url, i) => {
+      jobs.push(fetchBuffer(url)
+        .then(buf => { AUDIO.buffers[key][i] = buf; })
+        .catch(e => console.warn("audio load failed:", e.message)));
+    });
+  }
+  jobs.push(fetchBuffer("audio/ambience.ogg")
+    .then(buf => { AUDIO.ambBuf = buf; startAmbience(); })
+    .catch(e => console.warn("ambience load failed:", e.message)));
+  await Promise.all(jobs);
+}
+
+/* Play a one-shot. `vol` scales it, `rate` varies pitch slightly so
+   repeated footsteps do not sound like a machine gun of the same click. */
+function play(key, vol, rate, wet){
+  if (!AUDIO.ready || AUDIO.muted) return;
+  const bank = AUDIO.buffers[key];
+  if (!bank || !bank.length) return;
+  const buf = bank[Math.floor(Math.random() * bank.length)];
+  if (!buf) return;
+  const ac = AUDIO.ctx;
+  const src = ac.createBufferSource();
+  src.buffer = buf;
+  src.playbackRate.value = rate == null ? 1 : rate;
+  const g = ac.createGain(); g.gain.value = vol == null ? 1 : vol;
+  src.connect(g);
+  g.connect(AUDIO.sfxBus);
+  if (wet){ const w = ac.createGain(); w.gain.value = wet; g.connect(w); w.connect(AUDIO.conv); }
+  src.start();
+}
+
+function startAmbience(){
+  if (!AUDIO.ready || !AUDIO.ambBuf || AUDIO.ambSrc) return;
+  const ac = AUDIO.ctx;
+  const src = ac.createBufferSource();
+  src.buffer = AUDIO.ambBuf;
+  src.loop = true;
+  src.connect(AUDIO.ambGain);
+  src.start();
+  AUDIO.ambSrc = src;
+  // fade in rather than slamming on
+  AUDIO.ambGain.gain.setValueAtTime(0, ac.currentTime);
+  AUDIO.ambGain.gain.linearRampToValueAtTime(AUDIO.muted ? 0 : 0.38, ac.currentTime + 2.5);
+}
+
+/* Named effects. Slight randomisation on pitch and level keeps repeated
+   sounds from becoming wallpaper. */
+const rr = (a, b) => a + Math.random() * (b - a);
 const SFX = {
-  // boot heel on stone: short, dry-ish, low
-  step(){ hitNoise(.09, 420 + Math.random() * 120, 1.2, .16, "lowpass", .25);
-          tone(72 + Math.random() * 14, .07, "sine", .10, .2); },
-  jump(){ hitNoise(.10, 700, .8, .10, "lowpass", .3); tone(180, .12, "sine", .09, .3, 300); },
-  land(){ hitNoise(.14, 260, .9, .26, "lowpass", .5); tone(64, .16, "sine", .18, .5, 40); },
-
-  // rubber stamp on a clipboard: wooden knock + paper rustle
-  stamp(){ hitNoise(.055, 340, 2.4, .42, "bandpass", .45);
-           tone(140, .07, "triangle", .22, .3, 90);
-           hitNoise(.13, 5200, .7, .09, "highpass", .3); },
-
-  // till: two metallic partials plus the drawer
-  cash(){ tone(1046, .5, "triangle", .16, .7);
-          tone(1567, .42, "triangle", .10, .7);
-          tone(2093, .3, "sine", .05, .7, null, .01);
-          hitNoise(.18, 1800, .6, .10, "bandpass", .5, 700); },
-
-  // meat-and-metal impact
-  crunch(){ hitNoise(.22, 900, .7, .38, "lowpass", .6, 180);
-            tone(90, .3, "sawtooth", .2, .5, 38);
-            hitNoise(.4, 3000, .5, .07, "highpass", .7); },
-
-  whoosh(){ hitNoise(.34, 1800, 1.6, .18, "bandpass", .6, 320); },
-
-  // two hardwood knocks: a chest lid meeting a chest
-  chomp(){ hitNoise(.05, 300, 3, .4, "bandpass", .4);
-           setTimeout(() => hitNoise(.06, 240, 3, .34, "bandpass", .4), 70);
-           tone(110, .1, "square", .12, .3, 60); },
-
-  // hollow barrel roll
-  barrel(){ hitNoise(.3, 180, 4.5, .3, "bandpass", .6, 120);
-            tone(96, .22, "triangle", .14, .5, 62); },
-
-  // wet slip
-  slip(){ hitNoise(.32, 1400, 1.1, .22, "bandpass", .5, 260); },
-
-  // arcane conduit: jittered saw through a highpass
-  zap(){ if (!audioOn()) return;
-         const ac = AUDIO.ctx, t0 = ac.currentTime;
-         const o = ac.createOscillator(), g = ac.createGain(), f = ac.createBiquadFilter();
-         o.type = "sawtooth"; f.type = "highpass"; f.frequency.value = 900;
-         for (let i = 0; i < 14; i++)
-           o.frequency.setValueAtTime(220 + Math.random() * 1600, t0 + i * .012);
-         g.gain.setValueAtTime(.22, t0);
-         g.gain.exponentialRampToValueAtTime(.0001, t0 + .22);
-         o.connect(f); f.connect(g); out(g, .6);
-         o.start(t0); o.stop(t0 + .25); },
-
-  // goblin grumble: two formants over a short buzz
-  goblin(){ if (!audioOn()) return;
-            const ac = AUDIO.ctx, t0 = ac.currentTime;
-            const o = ac.createOscillator(); o.type = "sawtooth";
-            o.frequency.setValueAtTime(150, t0);
-            o.frequency.exponentialRampToValueAtTime(96, t0 + .18);
-            const f1 = ac.createBiquadFilter(); f1.type = "bandpass"; f1.frequency.value = 620; f1.Q.value = 6;
-            const f2 = ac.createBiquadFilter(); f2.type = "bandpass"; f2.frequency.value = 1240; f2.Q.value = 8;
-            const g = ac.createGain();
-            g.gain.setValueAtTime(.001, t0);
-            g.gain.linearRampToValueAtTime(.2, t0 + .02);
-            g.gain.exponentialRampToValueAtTime(.0001, t0 + .2);
-            o.connect(f1); f1.connect(f2); f2.connect(g); out(g, .5);
-            o.start(t0); o.stop(t0 + .24); },
-
-  bats(){ for (let i = 0; i < 5; i++)
-            tone(3200 + Math.random() * 2400, .05, "square", .05, .6, 2200, i * .05);
-          hitNoise(.5, 2600, .8, .08, "bandpass", .6); },
-
-  alarm(){ tone(880, .18, "square", .14, .5); tone(660, .22, "square", .14, .5, null, .2); }
+  step()    { play("step",   rr(.5, .7),  rr(.92, 1.12), .18); },
+  jump()    { play("jump",   .55,          rr(1.0, 1.15), .2); },
+  land()    { play("land",   .7,           rr(.9, 1.05),  .35); },
+  stamp()   { play("stamp",  .85,          rr(.95, 1.05), .3);
+              setTimeout(() => play("confirm", .5, 1, .25), 60); },
+  deny()    { play("deny",   .45,          1, .2); },
+  cash()    { play("cash",   .75,          rr(.95, 1.06), .3); },
+  chips()   { play("chips",  .6,           1, .3); },
+  whoosh()  { play("whoosh", .6,           rr(.85, 1.0),  .45); },
+  axehit()  { play("axehit", .9,           rr(.9, 1.05),  .5); },
+  crunch()  { play("crunch", .9,           rr(.9, 1.06),  .45); },
+  pit()     { play("pit",    .85,          rr(.9, 1.05),  .5); },
+  chomp()   { play("chomp",  .8,           rr(.9, 1.1),   .4); },
+  creak()   { play("creak",  .6,           rr(.9, 1.1),   .4); },
+  barrel()  { play("barrel", .7,           rr(.9, 1.1),   .4); },
+  zap()     { play("zap",    .7,           rr(.95, 1.15), .4); },
+  slip()    { play("slip",   .7,           rr(.95, 1.1),  .35); },
+  goblin()  { play("creak",  .5,           rr(1.3, 1.6),  .3); },   // squeaky, higher
+  bats()    { play("whoosh", .4,           rr(1.5, 1.9),  .5); },   // flutter
+  shiftend(){ play("shiftend", .8,         1, .5); },
+  alarm()   { play("deny",   .8,           1, .4); }
 };
 
-/* Ambient dungeon: a low drone and the occasional drip. Quiet enough to
-   sit under everything, present enough that the room feels enclosed. */
-function startAmbience(){
-  if (!AUDIO.ready || AUDIO.amb) return;
-  const ac = AUDIO.ctx;
-  const g = ac.createGain(); g.gain.value = .05;
-  const lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 210;
-  const a = ac.createOscillator(), b = ac.createOscillator();
-  a.type = "sawtooth"; b.type = "sawtooth";
-  a.frequency.value = 55; b.frequency.value = 55.4;
-  a.connect(lp); b.connect(lp); lp.connect(g); g.connect(AUDIO.master);
-  const wetG = ac.createGain(); wetG.gain.value = .5; g.connect(wetG); wetG.connect(AUDIO.conv);
-  a.start(); b.start();
-  AUDIO.amb = { a, b, g };
-
-  const drip = () => {
-    if (audioOn() && Math.random() < .75){
-      tone(900 + Math.random() * 700, .16, "sine", .08, .95, 260);
-    }
-    setTimeout(drip, 2600 + Math.random() * 5200);
-  };
-  setTimeout(drip, 2200);
-}
 function setMuted(m){
   AUDIO.muted = m;
-  if (AUDIO.master) AUDIO.master.gain.value = m ? 0 : .85;
-  const btn = $("btnMute");
+  if (AUDIO.master) AUDIO.master.gain.value = m ? 0 : 0.9;
+  if (AUDIO.ambGain && AUDIO.ctx)
+    AUDIO.ambGain.gain.setTargetAtTime(m ? 0 : 0.38, AUDIO.ctx.currentTime, .2);
+  const btn = document.getElementById("btnMute");
   if (btn) btn.textContent = m ? "SOUND OFF" : "SOUND ON";
 }
 
@@ -771,6 +748,7 @@ function hurt(amount, reason, fx){
   burst(player.position.x, player.position.y, "251,113,133", 26);
   SFX.crunch();
   setTimeout(() => SFX.cash(), 140);
+  setTimeout(() => SFX.chips(), 260);
   syncHUD();
   if (state.health <= 0) endRun("HEALTH");
 }
@@ -814,6 +792,7 @@ cvs.addEventListener("mousedown", e => {
   if (hit && hit.plugin && hit.plugin.hazard) cite(hit.plugin.hazard);
   else {
     floatBadge(p.x, p.y, "NO VIOLATION FOUND", "paperwork wasted", "#64748b");
+    SFX.deny();
   }
 });
 
@@ -856,17 +835,20 @@ function wireCollisions(){
         const away = Math.sign(player.position.x - other.position.x) || 1;
         Body.applyForce(player, player.position, { x: away * 0.11, y: -0.075 });
         setRagdoll(true);
+        SFX.axehit();
         hurt(CFG.damage.axe, "axe");
         if (hz) cite(hz);
       }
       else if (other.label === "hazard-pit"){
         Body.applyForce(player, player.position, { x: rnd(-.05,.05), y: -0.02 });
+        SFX.pit();
         hurt(CFG.damage.pit, "pit");
         if (hz) cite(hz);
       }
       else if (other.label === "hazard-wiring"){
         Body.applyForce(player, player.position, { x: rnd(-.04,.04), y: -0.05 });
         setRagdoll(true);
+        SFX.zap();
         hurt(CFG.damage.wiring, "wiring");
         if (hz) cite(hz);
       }
@@ -897,6 +879,7 @@ function wireCollisions(){
         Body.applyForce(player, player.position, { x: away * 0.05, y: -0.035 });
         Body.applyForce(other, other.position, { x: -away * 0.02, y: -0.02 });
         setRagdoll(true);
+        SFX.goblin();
         hurt(CFG.damage.goblin, "goblin");
         if (hz) cite(hz);
       }
@@ -1445,6 +1428,7 @@ function startRun(){
 function endRun(reason){
   if (state.ended) return;
   state.ended = true; state.running = false;
+  SFX.shiftend();
   $("hint").classList.add("hidden");
 
   const r = ratingFor(state.money);
