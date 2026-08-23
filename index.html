@@ -2709,10 +2709,10 @@ function drawPhaseBanner(t){
   ctx.textAlign = "center"; ctx.textBaseline = "middle";
   const w = ctx.measureText(txt).width + 44;
   ctx.fillStyle = "rgba(6,9,18,.8)";
-  ctx.beginPath(); ctx.roundRect(W/2 - w/2, H * .13, w, 34, 17); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(W/2 - w/2, Math.max(H * .13, 150), w, 34, 17); ctx.fill();
   ctx.strokeStyle = "rgba(120,140,220,.3)"; ctx.lineWidth = 1; ctx.stroke();
   ctx.fillStyle = col;
-  ctx.fillText(txt, W/2, H * .13 + 18);
+  ctx.fillText(txt, W/2, Math.max(H * .13, 150) + 18);
   ctx.restore();
 }
 
