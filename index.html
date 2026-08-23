@@ -487,7 +487,7 @@ const CLASSES = [
   { id:"bigfoot",  name:"BIGFOOT",        icon:"🦶", rating:1.021, melee:true,
     mods:{pwr:1.035,spd:0.834,arm:1.101,hp:1.124}, noKnock:true,
     blurb:"Roars, throws a log, remains blurry at all times." },
-  { id:"wheelie",  name:"ROCKET WHEELCHAIR", icon:"🦽", rating:1.014, melee:true,
+  { id:"wheelie",  name:"ROCKET WHEELCHAIR", icon:"🦽", rating:1.014, melee:true, replaceBody:true,
     mods:{pwr:1.555,spd:1.536,arm:0.960,hp:1.155},
     blurb:"No brakes. Occasionally meets the wall." },
   { id:"flipper",  name:"FLIP NINJA",     icon:"🤸", rating:0.979, melee:true,
@@ -505,7 +505,7 @@ const CLASSES = [
   { id:"breaker",  name:"BREAKDANCER",    icon:"🕺", rating:1.002, melee:true,
     mods:{pwr:1.097,spd:1.235,arm:0.946,hp:1.072},
     blurb:"Windmills into your shins. Sweeps the leg." },
-  { id:"tubeman",  name:"INFLATABLE MAN", icon:"🎈", rating:1.034, melee:true,
+  { id:"tubeman",  name:"INFLATABLE MAN", icon:"🎈", rating:1.034, melee:true, replaceBody:true,
     mods:{pwr:0.805,spd:1.254,arm:0.909,hp:1.061}, dodgeProj:.45,
     blurb:"Flails unpredictably. Impossible to read. Barely hurts." },
   { id:"pigeons",  name:"PIGEON SWARM",   icon:"🐦", rating:0.982, melee:true,
@@ -1366,6 +1366,12 @@ function drawBot(b, t){
   const body = flash ? "#ffffff" : "#1b2540";
   const trim = flash ? "#ffffff" : col;
 
+  /* Some characters ARE the body -- a tube man or a robot in a wheelchair
+     cannot be a standard chassis with a prop parked next to it, which is
+     exactly how they read before. Those skip the chassis entirely. */
+  const cdefD = classById(b.def.cls);
+  if (!cdefD.replaceBody){
+
   // legs
   const legSwing = Math.sin(phase * 6) * 14 * walk;
   [-1, 1].forEach((sgn, li) => {
@@ -1549,6 +1555,8 @@ function drawBot(b, t){
   ctx.beginPath(); ctx.moveTo(6, -100); ctx.lineTo(11, -112); ctx.stroke();
   ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -113, 2.2, 0, Math.PI * 2); ctx.fill();
 
+  } // end standard chassis
+
   ctx.restore();
 
   // Full-body persona layer. During the transform it scales up out of the
@@ -1720,38 +1728,97 @@ function drawPersona(K, b, t, s, z, flash){
   ctx.translate(s.x, s.y);
   ctx.scale(z, z);
   switch (K){
-    case "bigfoot": {                                       // shaggy fur overlay
-      ctx.globalAlpha = .85; ctx.fillStyle = "#5a4632";
-      for (let n = 0; n < 26; n++){
-        const a = (n / 26) * Math.PI * 2;
-        const rx = Math.cos(a) * 26, ry = -52 + Math.sin(a) * 34;
-        ctx.beginPath(); ctx.ellipse(rx, ry, 6, 9, a, 0, Math.PI * 2); ctx.fill();
+    case "bigfoot": {
+      // Shaggy OUTLINE, not a filled blob. The old version painted a brown
+      // donut over the robot and read as mud.
+      const c2 = b.def.col;
+      ctx.strokeStyle = "#6b533a"; ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      for (let n = 0; n <= 30; n++){
+        const a = -Math.PI / 2 + (n / 30) * Math.PI * 2;
+        const spike = (n % 2 ? 1 : .82);
+        const rx = Math.cos(a) * 30 * spike, ry = -54 + Math.sin(a) * 42 * spike;
+        n ? ctx.lineTo(rx, ry) : ctx.moveTo(rx, ry);
       }
-      ctx.globalAlpha = 1; break;
+      ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = "rgba(90,70,50,.30)"; ctx.fill();
+      // enormous feet, which is rather the point
+      ctx.fillStyle = "#6b533a";
+      ctx.beginPath(); ctx.ellipse(-18, -3, 20, 7, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(18, -3, 20, 7, 0, 0, Math.PI * 2); ctx.fill();
+      // glowing eyes through the fur
+      ctx.fillStyle = c2; ctx.shadowColor = c2; ctx.shadowBlur = 10;
+      ctx.fillRect(-11, -92, 7, 4); ctx.fillRect(4, -92, 7, 4);
+      ctx.shadowBlur = 0; break;
     }
-    case "wheelie": {                                       // the chair
-      ctx.strokeStyle = "#c8d0e8"; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(-6, -12, 17, 0, Math.PI * 2); ctx.stroke();
-      ctx.beginPath(); ctx.arc(18, -8, 9, 0, Math.PI * 2); ctx.stroke();
-      ctx.save(); ctx.translate(-6, -12); ctx.rotate(t / 90);
-      for (let n = 0; n < 6; n++){
-        ctx.rotate(Math.PI / 3); ctx.strokeStyle = "rgba(200,208,232,.6)"; ctx.lineWidth = 1.4;
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 17); ctx.stroke();
+    case "wheelie": {
+      // Replaces the chassis: a seated robot in an actual chair.
+      const c2 = flash ? "#fff" : b.def.col;
+      ctx.strokeStyle = c2; ctx.lineWidth = 2.4; ctx.fillStyle = "#1b2540";
+      // big drive wheel
+      ctx.save(); ctx.translate(-4, -22); ctx.rotate(t / 60);
+      ctx.beginPath(); ctx.arc(0, 0, 22, 0, Math.PI * 2); ctx.stroke();
+      for (let n = 0; n < 8; n++){
+        ctx.rotate(Math.PI / 4);
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, 22); ctx.stroke();
       }
+      ctx.restore();
+      // castor
+      ctx.beginPath(); ctx.arc(24, -8, 8, 0, Math.PI * 2); ctx.stroke();
+      // seat + backrest
+      ctx.beginPath(); ctx.roundRect(-18, -48, 40, 10, 3); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(-24, -84, 10, 40, 3); ctx.fill(); ctx.stroke();
+      // seated torso + head
+      ctx.beginPath(); ctx.roundRect(-14, -80, 30, 34, 6); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.roundRect(-10, -104, 22, 20, 5); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = c2; ctx.shadowColor = c2; ctx.shadowBlur = 10;
+      ctx.fillRect(-6, -97, 14, 4); ctx.shadowBlur = 0;
+      // legs out front on the footplate
+      ctx.fillStyle = "#1b2540";
+      ctx.beginPath(); ctx.roundRect(14, -46, 26, 9, 4); ctx.fill(); ctx.stroke();
+      // rocket + flame
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      ctx.fillStyle = "#ff8a2b"; ctx.shadowColor = "#ff8a2b"; ctx.shadowBlur = 20;
+      const fl = 16 + Math.sin(t / 30) * 8;
+      ctx.beginPath(); ctx.ellipse(-34, -30, fl, 7, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore(); break;
     }
-    case "granny":                                          // bun + shawl
-      ctx.fillStyle = "#d8d8e8";
-      ctx.beginPath(); ctx.arc(0, -112, 9, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#7a3b6b"; ctx.globalAlpha = .9;
-      ctx.beginPath(); ctx.moveTo(-24, -74); ctx.lineTo(24, -74); ctx.lineTo(16, -34); ctx.lineTo(-16, -34);
-      ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1; break;
-    case "sumo": {                                          // belly + mawashi
-      ctx.fillStyle = "#f0c9a8";
-      ctx.beginPath(); ctx.ellipse(0, -46, 30, 26, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = "#2b3554"; ctx.fillRect(-16, -30, 32, 12);
-      ctx.fillStyle = "#161c2e";
-      ctx.beginPath(); ctx.arc(0, -104, 8, Math.PI, 0); ctx.fill(); break;
+    case "granny": {
+      // bun sits ON the head, shawl is an outline, not a bib
+      ctx.strokeStyle = "#d8d8e8"; ctx.lineWidth = 2; ctx.fillStyle = "rgba(216,216,232,.35)";
+      ctx.beginPath(); ctx.arc(-2, -104, 10, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      for (let n = 0; n < 5; n++){
+        ctx.beginPath(); ctx.arc(-2, -104, 4 + n * 1.6, .4, 2.4); ctx.stroke();
+      }
+      ctx.strokeStyle = "#c46bb0"; ctx.lineWidth = 2.4;
+      ctx.fillStyle = "rgba(196,107,176,.22)";
+      ctx.beginPath();
+      ctx.moveTo(-26, -74); ctx.lineTo(26, -74); ctx.lineTo(15, -30); ctx.lineTo(-15, -30);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // knitting needles poking out
+      ctx.strokeStyle = "#c8d0e8"; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-22, -60); ctx.lineTo(-38, -74); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-22, -56); ctx.lineTo(-38, -66); ctx.stroke();
+      break;
+    }
+    case "sumo": {
+      // Belly as an outlined shape in the bot's own colour rather than a
+      // flesh-toned potato pasted over the chassis.
+      const c2 = flash ? "#fff" : b.def.col;
+      ctx.strokeStyle = c2; ctx.lineWidth = 2.6;
+      ctx.fillStyle = "rgba(27,37,64,.92)";
+      ctx.beginPath(); ctx.ellipse(0, -44, 34, 30, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      // mawashi belt
+      ctx.fillStyle = c2; ctx.globalAlpha = .55;
+      ctx.fillRect(-22, -32, 44, 11);
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = c2; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(0, -21); ctx.lineTo(0, -6); ctx.stroke();
+      // topknot
+      ctx.fillStyle = "#161c2e"; ctx.strokeStyle = c2; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(0, -106, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-8, -100); ctx.lineTo(8, -100); ctx.stroke();
+      break;
     }
     case "vending": {                                       // it IS a vending machine
       ctx.fillStyle = "#c8342f"; ctx.strokeStyle = "#e8ecff"; ctx.lineWidth = 2;
@@ -1764,15 +1831,28 @@ function drawPersona(K, b, t, s, z, flash){
       }
       ctx.fillStyle = "#161c2e"; ctx.fillRect(-20, -36, 40, 7); break;
     }
-    case "disco":                                           // mirror-ball head
-      ctx.fillStyle = "#0a0f1e";
-      ctx.beginPath(); ctx.arc(0, -96, 15, 0, Math.PI * 2); ctx.fill();
-      for (let n = 0; n < 26; n++){
-        const a = n * 1.3, rr = 13;
-        ctx.fillStyle = `hsl(${(t / 8 + n * 30) % 360},90%,${55 + (n % 3) * 12}%)`;
-        ctx.fillRect(Math.cos(a) * rr - 2.5, -96 + Math.sin(a) * rr - 2.5, 5, 5);
+    case "disco": {                                         // mirror-ball head
+      const R2 = 22;                                        // was too small to read
+      ctx.fillStyle = "#070b16";
+      ctx.beginPath(); ctx.arc(0, -98, R2, 0, Math.PI * 2); ctx.fill();
+      for (let n = 0; n < 60; n++){
+        const a = n * 2.4, rr = (n % 5) * 4.2;
+        ctx.fillStyle = `hsl(${(t / 6 + n * 24) % 360},92%,${52 + (n % 3) * 14}%)`;
+        ctx.fillRect(Math.cos(a) * rr - 2.6, -98 + Math.sin(a) * rr - 2.6, 5.2, 5.2);
       }
-      break;
+      ctx.strokeStyle = "rgba(255,255,255,.55)"; ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.arc(0, -98, R2, 0, Math.PI * 2); ctx.stroke();
+      // beams of light sweeping off it
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      for (let n = 0; n < 6; n++){
+        const a = t / 220 + n * 1.05;
+        ctx.strokeStyle = `hsla(${(t / 6 + n * 60) % 360},95%,62%,.30)`;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * R2, -98 + Math.sin(a) * R2);
+        ctx.lineTo(Math.cos(a) * 90, -98 + Math.sin(a) * 90); ctx.stroke();
+      }
+      ctx.restore(); break;
+    }
     case "dad":                                             // socks, sandals, opinions
       ctx.fillStyle = "#e8e2d0"; ctx.fillRect(-16, -14, 12, 10); ctx.fillRect(6, -14, 12, 10);
       ctx.fillStyle = "#6b5b3a"; ctx.fillRect(-18, -5, 16, 5); ctx.fillRect(4, -5, 16, 5);
@@ -1785,30 +1865,66 @@ function drawPersona(K, b, t, s, z, flash){
         ctx.beginPath(); ctx.moveTo(-19, -70 + n * 10); ctx.lineTo(19, -70 + n * 10); ctx.stroke();
       }
       break;
-    case "pigeons": {                                       // a coat full of birds
-      for (let n = 0; n < 5; n++){
-        const a = t / 300 + n * 1.3;
-        ctx.fillStyle = "#8791b5"; ctx.globalAlpha = .9;
-        ctx.beginPath();
-        ctx.ellipse(Math.cos(a) * 26, -60 + Math.sin(a * 1.4) * 22, 7, 5, a, 0, Math.PI * 2);
-        ctx.fill();
+    case "pigeons": {
+      // actual birds: body, head, beak, flapping wing
+      for (let n = 0; n < 6; n++){
+        const a = t / 300 + n * 1.05;
+        const px = Math.cos(a) * 30, py = -62 + Math.sin(a * 1.4) * 26;
+        const flap = Math.sin(t / 60 + n) * 5;
+        ctx.save(); ctx.translate(px, py); ctx.scale(Math.cos(a) < 0 ? -1 : 1, 1);
+        ctx.fillStyle = "#9aa6c8";
+        ctx.beginPath(); ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(6, -4, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#ff8a2b";
+        ctx.beginPath(); ctx.moveTo(9, -4); ctx.lineTo(15, -2.5); ctx.lineTo(9, -1); ctx.fill();
+        ctx.fillStyle = "#7b87ab";
+        ctx.beginPath(); ctx.ellipse(-1, -3 + flap * .3, 6, 3, flap * .09, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
       }
-      ctx.globalAlpha = 1; break;
+      break;
     }
-    case "tubeman": {                                       // wobbling inflatable body
-      ctx.strokeStyle = flash ? "#fff" : "#ffd447"; ctx.lineWidth = 13;
+    case "tubeman": {
+      // Replaces the chassis: it IS the tube. Previously a yellow squiggle
+      // stood next to a perfectly normal robot.
+      const c2 = flash ? "#fff" : "#ffd447";
       ctx.lineCap = "round";
-      ctx.beginPath(); ctx.moveTo(0, -6);
-      for (let n = 1; n <= 5; n++)
-        ctx.lineTo(Math.sin(t / 80 + n) * n * 5, -6 - n * 19);
-      ctx.stroke(); ctx.lineCap = "butt"; break;
+      ctx.strokeStyle = c2; ctx.lineWidth = 20; ctx.globalAlpha = .9;
+      ctx.beginPath(); ctx.moveTo(0, -4);
+      const pts = [];
+      for (let n = 1; n <= 6; n++){
+        const px = Math.sin(t / 70 + n * .9) * n * 6.5, py = -4 - n * 17;
+        pts.push([px, py]); ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      // stripes
+      ctx.globalAlpha = 1; ctx.strokeStyle = "#ff3b5c"; ctx.lineWidth = 3;
+      pts.forEach((p, n) => { if (n % 2 === 0){
+        ctx.beginPath(); ctx.moveTo(p[0] - 8, p[1]); ctx.lineTo(p[0] + 8, p[1]); ctx.stroke(); }});
+      // flailing arms
+      ctx.strokeStyle = c2; ctx.lineWidth = 9;
+      const top2 = pts[pts.length - 1];
+      ctx.beginPath(); ctx.moveTo(top2[0], top2[1] + 8);
+      ctx.lineTo(top2[0] - 26, top2[1] + 8 + Math.sin(t / 50) * 22); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(top2[0], top2[1] + 8);
+      ctx.lineTo(top2[0] + 26, top2[1] + 8 + Math.cos(t / 45) * 22); ctx.stroke();
+      // face
+      ctx.fillStyle = "#161c2e";
+      ctx.beginPath(); ctx.arc(top2[0] - 4, top2[1], 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(top2[0] + 5, top2[1], 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.lineCap = "butt"; break;
     }
-    case "dodger":                                          // long coat + shades
-      ctx.fillStyle = "#0d1020"; ctx.globalAlpha = .92;
-      ctx.beginPath(); ctx.moveTo(-22, -76); ctx.lineTo(22, -76);
-      ctx.lineTo(17, -6); ctx.lineTo(-17, -6); ctx.closePath(); ctx.fill();
-      ctx.globalAlpha = 1;
-      ctx.fillStyle = "#05070c"; ctx.fillRect(-12, -94, 24, 7);
+    case "dodger":
+      // coat as an outline with a hint of fill, so the robot stays visible
+      ctx.strokeStyle = "#4a5578"; ctx.lineWidth = 2.4;
+      ctx.fillStyle = "rgba(10,14,30,.55)";
+      ctx.beginPath(); ctx.moveTo(-24, -78); ctx.lineTo(24, -78);
+      ctx.lineTo(18, -4); ctx.lineTo(9, -4); ctx.lineTo(9, -44);
+      ctx.lineTo(-9, -44); ctx.lineTo(-9, -4); ctx.lineTo(-18, -4);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // shades
+      ctx.fillStyle = "#05070c"; ctx.fillRect(-13, -94, 26, 6);
+      ctx.strokeStyle = b.def.col; ctx.lineWidth = 1.2;
+      ctx.strokeRect(-13, -94, 26, 6);
       break;
   }
   ctx.restore();
