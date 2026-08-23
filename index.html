@@ -1451,8 +1451,14 @@ function drawBot(b, t){
   /* Some characters ARE the body -- a tube man or a robot in a wheelchair
      cannot be a standard chassis with a prop parked next to it, which is
      exactly how they read before. Those skip the chassis entirely. */
-  const cdefD = classById(b.def.cls);
-  const bd = buildOf(b.def.cls);
+  /* While bets are open the machine is an anonymous crate: no costume, no
+     build, no tell. Giving every character its own silhouette accidentally
+     broke the sealed-style mechanic -- you could spot a shaggy Bigfoot from
+     the betting screen while the panel still claimed the style was secret.
+     Masking here also makes the transformation at the bell a real reveal. */
+  const masked = !!b.masked;
+  const cdefD = masked ? {} : classById(b.def.cls);
+  const bd = masked ? { w:1, h:1, hunch:0 } : buildOf(b.def.cls);
   ctx.scale(bd.w, bd.h);
   if (bd.hunch) ctx.rotate(b.face > 0 ? bd.hunch : -bd.hunch);
   if (!cdefD.replaceBody){
@@ -1477,11 +1483,18 @@ function drawBot(b, t){
   ctx.translate(0, bob);
   ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2.4;
   ctx.beginPath(); ctx.roundRect(-20, -78, 40, 54, 7); ctx.fill(); ctx.stroke();
-  // chest core
+  // chest core -- a question mark while the identity is sealed
   ctx.fillStyle = flash ? "#fff" : col;
   ctx.globalAlpha = .85;
   ctx.beginPath(); ctx.arc(0, -56, 7 + Math.sin(t / 160) * 1.2, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
+  if (masked){
+    ctx.save(); ctx.scale(b.face, 1);
+    ctx.fillStyle = "#05070c"; ctx.font = "900 11px Segoe UI, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("?", 0, -55);
+    ctx.restore();
+  }
   // shoulder pads
   ctx.fillStyle = body; ctx.strokeStyle = trim;
   ctx.beginPath(); ctx.roundRect(-30, -76, 13, 20, 4); ctx.fill(); ctx.stroke();
@@ -1518,7 +1531,7 @@ function drawBot(b, t){
   ctx.restore();
 
   // ---- style weapon / kit, drawn on the front arm
-  const K = b.def.cls;
+  const K = masked ? "" : b.def.cls;
   ctx.save();
   ctx.translate(16, -66);
   ctx.rotate(gun ? -1.45 : (-.35 - atk * .9));
@@ -1681,7 +1694,7 @@ function drawBot(b, t){
   ctx.restore();
 
   // champion's belt, worn until somebody takes it
-  if (b.def.champ){
+  if (b.def.champ && !masked){
     ctx.save();
     ctx.translate(s.x, s.y); ctx.scale(z, z);
     ctx.fillStyle = "#e8c66a"; ctx.strokeStyle = "#8d6b25"; ctx.lineWidth = 1.4;
@@ -1702,7 +1715,7 @@ function drawBot(b, t){
     ctx.save();
     ctx.translate(s.x, s.y); ctx.scale(1, Math.max(.05, grow)); ctx.translate(-s.x, -s.y);
     ctx.globalAlpha = grow;
-    drawPersona(b.def.cls, b, t, s, z, flash);
+    drawPersona(masked ? "" : b.def.cls, b, t, s, z, flash);
     ctx.restore();
     // seams of light while it opens up
     ctx.save(); ctx.globalCompositeOperation = "lighter";
@@ -1710,7 +1723,7 @@ function drawBot(b, t){
     ctx.beginPath(); ctx.moveTo(s.x - 30 * z, s.y - 60 * z); ctx.lineTo(s.x + 30 * z, s.y - 60 * z);
     ctx.stroke(); ctx.restore();
   } else {
-    drawPersona(b.def.cls, b, t, s, z, flash);
+    drawPersona(masked ? "" : b.def.cls, b, t, s, z, flash);
   }
 
   // ---- status auras (screen space)
@@ -2888,7 +2901,8 @@ function drawIdleBots(t){
       // vx drives the leg cycle, so a real value here makes them stride in
       vx: walking ? (i === 0 ? 3.2 : -3.2) : Math.sin(t / 600 + i) * .6,
       vy: 0, face: i === 0 ? 1 : -1,
-      stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0
+      stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0,
+      masked: A.phase === PHASE.BETTING          // identity withheld until the bell
     };
   };
   const a = mk(0), b = mk(1);
