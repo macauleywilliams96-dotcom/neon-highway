@@ -2403,7 +2403,12 @@ function styleFx(e){
 /* =====================================================================
    UI WIRING
    ===================================================================== */
+let shownRevealed = null;
 function syncUI(){
+  // A viewer who arrives mid-fight never sees the phase CHANGE that reveals
+  // the styles, so they would sit through the whole fight reading "SEALED".
+  const revealedNow = A.phase !== PHASE.BETTING;
+  if (revealedNow !== shownRevealed){ shownRevealed = revealedNow; renderMatchup(); }
   $("bankTxt").textContent = fmt(S.bank);
   $("fightNo").textContent = "#" + A.fightNo;
   const betting = A.phase === PHASE.BETTING && !myBet;
