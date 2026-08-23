@@ -1974,13 +1974,16 @@ function drawFightHUD(F){
   /* Health bars meet in the middle, fighting-game style. They used to be
      pinned to the screen corners, where they collided with the bet ticket
      and the book panel and clipped the robot names. */
-  const barH = 22, top = 80, gap = 92;   // clear of the 52px app bar + name line
+  const barH = 22, top = 92, gap = 92;   // clear of the 52px app bar + name line
   const barW = Math.min((W - gap) / 2 - 24, 400);
   for (let i = 0; i < 2; i++){
     const b = F.bots[i], right = i === 1;
     const x = right ? W / 2 + gap / 2 : W / 2 - gap / 2 - barW;
     const frac = clamp(b.hp / b.def.maxHp, 0, 1);
     ctx.save();
+    // backing plate so names stay legible against the arena lights
+    ctx.fillStyle = "rgba(6,9,18,.72)";
+    ctx.beginPath(); ctx.roundRect(x - 6, top - 26, barW + 12, barH + 66, 10); ctx.fill();
     ctx.fillStyle = "rgba(6,9,18,.85)";
     ctx.beginPath(); ctx.roundRect(x, top, barW, barH, 6); ctx.fill();
     ctx.strokeStyle = "rgba(120,140,220,.3)"; ctx.lineWidth = 1; ctx.stroke();
