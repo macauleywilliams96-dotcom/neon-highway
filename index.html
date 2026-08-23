@@ -565,7 +565,8 @@ const POWERUPS = [
 const VARIANTS = {
   sudden:   { name:"SUDDEN DEATH",  icon:"💀", blurb:"Both machines start on 45% hull. It will be quick." },
   drops:    { name:"SUPPLY STORM",  icon:"📦", blurb:"Power-ups rain in twice as fast." },
-  handicap: { name:"HANDICAP MATCH",icon:"⚖", blurb:"One machine is reinforced, the other is scrap." }
+  handicap: { name:"HANDICAP MATCH",icon:"⚖", blurb:"One machine is reinforced, the other is scrap." },
+  mirror:   { name:"CIVIL WAR",     icon:"🪞", blurb:"Same discipline, both corners. Pure execution." }
 };
 function variantFor(botSeed){
   const r = mulberry32((botSeed ^ 0x2c1b3a91) >>> 0);
@@ -604,9 +605,24 @@ function makeBots(botSeed, champ){
     };
   };
   const out = [mk(0), mk(1)];
+  const V = variantFor(botSeed);
+
+  /* Mirror matches used to happen by accident and read as a bug. Now the
+     same discipline in both corners is a deliberate, announced card, and
+     otherwise the second robot re-rolls until the styles differ. */
+  if (V === "mirror"){
+    out[1].cls = out[0].cls;
+    const c = classById(out[0].cls);
+    out[1].maxHp = Math.round((900 + out[1].arm * 260) * c.mods.hp);
+  } else if (out[0].cls === out[1].cls){
+    const alt = CLASSES.filter(c => c.id !== out[0].cls);
+    const pick2 = alt[Math.floor(rnd() * alt.length)];
+    out[1].cls = pick2.id;
+    out[1].pwr *= pick2.mods.pwr / classById(out[0].cls).mods.pwr;
+    out[1].maxHp = Math.round((900 + out[1].arm * 260) * pick2.mods.hp);
+  }
 
   // ---- special card adjustments (visible to the odds, by design)
-  const V = variantFor(botSeed);
   if (V === "handicap"){
     const s = handicapSide(botSeed);
     out[s].maxHp = Math.round(out[s].maxHp * 1.32);
