@@ -654,8 +654,8 @@ function analyseAudio(buffer, onProgress){
       };
       let combLag = bestLag, combBest = -1;
       for (let lag = minLag; lag <= maxLag; lag++){
-        const score = acAt(lag) + 0.55 * acAt(lag * 2) + 0.55 * acAt(lag / 2)
-                                + 0.25 * acAt(lag * 4);
+        const score = acAt(lag) + 0.34 * acAt(lag * 2) + 0.34 * acAt(lag / 2)
+                                + 0.12 * acAt(lag * 4);
         if (score > combBest){ combBest = score; combLag = lag; }
       }
       // sub-frame refinement on the chosen lag
