@@ -1579,7 +1579,7 @@ function drawBot(b, t, ghost){
   const K = masked ? "" : b.def.cls;
   ctx.save();
   ctx.translate(16, -66);
-  ctx.rotate(gun ? -1.45 : (-.35 - atk * .9));
+  ctx.rotate(won ? 2.5 - Math.sin(t/140)*.18 : (gun ? -1.45 : (-.35 - atk * .9)));
   ctx.translate(0, 24);
   if (K === "saber"){
     const len = 54 + (b.blade > 0 ? 12 : 0);
