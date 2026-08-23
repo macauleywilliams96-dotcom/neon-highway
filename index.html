@@ -555,8 +555,32 @@ const POWERUPS = [
   { id:"rocket",    name:"ROCKET POD",  col:"#ff8a2b", icon:"▲" }
 ];
 
+/* ---------------------------------------------------------------------
+   SPECIAL CARDS
+   Occasionally the promoter rigs the card. Like hazards these come from
+   botSeed, so they are announced before betting and priced into the odds
+   automatically -- a handicap changes the robots themselves, so the
+   strength score already sees it.
+   --------------------------------------------------------------------- */
+const VARIANTS = {
+  sudden:   { name:"SUDDEN DEATH",  icon:"💀", blurb:"Both machines start on 45% hull. It will be quick." },
+  drops:    { name:"SUPPLY STORM",  icon:"📦", blurb:"Power-ups rain in twice as fast." },
+  handicap: { name:"HANDICAP MATCH",icon:"⚖", blurb:"One machine is reinforced, the other is scrap." }
+};
+function variantFor(botSeed){
+  const r = mulberry32((botSeed ^ 0x2c1b3a91) >>> 0);
+  r(); r(); r();
+  if (r() > .26) return null;
+  const keys = Object.keys(VARIANTS);
+  return keys[Math.floor(r() * keys.length)];
+}
+function handicapSide(botSeed){
+  const r = mulberry32((botSeed ^ 0x77f1e3b5) >>> 0); r(); r();
+  return r() < .5 ? 0 : 1;
+}
+
 // ---- robot generation: from botSeed alone, so it is safe to publish early
-function makeBots(botSeed){
+function makeBots(botSeed, champ){
   const rnd = mulberry32(botSeed);
   const mk = (side) => {
     const name = PREFIX[Math.floor(rnd() * PREFIX.length)] + "-" +
@@ -579,7 +603,29 @@ function makeBots(botSeed){
       col: side === 0 ? "#2ee6ff" : "#ff3b5c"
     };
   };
-  return [mk(0), mk(1)];
+  const out = [mk(0), mk(1)];
+
+  // ---- special card adjustments (visible to the odds, by design)
+  const V = variantFor(botSeed);
+  if (V === "handicap"){
+    const s = handicapSide(botSeed);
+    out[s].maxHp = Math.round(out[s].maxHp * 1.32);
+    out[1 - s].maxHp = Math.round(out[1 - s].maxHp * 0.76);
+    out[s].reinforced = true; out[1 - s].scrap = true;
+  }
+  if (V === "sudden") out.forEach(b => b.startHp = .45);
+
+  /* The champion carries momentum between fights: a real buff, not a
+     sticker, so it flows through strength() into the published price.
+     Champion state travels in shared table state and only changes between
+     fights, so every client builds identical robots. */
+  if (champ && champ.cls){
+    const k = 1 + Math.min(5, champ.streak || 0) * .022;
+    out.forEach(b => { if (b.cls === champ.cls){
+      b.pwr *= k; b.maxHp = Math.round(b.maxHp * k); b.champ = true; b.streak = champ.streak;
+    }});
+  }
+  return out;
 }
 
 /* Published odds must reflect what the simulation ACTUALLY does, otherwise
@@ -597,7 +643,7 @@ function makeBots(botSeed){
    The clamp matters more than it looks: at .10 the tail was paying 9.4x on
    robots that actually won 17% of the time, which made "always back the
    longshot" a +11% strategy. */
-const ODDS_K = 18, HOUSE = 0.06;
+const ODDS_K = 16, HOUSE = 0.06;
 function strength(b){
   const base = b.pwr * 1.15 + b.spd * .95 + b.arm * 1.05 + b.tec * .85 + b.maxHp / 1200;
   return base * classById(b.cls).rating;      // the style is priced in, even while hidden
@@ -606,17 +652,17 @@ function oddsFor(bots){
   const sa = strength(bots[0]), sb = strength(bots[1]);
   const ratio = sa / (sa + sb);
   let pa = 1 / (1 + Math.exp(-ODDS_K * (ratio - .5)));
-  pa = clamp(pa, .20, .80);
+  pa = clamp(pa, .15, .85);
   return [ +(1 / pa * (1 - HOUSE)).toFixed(2), +(1 / (1 - pa) * (1 - HOUSE)).toFixed(2), pa ];
 }
 
-function initFight(botSeed, fightSeed){
-  const bots = makeBots(botSeed);
+function initFight(botSeed, fightSeed, champ){
+  const bots = makeBots(botSeed, champ);
   const F = {
     tick: 0, over: false, winner: -1, endTick: -1,
     rnd: mulberry32((fightSeed ^ 0x9e3779b9) >>> 0),
     bots: bots.map((b, i) => ({
-      def: b, hp: b.maxHp, x: i === 0 ? 240 : ARENA_W - 240, y: 0, vx: 0, vy: 0,
+      def: b, hp: Math.round(b.maxHp * (b.startHp || 1)), x: i === 0 ? 240 : ARENA_W - 240, y: 0, vx: 0, vy: 0,
       face: i === 0 ? 1 : -1, stun: 0, atkCd: 30 + i * 12, dashCd: 0, decideIn: 6,
       state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0,
       combo: 0, hitFlash: 0, wantX: 0, lastDmg: 0,
@@ -624,7 +670,7 @@ function initFight(botSeed, fightSeed){
       cd2: 90 + i * 30, parry: 0, invis: 0, flurry: 0, chan: 0, blade: 0, rage: 0,
       escCd: 0, spin: 0, pinned: 0
     })),
-    pickups: [], shots: [], nextDrop: 60 * 6, drops: 0,
+    pickups: [], shots: [], nextDrop: 60 * 6, drops: 0, variant: variantFor(botSeed),
     hazard: hazardFor(botSeed), hzT: 0, hzX: 0, hzOn: false
   };
   return F;
@@ -725,10 +771,10 @@ function stepFight(F){
   stepHazard(F, ev);
 
   // ---- power-up drops
-  if (F.tick >= F.nextDrop && F.pickups.length < 2 && F.drops < 14){
+  if (F.tick >= F.nextDrop && F.pickups.length < 2 && F.drops < (F.variant === "drops" ? 28 : 14)){
     const p = POWERUPS[Math.floor(R() * POWERUPS.length)];
     F.pickups.push({ id: p.id, x: 160 + R() * (ARENA_W - 320), y: 260, vy: 0, life: 60 * 16 });
-    F.nextDrop = F.tick + Math.floor(60 * (5 + R() * 5));
+    F.nextDrop = F.tick + Math.floor(60 * (5 + R() * 5) * (F.variant === "drops" ? .45 : 1));
     F.drops++;
     ev.push({ t: "drop", id: p.id });
   }
@@ -1238,8 +1284,8 @@ function simulateTo(F, targetTick){
   return F;
 }
 // Resolve the winner of a whole fight without rendering (used to settle).
-function resolveWinner(botSeed, fightSeed){
-  const F = initFight(botSeed, fightSeed);
+function resolveWinner(botSeed, fightSeed, champ){
+  const F = initFight(botSeed, fightSeed, champ);
   let guard = 0;
   while (!F.over && guard++ < MAX_TICKS + 10) stepFight(F);
   return F.winner;
@@ -1261,6 +1307,9 @@ let cam = { x: ARENA_W / 2, z: 1, shake: 0, flash: 0, slow: 0 };
 let fx = [], floaters = [], sparks = [], rings = [];
 let transformT = 0;          // 1 -> 0 flash of the bell-time transformation
 let koCam = null;            // slow push-in on the knockout
+let decals = [];             // scorch marks and oil that stay on the floor
+let crowdHype = 0;           // 0..1, the crowd comes up off their seats
+let bettingSince = 0;        // drives the walk-on entrances
 
 function worldToScreen(x, y){
   const gy = H * 0.80;
@@ -1308,15 +1357,24 @@ function drawBackdrop(t){
   }
   ctx.restore();
 
-  // crowd silhouettes
+  // crowd silhouettes -- they come up off their seats when it kicks off
   ctx.save();
   const cy = H * .78;
   for (let i = 0; i < 90; i++){
     const px = ((i * 53 + (-cam.x * .35)) % (W + 200)) - 100;
-    const bob = Math.sin(t / 380 + i) * 3;
+    const jump = crowdHype * Math.max(0, Math.sin(t / 90 + i * 1.7)) * 22;
+    const bob = Math.sin(t / 380 + i) * 3 - jump;
     ctx.fillStyle = "rgba(8,12,26,.95)";
     ctx.beginPath(); ctx.arc(px, cy + 18 + bob, 9, 0, Math.PI * 2); ctx.fill();
     ctx.fillRect(px - 9, cy + 24 + bob, 18, 26);
+    // arms in the air at full hype
+    if (crowdHype > .45){
+      ctx.strokeStyle = "rgba(8,12,26,.95)"; ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(px - 8, cy + 28 + bob); ctx.lineTo(px - 14, cy + 12 + bob - jump * .3);
+      ctx.moveTo(px + 8, cy + 28 + bob); ctx.lineTo(px + 14, cy + 12 + bob - jump * .3);
+      ctx.stroke();
+    }
   }
   ctx.restore();
 
@@ -1583,9 +1641,59 @@ function drawBot(b, t){
   ctx.beginPath(); ctx.moveTo(6, -100); ctx.lineTo(11, -112); ctx.stroke();
   ctx.fillStyle = col; ctx.beginPath(); ctx.arc(11, -113, 2.2, 0, Math.PI * 2); ctx.fill();
 
+  /* Battle damage. A robot on its last legs should LOOK it: torn plating,
+     exposed sparking innards, a cracked head. Derived from hp so every
+     client draws the same wreck. */
+  if (!cdefD.replaceBody){
+    const dmg = 1 - clamp(b.hp / b.def.maxHp, 0, 1);
+    if (dmg > .3){
+      const seed = (b.def.name.charCodeAt(0) + b.def.side * 7);
+      ctx.save();
+      ctx.strokeStyle = "rgba(10,14,26,.9)"; ctx.lineWidth = 2.4;
+      const tears = Math.floor(dmg * 5);
+      for (let n = 0; n < tears; n++){
+        const px = -18 + ((seed * (n + 3) * 37) % 34);
+        const py = -74 + ((seed * (n + 5) * 53) % 44);
+        ctx.beginPath();
+        ctx.moveTo(px, py); ctx.lineTo(px + 7, py + 5); ctx.lineTo(px + 2, py + 11);
+        ctx.stroke();
+      }
+      // exposed innards glow through the holes
+      if (dmg > .55){
+        ctx.fillStyle = `rgba(255,138,43,${(dmg - .55) * .9})`;
+        for (let n = 0; n < 3; n++){
+          const px = -14 + ((seed * (n + 2) * 29) % 26);
+          const py = -70 + ((seed * (n + 7) * 41) % 36);
+          ctx.beginPath(); ctx.arc(px, py, 3 + Math.random() * 2, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      // cracked visor
+      if (dmg > .7){
+        ctx.strokeStyle = "rgba(10,14,26,.95)"; ctx.lineWidth = 1.8;
+        ctx.beginPath(); ctx.moveTo(-7, -95); ctx.lineTo(-1, -89); ctx.lineTo(4, -94); ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
   } // end standard chassis
 
   ctx.restore();
+
+  // champion's belt, worn until somebody takes it
+  if (b.def.champ){
+    ctx.save();
+    ctx.translate(s.x, s.y); ctx.scale(z, z);
+    ctx.fillStyle = "#e8c66a"; ctx.strokeStyle = "#8d6b25"; ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.roundRect(-22, -40, 44, 11, 3); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = "#fff8d8";
+    ctx.beginPath(); ctx.ellipse(0, -34.5, 8, 6.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#e8c66a"; ctx.font = "900 11px Segoe UI, sans-serif";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.shadowColor = "#e8c66a"; ctx.shadowBlur = 12;
+    ctx.fillText("x" + (b.def.streak || 1), 0, -124);
+    ctx.restore();
+  }
 
   // Full-body persona layer. During the transform it scales up out of the
   // chassis rather than simply popping into existence.
@@ -1961,6 +2069,33 @@ function drawPersona(K, b, t, s, z, flash){
   ctx.restore();
 }
 
+/* The floor remembers. Scorch and oil accumulate where the damage landed,
+   so a long fight leaves a visibly wrecked arena. */
+function addDecal(wx, kind){
+  if (decals.length > 90) decals.shift();
+  decals.push({ x: wx + (Math.random() - .5) * 24, kind,
+                r: 10 + Math.random() * 22, a: .5 + Math.random() * .35,
+                rot: Math.random() * Math.PI });
+}
+function drawDecals(){
+  for (const d of decals){
+    const p = worldToScreen(d.x, 0);
+    ctx.save();
+    ctx.translate(p.x, p.y + 2);
+    ctx.rotate(d.rot);
+    ctx.scale(1, .32);
+    ctx.globalAlpha = d.a * .55;
+    ctx.fillStyle = d.kind === "oil" ? "#05070c" : "#2a1a10";
+    ctx.beginPath(); ctx.arc(0, 0, d.r * cam.z, 0, Math.PI * 2); ctx.fill();
+    if (d.kind === "scorch"){
+      ctx.globalAlpha = d.a * .25; ctx.fillStyle = "#ff8a2b";
+      ctx.beginPath(); ctx.arc(0, 0, d.r * .6 * cam.z, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
 function drawHazard(F, t){
   if (!F.hazard) return;
   const H = F.hazard, gy = H_GROUND();
@@ -2189,10 +2324,11 @@ function drawFightHUD(F){
 const PHASE = { BETTING:"betting", FIGHT:"fight", RESULT:"result" };
 let A = {
   phase: PHASE.BETTING, phaseEnd: now() + T_BET, fightNo: 1,
-  botSeed: (Math.random() * 4294967296) >>> 0, fightSeed: 0, startAt: 0
+  botSeed: (Math.random() * 4294967296) >>> 0, fightSeed: 0, startAt: 0,
+  champ: null            // { cls, name, streak } -- carries between fights
 };
 let F = null;                 // live simulation
-let bots = makeBots(A.botSeed);
+let bots = makeBots(A.botSeed, A.champ);
 let odds = oddsFor(bots);
 let myUid = "u" + Math.random().toString(36).slice(2, 10);
 let isHost = false, netReady = false, lastStateAt = 0;
@@ -2270,9 +2406,10 @@ function adoptState(v){
   const phaseChanged = v.phase !== A.phase;
   A.phase = v.phase; A.phaseEnd = v.phaseEnd; A.fightNo = v.fightNo;
   A.botSeed = v.botSeed; A.fightSeed = v.fightSeed || 0; A.startAt = v.startAt || 0;
+  A.champ = v.champ || null;      // must be adopted BEFORE robots are built
 
   if (newFight || !bots || (bots.seedFrom !== A.botSeed)){
-    bots = makeBots(A.botSeed); bots.seedFrom = A.botSeed;
+    bots = makeBots(A.botSeed, A.champ); bots.seedFrom = A.botSeed;
     odds = oddsFor(bots);
     if (newFight){ myBet = null; pendingBet = 0; sel = -1; }
     renderMatchup();
@@ -2280,7 +2417,7 @@ function adoptState(v){
   if (A.phase === PHASE.FIGHT && A.fightSeed){
     const wantTick = Math.floor((now() - A.startAt) / TICK_MS);
     if (!F || F.seedFrom !== A.fightSeed){
-      F = initFight(A.botSeed, A.fightSeed); F.seedFrom = A.fightSeed;
+      F = initFight(A.botSeed, A.fightSeed, A.champ); F.seedFrom = A.fightSeed;
       lastAnnounced = -1; announced = {};
       if (wantTick > 4) simulateTo(F, wantTick);      // late joiner catch-up
       else { SFX.bell(); announce("FIGHT!", "#ffd447"); }
@@ -2295,19 +2432,42 @@ function adoptState(v){
 function pushState(){
   if (!ONLINE || !isHost) return;
   stateRef.set({ phase: A.phase, phaseEnd: A.phaseEnd, fightNo: A.fightNo,
-                 botSeed: A.botSeed, fightSeed: A.fightSeed, startAt: A.startAt, hostTs: now() })
+                 botSeed: A.botSeed, fightSeed: A.fightSeed, startAt: A.startAt,
+                 champ: A.champ || null, hostTs: now() })
           .catch(e => console.warn(e));
 }
 
 /* ---- host phase machine ---- */
+/* Title belt. The winner of a fight holds it; if the holder's character
+   wins again the streak grows, and with it a real (priced-in) buff. */
+function updateChampion(){
+  if (!isHost || !A.fightSeed) return;
+  const w = resolveWinner(A.botSeed, A.fightSeed, A.champ);
+  if (w < 0) return;
+  const winCls = bots[w] ? bots[w].cls : null;
+  const winName = bots[w] ? bots[w].name : "";
+  if (!winCls) return;
+  if (A.champ && A.champ.cls === winCls){
+    A.champ = { cls: winCls, name: winName, streak: (A.champ.streak || 1) + 1 };
+    sysChat("🏆 " + classById(winCls).name + " RETAINS — " + A.champ.streak + " straight!");
+  } else {
+    const old = A.champ;
+    A.champ = { cls: winCls, name: winName, streak: 1 };
+    if (old) sysChat("🏆 NEW CHAMPION: " + classById(winCls).name +
+                     " dethrones " + classById(old.cls).name + " after " + (old.streak || 1) + ".");
+    else sysChat("🏆 " + classById(winCls).name + " takes the belt.");
+  }
+}
+
 function beginBetting(local){
+  if (!local) updateChampion();
   A.phase = PHASE.BETTING;
   A.fightNo = (A.fightNo || 0) + (local ? 0 : 1);
   A.botSeed = rnd32();
   A.fightSeed = 0;                 // deliberately withheld until the bell
   A.startAt = 0;
   A.phaseEnd = now() + T_BET;
-  bots = makeBots(A.botSeed); bots.seedFrom = A.botSeed;
+  bots = makeBots(A.botSeed, A.champ); bots.seedFrom = A.botSeed;
   odds = oddsFor(bots);
   F = null; myBet = null; pendingBet = 0; sel = -1;
   if (ONLINE && isHost) betsRef.remove();
@@ -2341,9 +2501,26 @@ function onPhase(p){
   if (p === PHASE.BETTING){
     settledThisFight = false;
     lastCount = -1;
+    bettingSince = now();
+    decals = [];                       // fresh floor for a fresh card
     musicMode("bet");
     announce("PLACE YOUR BETS", "#2ee6ff");
     sysChat("Fight #" + A.fightNo + ": " + bots[0].name + " vs " + bots[1].name);
+    // ---- special card
+    const vId = variantFor(A.botSeed), V = vId && VARIANTS[vId];
+    if (V){
+      sysChat(V.icon + " SPECIAL CARD — " + V.name + ": " + V.blurb);
+      toast(V.icon + " " + V.name, 5000);
+      speak(V.name);
+    }
+    // ---- title belt
+    if (A.champ && A.champ.streak > 1 && bots.some(b => b.cls === A.champ.cls)){
+      sysChat("🏆 " + classById(A.champ.cls).name + " defends the belt — " + A.champ.streak + " straight.");
+    }
+    // ---- grudge: has this pairing happened before?
+    const g = grudgeLine(bots[0].cls, bots[1].cls);
+    if (g) sysChat("🔥 " + g);
+
     const hz = HAZARDS.find(h => h.id === hazardFor(A.botSeed));
     if (hz){
       sysChat("⚠ TRAP FIGHT — " + hz.icon + " " + hz.name + " is armed!");
@@ -2377,13 +2554,41 @@ function onPhase(p){
   if (p === PHASE.RESULT) settle();
 }
 
+/* ---- grudges: head-to-head between characters, kept locally.
+   Robots are rebuilt every fight so their names mean nothing across
+   cards; the character is the thing that carries a rivalry. */
+function grudgeKey(a, b){ return a < b ? a + "|" + b : b + "|" + a; }
+function recordGrudge(winCls, loseCls){
+  if (!winCls || !loseCls || winCls === loseCls) return;
+  S.grudge = S.grudge || {};
+  const k = grudgeKey(winCls, loseCls);
+  const rec = S.grudge[k] || { a: 0, b: 0, last: null, run: 0 };
+  const first = k.split("|")[0];
+  if (winCls === first) rec.a++; else rec.b++;
+  rec.run = rec.last === winCls ? (rec.run || 1) + 1 : 1;
+  rec.last = winCls;
+  S.grudge[k] = rec; save();
+}
+function grudgeLine(x, y){
+  if (!S.grudge || x === y) return null;
+  const rec = S.grudge[grudgeKey(x, y)];
+  if (!rec || (rec.a + rec.b) < 2) return null;
+  const first = grudgeKey(x, y).split("|")[0];
+  const nx = first === x ? rec.a : rec.b, ny = first === x ? rec.b : rec.a;
+  const X = classById(x).name, Y = classById(y).name;
+  if (rec.run >= 3) return classById(rec.last).name + " has won " + rec.run + " straight in this rivalry.";
+  if (nx === ny) return X + " and " + Y + " are dead level at " + nx + "-" + ny + ".";
+  return (nx > ny ? X : Y) + " leads this rivalry " + Math.max(nx, ny) + "-" + Math.min(nx, ny) + ".";
+}
+
 let settledThisFight = false;
 function settle(){
   if (settledThisFight) return;
   settledThisFight = true;
   // Winner is derived locally from the seeds -- identical for everyone.
-  const w = F && F.over ? F.winner : resolveWinner(A.botSeed, A.fightSeed);
+  const w = F && F.over ? F.winner : resolveWinner(A.botSeed, A.fightSeed, A.champ);
   const winner = w >= 0 ? bots[w] : null;
+  if (w >= 0) recordGrudge(bots[w].cls, bots[1 - w].cls);
   if (winner){
     announce(winner.name + " WINS", winner.col, true);
     rings.push({ x: W/2, y: H*.5, r0: 30, r1: 460, dur: 1.1, col: winner.col, t: 0 });
@@ -2440,7 +2645,7 @@ function placeBet(){
   if (pendingBet < MIN_BET){ toast("Minimum bet is " + fmt(MIN_BET) + "."); return; }
   if (pendingBet > S.bank){ toast("Not enough in the bank."); return; }
   S.bank -= pendingBet; save();
-  myBet = { side: sel, amount: pendingBet, odds: odds[sel], fightNo: A.fightNo };
+  myBet = { side: sel, amount: pendingBet, odds: dispOdds[sel] || odds[sel], fightNo: A.fightNo };
   if (ONLINE && betsRef)
     betsRef.child(myUid).set({ name: S.name || "Punter", side: sel, amount: pendingBet, fightNo: A.fightNo });
   SFX.pick();
@@ -2449,10 +2654,30 @@ function placeBet(){
   syncUI();
 }
 
-function renderBook(){
+/* Live prices. Money moving onto one robot shortens it, the way a real
+   book responds -- but only partly, so the line never detaches from the
+   model. Your ticket locks the price you actually took. */
+let dispOdds = [2, 2];
+function updateOdds(){
   const rows = Object.values(bookBets || {}).filter(b => b && b.fightNo === A.fightNo);
   let pa = 0, pb = 0;
   rows.forEach(b => { if (b.side === 0) pa += b.amount; else pb += b.amount; });
+  const total = pa + pb;
+  let prob = odds[2];
+  if (total > 0){
+    const poolProb = pa / total;
+    const weight = clamp(total / 2500, 0, .35);      // deep pools move it more
+    prob = clamp(prob * (1 - weight) + poolProb * weight, .12, .88);
+  }
+  dispOdds = [ +(1 / prob * (1 - HOUSE)).toFixed(2), +(1 / (1 - prob) * (1 - HOUSE)).toFixed(2) ];
+  const arrow = (shown, base) => shown < base - .02 ? " ▼" : shown > base + .02 ? " ▲" : "";
+  $("oddsA").textContent = dispOdds[0].toFixed(2) + "x" + arrow(dispOdds[0], odds[0]);
+  $("oddsB").textContent = dispOdds[1].toFixed(2) + "x" + arrow(dispOdds[1], odds[1]);
+  return { pa, pb, rows };
+}
+
+function renderBook(){
+  const { pa, pb, rows } = updateOdds();
   $("poolA").textContent = rows.length ? fmt(pa) + " staked" : "";
   $("poolB").textContent = rows.length ? fmt(pb) + " staked" : "";
   const list = $("bettorsList");
@@ -2465,8 +2690,9 @@ function renderBook(){
 }
 
 function renderMatchup(){
-  $("nameA").textContent = bots[0].name;
-  $("nameB").textContent = bots[1].name;
+  const badge = b => (b.champ ? "🏆 " : "") + (b.reinforced ? "⚖+ " : "") + (b.scrap ? "⚖- " : "");
+  $("nameA").textContent = badge(bots[0]) + bots[0].name;
+  $("nameB").textContent = badge(bots[1]) + bots[1].name;
   // The discipline stays sealed until the bell -- punters get the tale of
   // the tape and the price, nothing more.
   const revealed = A.phase !== PHASE.BETTING;
@@ -2481,8 +2707,7 @@ function renderMatchup(){
   $("statsB").style.whiteSpace = "pre-line";
   $("statsA").textContent = st(bots[0]);
   $("statsB").textContent = st(bots[1]);
-  $("oddsA").textContent = odds[0].toFixed(2) + "x";
-  $("oddsB").textContent = odds[1].toFixed(2) + "x";
+  updateOdds();
   $("fightNo").textContent = "#" + A.fightNo;
 }
 
@@ -2576,7 +2801,7 @@ function frame(t){
   // advance the sim to wall-clock, catching up if we dropped frames
   if (A.phase === PHASE.FIGHT && A.fightSeed){
     if (!F || F.seedFrom !== A.fightSeed){
-      F = initFight(A.botSeed, A.fightSeed); F.seedFrom = A.fightSeed;
+      F = initFight(A.botSeed, A.fightSeed, A.champ); F.seedFrom = A.fightSeed;
       announced = {};
     }
     const want = Math.floor((now() - A.startAt) / TICK_MS);
@@ -2612,6 +2837,7 @@ function frame(t){
   }
   cam.shake = Math.max(0, cam.shake - dt * 2.6);
   cam.flash = Math.max(0, cam.flash - dt * 3.2);
+  crowdHype = Math.max(0, crowdHype - dt * .5);
   transformT = Math.max(0, transformT - dt * 1.1);
 
   ctx.clearRect(0, 0, W, H);
@@ -2622,6 +2848,7 @@ function frame(t){
   drawBackdrop(t);
   drawFloor();
   if (F){
+    drawDecals();
     drawHazard(F, t);
     drawPickups(F, t);
     // draw the further bot first so overlaps read correctly
@@ -2644,14 +2871,28 @@ function frame(t){
   requestAnimationFrame; // no-op
 }
 
-// Between fights, show the two contenders posing at their corners.
+/* Between fights the contenders WALK ON from the wings rather than being
+   parked in their corners, which fills the betting window with something
+   to look at and gives each build a chance to show its gait. */
 function drawIdleBots(t){
-  const mk = (i) => ({
-    def: bots[i], hp: bots[i].maxHp, x: i === 0 ? 460 : ARENA_W - 460, y: 0,
-    vx: Math.sin(t / 600 + i) * .6, vy: 0, face: i === 0 ? 1 : -1,
-    stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0
-  });
-  drawBot(mk(0), t); drawBot(mk(1), t);
+  const since = (now() - bettingSince) / 1000;
+  const walkIn = clamp(since / 3.2, 0, 1);
+  const ease = 1 - Math.pow(1 - walkIn, 3);
+  const mk = (i) => {
+    const mark = i === 0 ? 460 : ARENA_W - 460;
+    const from = i === 0 ? -120 : ARENA_W + 120;
+    const x = from + (mark - from) * ease;
+    const walking = walkIn < 1;
+    return {
+      def: bots[i], hp: bots[i].maxHp, x, y: 0,
+      // vx drives the leg cycle, so a real value here makes them stride in
+      vx: walking ? (i === 0 ? 3.2 : -3.2) : Math.sin(t / 600 + i) * .6,
+      vy: 0, face: i === 0 ? 1 : -1,
+      stun: 0, state: "idle", stateT: 0, shield: 0, over: 0, bers: 0, rocket: 0, hitFlash: 0
+    };
+  };
+  const a = mk(0), b = mk(1);
+  (a.x <= b.x ? [a, b] : [b, a]).forEach(o => drawBot(o, t));
 }
 
 /* Countdown into the bell: big numbers on the canvas, a beep per second and
@@ -2726,6 +2967,8 @@ function handleEvents(ev){
       addSpark(s.x, s.y, heavy ? 26 : 12, heavy ? "255,212,71" : "255,255,255", 0, heavy ? 340 : 200);
       floater(s.x, s.y - 20, "-" + Math.round(e.dmg), heavy ? "#ffd447" : "#ffffff", false);
       cam.shake = Math.min(1, cam.shake + (heavy ? .55 : .18));
+      addDecal(e.x, heavy ? "scorch" : "oil");
+      crowdHype = Math.min(1, crowdHype + (heavy ? .5 : .12));
       if (heavy){ SFX.big(); rings.push({ x:s.x, y:s.y, r0:10, r1:120, dur:.45, col:"rgba(255,212,71,.9)", t:0 }); }
       else SFX.hit();
       if (e.kind === "crit") floater(s.x, s.y - 46, "CRITICAL", "#ffd447", true);
@@ -2783,6 +3026,8 @@ function handleEvents(ev){
       SFX.ko(); cam.shake = 1; cam.flash = 1;
       koCam = { x: e.x, t: 1 };          // punch in on the wreckage
       speak("Knockout!", 1.0, .5);
+      crowdHype = 1;
+      for (let n = 0; n < 6; n++) addDecal(e.x, "scorch");
       addSpark(s.x, s.y, 90, "255,138,43", 0, 520);
       addSpark(s.x, s.y, 60, "255,212,71", 0, 380);
       rings.push({ x:s.x, y:s.y, r0:20, r1:400, dur:1.0, col:"rgba(255,138,43,.95)", t:0 });
@@ -3048,7 +3293,7 @@ requestAnimationFrame(frame);
 setInterval(() => {
   if (!isHost) return;
   if (A.phase === PHASE.FIGHT && A.fightSeed){
-    if (!F || F.seedFrom !== A.fightSeed){ F = initFight(A.botSeed, A.fightSeed); F.seedFrom = A.fightSeed; }
+    if (!F || F.seedFrom !== A.fightSeed){ F = initFight(A.botSeed, A.fightSeed, A.champ); F.seedFrom = A.fightSeed; }
     const want = Math.floor((now() - A.startAt) / TICK_MS);
     if (want > F.tick) simulateTo(F, want);
   }
