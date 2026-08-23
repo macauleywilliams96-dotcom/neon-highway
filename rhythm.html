@@ -712,12 +712,19 @@ function chartFromAnalysis(an, diffIdx){
   let lastT = -9, lastLane = -1, laneLast = [-9, -9, -9, -9, -9];
 
   for (const o of keep){
-    // snap to the beat grid when it is close, so the chart feels authored
+    /* Snap to the beat grid only when the grid is actually trustworthy.
+       Tempo estimation can still land on a harmonic of the real tempo, and
+       quantising onto a wrong grid would move notes AWAY from the audio --
+       worse than not quantising at all. Below the confidence threshold the
+       raw onset time is used, which is correct by construction because it
+       came from the waveform. */
     let t = o.t;
-    const rel = t - an.phase;
-    const sub = an.beat / 4;
-    const snapped = an.phase + Math.round(rel / sub) * sub;
-    if (Math.abs(snapped - t) < sub * 0.42) t = snapped;
+    if (an.gridConfidence >= 0.65){
+      const rel = t - an.phase;
+      const sub = an.beat / 4;
+      const snapped = an.phase + Math.round(rel / sub) * sub;
+      if (Math.abs(snapped - t) < sub * 0.34) t = snapped;
+    }
     if (t < 1.2 || t > an.duration - 0.6) continue;
     if (t - lastT < minGap) continue;
 
