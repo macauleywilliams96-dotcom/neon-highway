@@ -46,6 +46,10 @@ Performance is graded from *Unpaid Intern* through *Corporate Parasite* to
 - **Custom canvas renderer** rather than `Matter.Render`, so the dungeon can be
   drawn properly — brickwork, torchlight falloff, spike pits, stamped citations.
 - **Tailwind CSS** (CDN) for the HUD, menus and modals layered over the canvas.
+- **Real CC0 audio** in `/audio` — Kenney sound packs plus a looping dungeon
+  ambience bed from OpenGameArt, decoded into AudioBuffers and played through a
+  Web Audio graph so overlapping hits do not cut each other off. Credits and
+  licences in `audio/CREDITS.md`.
 - **Firebase Realtime Database** for the global leaderboard.
 
 ## Files
