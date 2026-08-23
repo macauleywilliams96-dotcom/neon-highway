@@ -1,121 +1,76 @@
-# SCRAPYARD
+# Dungeon OSHA Compliance Officer
 
-Two robots are built from scratch, fight to the death with random power-up
-drops, and everyone watching bets on the outcome. Single self-contained
-`index.html`, hosted on GitHub Pages.
+A sarcastic 2D physics inspector game. You are an underpaid auditor for
+**Dungeon Corp LLC**. You do not slay monsters — you crawl through trap-filled
+corridors, document hazardous workplace conditions, and issue massive financial
+citations before an adventuring party lawyers up and sues the Overlord.
 
-**Watch:** https://macauleywilliams96-dotcom.github.io/neon-highway/
+**Play:** https://macauleywilliams96-dotcom.github.io/neon-highway/
 
 ---
 
-## How the fight is shared
+## Controls
 
-The interesting part. Combat is **never streamed**. The fight is a pure
-function of `(botSeed, fightSeed, tick)`, so every viewer runs the identical
-simulation locally and sees the identical fight, punch for punch — the network
-carries only a phase, a deadline and two 32-bit seeds.
+| Input | Action |
+|---|---|
+| `A` / `D` or `←` / `→` | Walk |
+| `W` / `Space` / `↑` | Jump |
+| `Left click` | Issue a citation on a hazard |
+| `E` | Voluntary impact test — pays well, hurts a lot |
 
-**Two seeds, not one, and that separation is the anti-cheat:**
+## The job
 
-| Seed | Published | Determines |
+A 90-second shift. Cite hazards for revenue, and get hit by them for more.
+
+| Section | Hazard | Fine |
 |---|---|---|
-| `botSeed` | when betting opens | the robots, their stats, and therefore the odds |
-| `fightSeed` | when the bell rings | every combat roll |
+| §402.B | Unlit torches — insufficient ambient visibility | $1,500 |
+| §109.C | Spike pits — unprotected fall hazard | $1,500 |
+| §881.A | Pendulum axes — missing safety cage & motion sensor | $1,500 |
+| §12.F | Goblins without hardhats — PPE non-compliance | $1,500 |
 
-Because the combat seed does not exist while bets are open, nobody can
-fast-forward the simulation to see who wins and then bet on a certainty.
+Each hazard can only be cited once per run. Taking a hit — or pressing `E` to
+throw yourself at something on purpose — awards a **Lethality Testing Bonus** of
+$2,500 and costs you health. The shift ends when the timer expires or your
+Life Insurance Meter hits zero.
 
-A viewer who arrives mid-fight rebuilds the sim and fast-forwards it to the
-correct tick, landing exactly in step with everyone else. Same mechanism
-recovers a tab that was hidden and fell thousands of ticks behind.
+Performance is graded from *Unpaid Intern* through *Corporate Parasite* to
+*Regional Nightmare*.
 
-An elected host only advances the phase machine — it never arbitrates combat,
-because it doesn't need to: everyone already agrees on the outcome.
+## Technical
 
-## The odds are honest
+- **Matter.js 0.19.0** for rigid-body physics: the auditor, swinging pendulum
+  constraints, patrolling goblins, and pit sensors. Getting hit applies a real
+  `Body.applyForce` impulse and briefly switches the auditor to finite inertia so
+  he actually tumbles, rather than sliding upright like a fridge.
+- **Custom canvas renderer** rather than `Matter.Render`, so the dungeon can be
+  drawn properly — brickwork, torchlight falloff, spike pits, stamped citations.
+- **Tailwind CSS** (CDN) for the HUD, menus and modals layered over the canvas.
+- **Firebase Realtime Database** for the global leaderboard.
 
-Published odds are fitted against the simulation, not guessed. An early build
-gave both robots an identical stat budget, which made every fight a 50/50 coin
-flip and the odds meaningless. Robots now roll their own build budget, and the
-score-to-probability mapping is a logistic fitted to 1,500 simulated fights.
+## Files
 
-Measured calibration over 1,500 fights:
+- `index.html` — markup, HUD, and all game logic
+- `config.js` — Firebase configuration, deliberately isolated
 
-| Implied | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 |
-|---|---|---|---|---|---|---|---|---|---|
-| **Actual** | 0.07 | 0.17 | 0.26 | 0.39 | 0.51 | 0.64 | 0.71 | 0.82 | 0.96 |
+## Leaderboard
 
-Longshots pay up to **9.4x**. House margin is 6%; backing favourites runs at
-about −1% expected value, so reading the stat lines genuinely pays.
+`config.js` holds the Firebase config and the node name. Runs are pushed to
+`/leaderboard` as `{ name, fineRevenue, rating, timestamp }`, and the top 10 are
+queried live into the **Employee of the Month** panel on both the main menu and
+the game-over screen.
 
-## Power-ups
+Only `databaseURL` is required — the Realtime Database needs nothing else under
+public rules. With no valid config the game still runs end to end and falls back
+to a local leaderboard in the browser.
 
-Dropped into the arena mid-fight; either robot can grab them.
-
-`NANO REPAIR` +28% hull · `OVERCLOCK` speed and damage · `ION SHIELD` absorbs
-· `BERSERK` heavy damage boost · `EMP BLAST` stuns the opponent · `ROCKET POD`
-five high-damage shots.
-
-## Fight facts
-
-100% of fights end in a knockout, median length ~14
-seconds, and neither corner has a side bias (measured 145/155 over 300 fights).
-
-## Database
-
-Uses the same Firebase Realtime Database as the previous build. Only
-`databaseURL` is required. Without it the arena runs solo — you still watch and
-bet, but nobody shares your clock.
-
-Paths: `arena/$room/{state,bets,chat,viewers,host}` and `richlist`.
-
-> The database is world-writable under public rules, and the chat is
-> unmoderated. Worth tightening before sharing widely.
+> The database is world-writable under test-mode rules. Worth tightening before
+> sharing widely.
 
 ## Previous builds
 
-Both preserved and restorable:
+All preserved and restorable:
 
+- [`scrapyard-v1`](../../tree/scrapyard-v1) — robot fight betting with a deterministic simulation
 - [`blackjack-v1`](../../tree/blackjack-v1) — VELVET ACE, real-time multiplayer blackjack
 - [`rhythm-game-v1`](../../tree/rhythm-game-v1) — NEON HIGHWAY, synthwave rhythm game
-
-## Fighting styles (hidden until the bell)
-
-Every robot is built around one of eight disciplines. The style comes from
-`botSeed`, so the published odds price it in — but viewers only see
-`❓ STYLE SEALED` until the fight starts. You bet the tale of the tape and find
-out what you backed when it starts swinging.
-
-| | Style | Signature |
-|---|---|---|
-| 🥋 | Karate Master | Flurry combos; a parry that stuns whoever swings into it |
-| ⚔ | Saber Duelist | Plasma blade; deflects incoming fire back at the sender |
-| 🧙 | Technomancer | Fireballs, chain lightning, blinks away when cornered |
-| 🔫 | Gunslinger | Three-round bursts from range; hates being crowded |
-| 🥷 | Cyber Ninja | Vanishes, reappears behind you, throws shuriken |
-| 🛡 | Juggernaut | Shield charge and ground slam; slow, enormous, patient |
-| 🪓 | Berserker | Hits harder the closer it gets to the scrapheap |
-| 🩸 | Siphon Unit | Drains hull from everything it hits |
-
-Styles were balanced by a proportional controller run against mass simulation:
-the first pass had Berserker at 73% and Siphon at 26%, and the spread is now
-44–56%.
-
-### The deep roster
-
-Sixteen more characters the chassis can transform into at the bell:
-
-| | | |
-|---|---|---|
-| 🕶 **Bullet-Dodger** — leans out of the way of gunfire | 👊 **One-Inch Punch** — waits, screams, removes your torso | 📰 **Amnesiac Agent** — rolled-up newspaper, disarms you first |
-| 🦶 **Bigfoot** — roars, throws a log, permanently blurry | 🦽 **Rocket Wheelchair** — no brakes, occasionally meets the wall | 🤸 **Flip Ninja** — has not touched the ground since 2019 |
-| 🪩 **Disco Inferno** — mirror-ball head, reflects fire | 👵 **Nan** — titanium hip, handbag of bricks, boiled sweets | 🤼 **Sumo Unit** — cannot be moved, will not be moved |
-| 🕺 **Breakdancer** — windmills into your shins | 🎈 **Inflatable Man** — flails unpredictably, barely hurts | 🐦 **Pigeon Swarm** — several small robots in a coat |
-| 🥤 **Vending Machine** — dispenses cans, falls on people | 🧔 **Disappointed Dad** — not angry, just disappointed | 🪚 **Chainsaw Juggler** — sometimes drops one on its own foot |
-| 🤍 **Mime** — traps you in a box that does not exist | | |
-
-Balancing 24 characters is not something you eyeball. A proportional controller
-ran them against four independent seed families for nine iterations, and the
-residual mechanical edge that raw stats cannot express is folded into each
-character's odds `rating`. Spread went from **15–78%** on the first pass to
-**45–58%**.
