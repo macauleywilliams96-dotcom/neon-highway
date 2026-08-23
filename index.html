@@ -526,6 +526,26 @@ const CLASSES = [
 ];
 const classById = id => CLASSES.find(c => c.id === id) || CLASSES[0];
 
+/* Body builds. Props alone were not enough: a sumo and a ninja had the
+   identical silhouette and differed only by a hat, so nothing read at
+   fight zoom. Each character now has its own mass and posture -- squat and
+   wide, tall and lean, hunched -- which is legible from across the arena
+   before you can make out a single detail. */
+const BUILDS = {
+  jugger:{w:1.28,h:1.02,hunch:0}, sumo:{w:1.42,h:.92,hunch:.05},
+  vending:{w:1.22,h:1.10,hunch:0}, bigfoot:{w:1.34,h:1.16,hunch:.10},
+  berserk:{w:1.18,h:1.06,hunch:.06}, dad:{w:1.12,h:1.02,hunch:.04},
+  chainsaw:{w:1.06,h:1.00,hunch:0}, leech:{w:1.02,h:1.02,hunch:.05},
+  granny:{w:.86,h:.78,hunch:.16},   ninja:{w:.82,h:1.04,hunch:.08},
+  flipper:{w:.82,h:1.00,hunch:.04}, pigeons:{w:.88,h:.94,hunch:.06},
+  dodger:{w:.94,h:1.06,hunch:0},    inchpunch:{w:.88,h:.98,hunch:0},
+  karate:{w:.92,h:1.00,hunch:0},    wizard:{w:.94,h:1.08,hunch:.05},
+  mime:{w:.92,h:1.02,hunch:0},      breaker:{w:.94,h:.98,hunch:.05},
+  saber:{w:1.00,h:1.04,hunch:0},    agent:{w:.98,h:1.00,hunch:0},
+  gunner:{w:1.00,h:1.00,hunch:0},   disco:{w:1.00,h:1.02,hunch:0}
+};
+const buildOf = cls => BUILDS[cls] || { w:1, h:1, hunch:0 };
+
 const POWERUPS = [
   { id:"repair",    name:"NANO REPAIR", col:"#3ddc84", icon:"+" },
   { id:"overclock", name:"OVERCLOCK",   col:"#ffd447", icon:"⚡" },
@@ -943,6 +963,7 @@ function stepFight(F){
     for (let i = 0; i < 2; i++){
       if (F.bots[i].hp <= 0){
         F.over = true; F.winner = 1 - i; F.endTick = F.tick;
+          F.bots[1 - i].victory = true;
         ev.push({ t: "ko", loser: i, x: F.bots[i].x });
       }
     }
@@ -1239,6 +1260,7 @@ window.addEventListener("resize", resize);
 let cam = { x: ARENA_W / 2, z: 1, shake: 0, flash: 0, slow: 0 };
 let fx = [], floaters = [], sparks = [], rings = [];
 let transformT = 0;          // 1 -> 0 flash of the bell-time transformation
+let koCam = null;            // slow push-in on the knockout
 
 function worldToScreen(x, y){
   const gy = H * 0.80;
@@ -1372,6 +1394,9 @@ function drawBot(b, t){
      cannot be a standard chassis with a prop parked next to it, which is
      exactly how they read before. Those skip the chassis entirely. */
   const cdefD = classById(b.def.cls);
+  const bd = buildOf(b.def.cls);
+  ctx.scale(bd.w, bd.h);
+  if (bd.hunch) ctx.rotate(b.face > 0 ? bd.hunch : -bd.hunch);
   if (!cdefD.replaceBody){
 
   // legs
@@ -1404,20 +1429,21 @@ function drawBot(b, t){
   ctx.beginPath(); ctx.roundRect(-30, -76, 13, 20, 4); ctx.fill(); ctx.stroke();
   ctx.beginPath(); ctx.roundRect(17, -76, 13, 20, 4); ctx.fill(); ctx.stroke();
 
-  // arms -- driven by attack state
+  // arms -- driven by attack state, or thrown up in victory
   const atk = b.state === "melee" ? (1 - b.stateT / 18) : 0;
   const punch = Math.sin(atk * Math.PI) * 30;
   const gun = b.state === "shoot" ? 1 : 0;
+  const won = b.victory ? 1 : 0;
   // back arm
   ctx.save();
-  ctx.translate(-16, -66); ctx.rotate(-.5 + gun * .2);
+  ctx.translate(-16, -66); ctx.rotate(won ? -2.5 + Math.sin(t/140)*.18 : -.5 + gun * .2);
   ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(-6, 0, 12, 26, 3); ctx.fill(); ctx.stroke();
   ctx.restore();
   // front arm / weapon
   ctx.save();
   ctx.translate(16, -66);
-  ctx.rotate(gun ? -1.45 : (-.35 - atk * .9));
+  ctx.rotate(won ? 2.5 - Math.sin(t/140)*.18 : (gun ? -1.45 : (-.35 - atk * .9)));
   ctx.translate(punch * .3, 0);
   ctx.fillStyle = body; ctx.strokeStyle = trim; ctx.lineWidth = 2;
   ctx.beginPath(); ctx.roundRect(-6, 0, 12, 24, 3); ctx.fill(); ctx.stroke();
@@ -1729,6 +1755,9 @@ function drawPersona(K, b, t, s, z, flash){
   ctx.save();
   ctx.translate(s.x, s.y);
   ctx.scale(z, z);
+  const bd = buildOf(K);
+  ctx.scale(bd.w, bd.h);              // costume must match the body it sits on
+  if (bd.hunch) ctx.rotate(b.face > 0 ? bd.hunch : -bd.hunch);
   switch (K){
     case "bigfoot": {
       // Shaggy OUTLINE, not a filled blob. The old version painted a brown
@@ -2444,7 +2473,9 @@ function renderMatchup(){
   const st = b => {
     const c = classById(b.cls);
     const style = revealed ? `${c.icon} ${c.name}` : "❓ STYLE SEALED";
-    return `${style}\n${b.chassis} · PWR ${(b.pwr*100|0)} · SPD ${(b.spd*100|0)} · ARM ${(b.arm*100|0)} · TEC ${(b.tec*100|0)}`;
+    // the blurb is the payoff of the reveal, so show it once unmasked
+    const tag = revealed && c.blurb ? `\n${c.blurb}` : "";
+    return `${style}${tag}\n${b.chassis} · PWR ${(b.pwr*100|0)} · SPD ${(b.spd*100|0)} · ARM ${(b.arm*100|0)} · TEC ${(b.tec*100|0)}`;
   };
   $("statsA").style.whiteSpace = "pre-line";
   $("statsB").style.whiteSpace = "pre-line";
@@ -2565,9 +2596,16 @@ function frame(t){
   if (F){
     const mid = (F.bots[0].x + F.bots[1].x) / 2;
     const spread = Math.abs(F.bots[0].x - F.bots[1].x);
-    const wantZ = clamp(Math.min(W / (spread + 420), H / 460), .55, 1.5);
-    cam.x += (mid - cam.x) * .07;
-    cam.z += (wantZ - cam.z) * .05;
+    let wantX = mid, wantZ = clamp(Math.min(W / (spread + 420), H / 460), .55, 1.5);
+    // Knockout: slow push-in on the wreckage instead of cutting straight to
+    // the result card.
+    if (koCam && koCam.t > 0){
+      koCam.t -= dt * .55;
+      wantX = koCam.x; wantZ = 2.1;
+      if (koCam.t <= 0) koCam = null;
+    }
+    cam.x += (wantX - cam.x) * (koCam ? .04 : .07);
+    cam.z += (wantZ - cam.z) * (koCam ? .03 : .05);
   } else {
     cam.x += (ARENA_W / 2 - cam.x) * .05;
     cam.z += (clamp(W / (ARENA_W * .42), .5, 1.5) - cam.z) * .05;   // frame the contenders
@@ -2743,6 +2781,8 @@ function handleEvents(ev){
     if (e.t === "ko"){
       const s = worldToScreen(e.x, 50);
       SFX.ko(); cam.shake = 1; cam.flash = 1;
+      koCam = { x: e.x, t: 1 };          // punch in on the wreckage
+      speak("Knockout!", 1.0, .5);
       addSpark(s.x, s.y, 90, "255,138,43", 0, 520);
       addSpark(s.x, s.y, 60, "255,212,71", 0, 380);
       rings.push({ x:s.x, y:s.y, r0:20, r1:400, dur:1.0, col:"rgba(255,138,43,.95)", t:0 });
